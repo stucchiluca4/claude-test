@@ -1,0 +1,30 @@
+# ============================================================
+# Controllo qualità automatico: ad ogni push GitHub verifica
+# che il codice compili senza errori. Se qualcosa si rompe,
+# lo scopriamo subito (bollino rosso ❌ / verde ✅ sul commit).
+# ============================================================
+name: CI
+
+on:
+  push:
+    paths:
+      - 'workout-companion-ai/**'
+  pull_request:
+    paths:
+      - 'workout-companion-ai/**'
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: workout-companion-ai
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Installa dipendenze
+        run: npm install --no-audit --no-fund
+      - name: Verifica tipi (web + mobile + shared)
+        run: npm run typecheck

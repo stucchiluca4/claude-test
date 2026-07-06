@@ -59,8 +59,8 @@ workout-companion-ai/
 │   └── workflows/                 # 🤖 Automazioni (controlli qualità ad ogni modifica)
 │
 ├── README.md                      # La "copertina" del progetto
-├── package.json                   # Configurazione generale del monorepo
-└── turbo.json                     # Turborepo: fa lavorare insieme le app del monorepo
+└── package.json                   # Configurazione del monorepo (npm workspaces:
+                                   # fa lavorare insieme web, mobile e shared)
 ```
 
 ## 3. Le regole del gioco (workflow Git)

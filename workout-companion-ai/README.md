@@ -18,10 +18,19 @@
 
 Next.js (Vercel) · React Native Expo · Supabase (PostgreSQL, Auth, Storage, Realtime) · Stripe · OpenAI · PostHog
 
+## Struttura del codice
+
+| Cartella | Contenuto |
+|---|---|
+| [`apps/web`](./apps/web) | 🖥️ Portale coach (Next.js) — dashboard, clienti, programmi, nutrizione, check-in, chat, pagamenti |
+| [`apps/mobile`](./apps/mobile) | 📱 App atleta (React Native + Expo) — workout tracker, nutrizione, check-in, chat |
+| [`packages/shared`](./packages/shared) | 🔄 Formule (TDEE, BMR, 1RM), costanti e tipi condivisi |
+| [`supabase`](./supabase) | 🗄️ Schema database, dati iniziali (150 esercizi, 130 alimenti), Edge Functions (AI Coach) |
+
 ## Stato del progetto
 
 - [x] Fase 1 — Documentazione completa (PRD, architettura, database, roadmap)
 - [x] Schema database SQL pronto ([`supabase/migrations/00001_initial_schema.sql`](./supabase/migrations/00001_initial_schema.sql))
-- [ ] Fase 2 — Setup account (Supabase, Vercel…) → segui la [guida](./docs/06-SETUP-GUIDA-PRINCIPIANTI.md)
-- [ ] Fase 3 — Scheletro monorepo (web + mobile + shared)
-- [ ] Fase 4 — Autenticazione e primi schermi
+- [x] Fase 2 — Codebase MVP: monorepo, portale web coach, app mobile, Edge Function AI, pagamenti Stripe
+- [ ] Fase 3 — Setup account e collegamento (Supabase, Vercel, Stripe) → segui la [guida](./docs/06-SETUP-GUIDA-PRINCIPIANTI.md)
+- [ ] Fase 4 — Beta test con i primi coach reali

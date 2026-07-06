@@ -1,0 +1,19 @@
+{
+  "name": "workout-companion-ai",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Piattaforma fitness premium B2C + B2B — allenamento, nutrizione, check-in e AI Coach",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev --workspace=apps/web",
+    "dev:mobile": "npm run start --workspace=apps/mobile",
+    "build:web": "npm run build --workspace=apps/web",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

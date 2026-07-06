@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "Workout Companion AI",
+    "slug": "workout-companion-ai",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "workoutcompanion",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0A0E17",
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "ai.workoutcompanion.app"
+    },
+    "plugins": ["expo-router"]
+  }
+}
