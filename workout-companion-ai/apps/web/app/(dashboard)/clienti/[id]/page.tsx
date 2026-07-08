@@ -64,6 +64,9 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
             <Link href={`/nutrizione?cliente=${cc.id}`} className={buttonSecondary}>
               + Piano alimentare
             </Link>
+            <Link href={`/clienti/${cc.id}/valutazione`} className={buttonSecondary}>
+              📏 Valutazione corporea
+            </Link>
           </>
         }
       />

@@ -10,6 +10,7 @@ import {
   ClipboardCheck,
   MessageSquare,
   CreditCard,
+  Tag,
   Settings,
   LogOut,
 } from 'lucide-react';
@@ -23,6 +24,7 @@ const NAV = [
   { href: '/nutrizione', label: 'Piani Alimentari', icon: Utensils },
   { href: '/checkin', label: 'Check & Progressi', icon: ClipboardCheck },
   { href: '/messaggi', label: 'Messaggi', icon: MessageSquare },
+  { href: '/listino', label: 'Listino', icon: Tag },
   { href: '/abbonamento', label: 'Pagamenti', icon: CreditCard },
 ];
 

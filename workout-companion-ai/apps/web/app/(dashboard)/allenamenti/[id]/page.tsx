@@ -15,7 +15,7 @@ export default async function ProgramPage({ params }: { params: { id: string } }
            id, day_of_week, name, goal, estimated_duration_min, coach_notes, sort_order,
            workout_exercises (
              id, sort_order, method, coach_notes, exercise_id,
-             exercise:exercises (id, name, muscle_group, equipment),
+             exercise:exercises (id, name, muscle_group, secondary_muscles, equipment, mechanics),
              exercise_sets (id, set_number, set_type, reps_min, reps_max, target_rpe, rest_seconds, tempo)
            )
          )

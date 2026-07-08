@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Card, Badge, buttonPrimary, buttonSecondary, inputClass } from '@/components/ui';
-import { DAYS_OF_WEEK, SET_TYPES, PROGRAM_GOALS } from '@wc/shared';
+import { DAYS_OF_WEEK, SET_TYPES, PROGRAM_GOALS, classifyPPL } from '@wc/shared';
 import { ChevronLeft, ChevronRight, Plus, Trash2, Search } from 'lucide-react';
 
 /* Tipi locali che rispecchiano la query del server */
@@ -24,7 +24,14 @@ interface WexRow {
   method: string;
   coach_notes: string | null;
   exercise_id: string;
-  exercise: { id: string; name: string; muscle_group: string; equipment: string | null };
+  exercise: {
+    id: string;
+    name: string;
+    muscle_group: string;
+    secondary_muscles: string[] | null;
+    equipment: string | null;
+    mechanics: string | null;
+  };
   exercise_sets: SetRow[];
 }
 interface WorkoutRow {
@@ -68,7 +75,7 @@ export function ProgramBuilder({ initialProgram }: { initialProgram: ProgramData
          program_weeks (id, week_number, label,
            program_workouts (id, day_of_week, name, coach_notes, sort_order,
              workout_exercises (id, sort_order, method, coach_notes, exercise_id,
-               exercise:exercises (id, name, muscle_group, equipment),
+               exercise:exercises (id, name, muscle_group, secondary_muscles, equipment, mechanics),
                exercise_sets (id, set_number, set_type, reps_min, reps_max, target_rpe, rest_seconds, tempo))))`
       )
       .eq('id', program.id)
@@ -223,6 +230,9 @@ export function ProgramBuilder({ initialProgram }: { initialProgram: ProgramData
         </button>
       </div>
 
+      {/* Riepilogo volume settimana */}
+      {week && week.program_workouts.length > 0 && <VolumeSummary week={week} />}
+
       {/* Sessioni della settimana */}
       {week?.program_workouts.length === 0 ? (
         <Card className="text-center py-12 text-text-secondary text-sm">
@@ -345,6 +355,97 @@ export function ProgramBuilder({ initialProgram }: { initialProgram: ProgramData
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Riepilogo volume della settimana: serie dirette/indirette per gruppo
+ * muscolare + bilanciamento Push / Pull / Gambe.
+ */
+function VolumeSummary({ week }: { week: WeekRow }) {
+  const direct: Record<string, number> = {};
+  const indirect: Record<string, number> = {};
+  const ppl: Record<string, number> = { push: 0, pull: 0, legs: 0, other: 0 };
+  let totalSets = 0;
+
+  for (const w of week.program_workouts) {
+    for (const wex of w.workout_exercises) {
+      const sets = wex.exercise_sets.length;
+      if (sets === 0) continue;
+      totalSets += sets;
+      const mg = wex.exercise.muscle_group;
+      direct[mg] = (direct[mg] ?? 0) + sets;
+      for (const sec of wex.exercise.secondary_muscles ?? []) {
+        indirect[sec] = (indirect[sec] ?? 0) + sets;
+      }
+      ppl[classifyPPL(mg, wex.exercise.mechanics)] += sets;
+    }
+  }
+
+  const muscles = Array.from(new Set([...Object.keys(direct), ...Object.keys(indirect)])).sort(
+    (a, b) => (direct[b] ?? 0) + (indirect[b] ?? 0) - ((direct[a] ?? 0) + (indirect[a] ?? 0))
+  );
+  const pplTotal = ppl.push + ppl.pull + ppl.legs;
+  const pct = (n: number) => (pplTotal > 0 ? Math.round((n / pplTotal) * 100) : 0);
+
+  if (totalSets === 0) return null;
+
+  return (
+    <Card className="mb-5">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-sm">
+          RIEPILOGO VOLUME{' '}
+          <span className="text-text-secondary font-normal">(settimana · per gruppo muscolare)</span>
+        </h3>
+        <span className="text-sm">
+          Totale: <b>{totalSets} serie</b>
+        </span>
+      </div>
+
+      <div className="flex flex-wrap gap-3 mb-5">
+        {muscles.map((m) => (
+          <div key={m} className="text-center">
+            <div className="flex gap-1 justify-center">
+              <span className="px-2 py-0.5 rounded-md bg-accent/20 text-accent text-xs font-bold tabular-nums">
+                {direct[m] ?? 0}
+              </span>
+              {(indirect[m] ?? 0) > 0 && (
+                <span className="px-2 py-0.5 rounded-md bg-success/15 text-success text-xs font-bold tabular-nums">
+                  {indirect[m]}
+                </span>
+              )}
+            </div>
+            <div className="text-xs text-text-secondary mt-1 capitalize">{m}</div>
+          </div>
+        ))}
+        <div className="text-xs text-text-secondary self-end ml-auto">
+          <span className="text-accent">■</span> dirette · <span className="text-success">■</span>{' '}
+          indirette
+        </div>
+      </div>
+
+      <div className="flex items-center gap-4 text-sm border-t border-border pt-4">
+        <span className="text-text-secondary text-xs uppercase tracking-wide">
+          Bilanciamento
+        </span>
+        {(
+          [
+            ['Push', ppl.push, 'bg-danger'],
+            ['Pull', ppl.pull, 'bg-accent'],
+            ['Gambe', ppl.legs, 'bg-success'],
+          ] as const
+        ).map(([label, sets, color]) => (
+          <span key={label} className="flex items-center gap-1.5">
+            <span className={`w-2.5 h-2.5 rounded-sm ${color}`} />
+            {label} <b className="tabular-nums">{pct(sets)}%</b>
+            <span className="text-text-secondary text-xs">({sets})</span>
+          </span>
+        ))}
+        <span className="text-xs text-text-secondary ml-auto">
+          Range ipertrofia consigliato: Push 40-55% · Pull 30-40% · Gambe 15-25%
+        </span>
+      </div>
+    </Card>
   );
 }
 
