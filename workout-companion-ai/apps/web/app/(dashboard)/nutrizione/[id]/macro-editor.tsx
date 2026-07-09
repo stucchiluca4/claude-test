@@ -15,6 +15,7 @@ import {
   ageFromBirthDate,
 } from '@wc/shared';
 import { ProgressionWizard } from './progression-wizard';
+import { PlanOverview } from './plan-overview';
 
 interface DayRow {
   id: string;
@@ -404,6 +405,13 @@ export function MacroEditor({
           )}
         </Card>
       </div>
+
+      {/* ------- Panoramica (grafici multi-settimana) ------- */}
+      <PlanOverview
+        days={days}
+        tdeeKcal={tdee?.tdee ?? plan.tdee_kcal}
+        targetKcal={effectiveTarget}
+      />
 
       {/* ------- Progressione (bulk / cut / mantenimento) ------- */}
       <ProgressionWizard

@@ -65,6 +65,77 @@ export async function getWeekWorkouts(programId: string, weekNumber: number): Pr
   return [...workouts].sort((a, b) => a.day_of_week - b.day_of_week || a.sort_order - b.sort_order);
 }
 
+/** Riga della tabella `daily_biofeedback` (check giornaliero dell'atleta). */
+export interface DailyBiofeedback {
+  id: string;
+  coach_client_id: string;
+  log_date: string;
+  sleep_quality: number | null;
+  sleep_hours: number | null;
+  stress_level: number | null;
+  energy_level: number | null;
+  muscle_soreness: number | null;
+  joint_stress: number | null;
+  recovery: number | null;
+  carbs_g: number | null;
+  protein_g: number | null;
+  fat_g: number | null;
+  kcal_consumed: number | null;
+  hydration_l: number | null;
+  steps: number | null;
+  weight_kg: number | null;
+  notes: string | null;
+}
+
+/** Dati modificabili di un check giornaliero (id escluso: pensato per l'upsert). */
+export type DailyBiofeedbackInput = Partial<Omit<DailyBiofeedback, 'id'>> & {
+  coach_client_id: string;
+  log_date: string;
+};
+
+/** Check giornalieri in un intervallo di date incluse (`YYYY-MM-DD`). */
+export async function getBiofeedbackBetween(
+  coachClientId: string,
+  fromDate: string,
+  toDate: string,
+): Promise<DailyBiofeedback[]> {
+  const { data, error } = await supabase
+    .from('daily_biofeedback')
+    .select('*')
+    .eq('coach_client_id', coachClientId)
+    .gte('log_date', fromDate)
+    .lte('log_date', toDate)
+    .order('log_date', { ascending: true });
+  throwIf(error);
+  return ((data ?? []) as DailyBiofeedback[]);
+}
+
+/** Check giornaliero di una data specifica (`YYYY-MM-DD`), se esiste. */
+export async function getBiofeedbackByDate(
+  coachClientId: string,
+  logDate: string,
+): Promise<DailyBiofeedback | null> {
+  const { data, error } = await supabase
+    .from('daily_biofeedback')
+    .select('*')
+    .eq('coach_client_id', coachClientId)
+    .eq('log_date', logDate)
+    .maybeSingle();
+  throwIf(error);
+  return (data as DailyBiofeedback | null) ?? null;
+}
+
+/**
+ * Inserisce o aggiorna il check giornaliero (chiave: coach_client_id + log_date).
+ * Vengono toccate solo le colonne presenti nel payload.
+ */
+export async function upsertDailyBiofeedback(row: DailyBiofeedbackInput): Promise<void> {
+  const { error } = await supabase
+    .from('daily_biofeedback')
+    .upsert(row, { onConflict: 'coach_client_id,log_date' });
+  throwIf(error);
+}
+
 /**
  * Giorno nutrizionale di oggi per il piano attivo.
  * Se la settimana corrente non è definita nel piano si ripiega sulla settimana 1.

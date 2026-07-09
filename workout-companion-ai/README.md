@@ -32,5 +32,7 @@ Next.js (Vercel) · React Native Expo · Supabase (PostgreSQL, Auth, Storage, Re
 - [x] Fase 1 — Documentazione completa (PRD, architettura, database, roadmap)
 - [x] Schema database SQL pronto ([`supabase/migrations/00001_initial_schema.sql`](./supabase/migrations/00001_initial_schema.sql))
 - [x] Fase 2 — Codebase MVP: monorepo, portale web coach, app mobile, Edge Function AI, pagamenti Stripe
+- [x] Fase 2.1 — Funzioni avanzate coach: valutazione corporea (plicometria), TDEE Katch-McArdle + PAL, progressioni BULK/CUT, listino coaching, analisi volume Push/Pull/Gambe
+- [x] Fase 2.2 — Biofeedback giornaliero (app mobile) + dashboard monitoraggio cliente + panoramica piani con grafici + dashboard coach avanzata
 - [ ] Fase 3 — Setup account e collegamento (Supabase, Vercel, Stripe) → segui la [guida](./docs/06-SETUP-GUIDA-PRINCIPIANTI.md)
 - [ ] Fase 4 — Beta test con i primi coach reali

@@ -67,6 +67,9 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
             <Link href={`/clienti/${cc.id}/valutazione`} className={buttonSecondary}>
               📏 Valutazione corporea
             </Link>
+            <Link href={`/clienti/${cc.id}/biofeedback`} className={buttonSecondary}>
+              📊 Biofeedback
+            </Link>
           </>
         }
       />

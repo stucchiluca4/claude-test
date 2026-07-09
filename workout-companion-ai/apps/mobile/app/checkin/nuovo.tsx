@@ -19,6 +19,7 @@ import { colors, spacing, sharedStyles } from '../../lib/theme';
 import { mondayOfCurrentWeek, parseNum, showError } from '../../lib/utils';
 import { getActiveCoachClient, getUserId } from '../../lib/queries';
 import { Card } from '../../components/Card';
+import { DotScale } from '../../components/DotScale';
 import { PrimaryButton } from '../../components/PrimaryButton';
 
 type ScaleKey =
@@ -43,39 +44,6 @@ const SCALES: { key: ScaleKey; label: string }[] = [
   { key: 'training_adherence', label: 'Aderenza agli allenamenti' },
   { key: 'nutrition_adherence', label: 'Aderenza alla dieta' },
 ];
-
-/** Scala 1-10 con dieci pallini tappabili (niente librerie esterne). */
-function DotScale({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: number | null;
-  onChange: (v: number) => void;
-}) {
-  return (
-    <View style={styles.scaleBox}>
-      <View style={styles.scaleHeader}>
-        <Text style={styles.scaleLabel}>{label}</Text>
-        <Text style={styles.scaleValue}>{value != null ? `${value}/10` : '—'}</Text>
-      </View>
-      <View style={styles.dotsRow}>
-        {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => {
-          const active = value != null && n <= value;
-          return (
-            <Pressable
-              key={n}
-              onPress={() => onChange(n)}
-              style={[styles.dot, active && styles.dotActive]}
-              hitSlop={4}
-            />
-          );
-        })}
-      </View>
-    </View>
-  );
-}
 
 export default function NuovoCheckinScreen() {
   const [coachClient, setCoachClient] = useState<CoachClient | null>(null);
@@ -256,40 +224,6 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: 17,
     fontWeight: '800',
-  },
-  scaleBox: {
-    gap: spacing.sm,
-  },
-  scaleHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  scaleLabel: {
-    color: colors.textPrimary,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  scaleValue: {
-    color: colors.accent,
-    fontSize: 14,
-    fontWeight: '800',
-    fontVariant: ['tabular-nums'],
-  },
-  dotsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  dot: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  dotActive: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent,
   },
   notes: {
     minHeight: 100,

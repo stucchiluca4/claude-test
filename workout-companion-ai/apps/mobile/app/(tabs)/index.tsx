@@ -1,19 +1,39 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DAYS_OF_WEEK } from '@wc/shared';
 import type { CoachClient, NutritionDay, ProgramWorkout } from '@wc/shared';
 import { supabase } from '../../lib/supabase';
-import { colors, spacing, sharedStyles } from '../../lib/theme';
-import { mondayOfCurrentWeek, showError, startOfTodayIso, todayDayOfWeek } from '../../lib/utils';
+import { colors, radius, spacing, sharedStyles } from '../../lib/theme';
+import {
+  localDateString,
+  mondayOfCurrentWeek,
+  parseNum,
+  showError,
+  startOfTodayIso,
+  todayDayOfWeek,
+} from '../../lib/utils';
 import {
   currentWeekNumber,
   getActiveCoachClient,
   getActiveProgram,
+  getBiofeedbackByDate,
   getTodayNutritionDay,
   getUserId,
   getWeekWorkouts,
+  upsertDailyBiofeedback,
+  type DailyBiofeedback,
 } from '../../lib/queries';
 import { Card } from '../../components/Card';
 import { PrimaryButton } from '../../components/PrimaryButton';
@@ -27,11 +47,15 @@ interface HomeData {
   nutritionDay: NutritionDay | null;
   latestWeight: number | null;
   checkinDue: boolean;
+  todayBiofeedback: DailyBiofeedback | null;
 }
 
 export default function HomeScreen() {
   const [data, setData] = useState<HomeData | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [quickForm, setQuickForm] = useState<'peso' | 'nota' | null>(null);
+  const [quickValue, setQuickValue] = useState('');
+  const [quickSaving, setQuickSaving] = useState(false);
   const router = useRouter();
 
   const load = useCallback(async () => {
@@ -54,6 +78,7 @@ export default function HomeScreen() {
         nutritionDay: null,
         latestWeight: null,
         checkinDue: false,
+        todayBiofeedback: null,
       };
 
       const cc = await getActiveCoachClient(uid);
@@ -99,6 +124,8 @@ export default function HomeScreen() {
         if (checkinError) throw new Error(checkinError.message);
         const status = (checkin as { status: string } | null)?.status;
         next.checkinDue = !checkin || status === 'pending';
+
+        next.todayBiofeedback = await getBiofeedbackByDate(cc.id, localDateString(new Date()));
       }
 
       setData(next);
@@ -115,6 +142,45 @@ export default function HomeScreen() {
     setRefreshing(true);
     await load();
     setRefreshing(false);
+  }
+
+  /** Apre/chiude i mini-form di "Aggiungi velocemente", pre-compilando il valore odierno. */
+  function toggleQuickForm(kind: 'peso' | 'nota') {
+    if (quickForm === kind) {
+      setQuickForm(null);
+      return;
+    }
+    const bf = data?.todayBiofeedback;
+    setQuickValue(
+      kind === 'peso' ? (bf?.weight_kg != null ? String(bf.weight_kg) : '') : (bf?.notes ?? ''),
+    );
+    setQuickForm(kind);
+  }
+
+  async function saveQuick() {
+    const cc = data?.coachClient;
+    if (!cc || !quickForm) return;
+    const isWeight = quickForm === 'peso';
+    const weightKg = isWeight ? parseNum(quickValue) : null;
+    if (isWeight && weightKg == null) {
+      Alert.alert('Peso non valido', 'Inserisci il peso in kg, ad esempio 72,5.');
+      return;
+    }
+    setQuickSaving(true);
+    try {
+      await upsertDailyBiofeedback({
+        coach_client_id: cc.id,
+        log_date: localDateString(new Date()),
+        ...(isWeight ? { weight_kg: weightKg } : { notes: quickValue.trim() || null }),
+      });
+      setQuickForm(null);
+      setQuickValue('');
+      await load();
+    } catch (e) {
+      showError(e, 'Salvataggio non riuscito');
+    } finally {
+      setQuickSaving(false);
+    }
   }
 
   if (!data) {
@@ -186,6 +252,53 @@ export default function HomeScreen() {
               )}
             </Card>
 
+            <Card title="Check biofeedback di oggi">
+              {data.todayBiofeedback ? (
+                <View style={styles.biofeedbackRow}>
+                  <Text style={styles.doneText}>✓ Completato</Text>
+                  <Pressable onPress={() => router.push('/biofeedback/oggi')} hitSlop={8}>
+                    <Text style={styles.linkText}>Modifica</Text>
+                  </Pressable>
+                </View>
+              ) : (
+                <PrimaryButton
+                  label="▶ Compila il check di oggi"
+                  onPress={() => router.push('/biofeedback/oggi')}
+                />
+              )}
+            </Card>
+
+            <Card title="Aggiungi velocemente">
+              <View style={styles.quickRow}>
+                <Pressable
+                  style={[styles.quickButton, quickForm === 'peso' && styles.quickButtonActive]}
+                  onPress={() => toggleQuickForm('peso')}
+                >
+                  <Text style={styles.quickButtonText}>⚖️ Registra peso</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.quickButton, quickForm === 'nota' && styles.quickButtonActive]}
+                  onPress={() => toggleQuickForm('nota')}
+                >
+                  <Text style={styles.quickButtonText}>📝 Aggiungi nota</Text>
+                </Pressable>
+              </View>
+              {quickForm ? (
+                <>
+                  <TextInput
+                    style={[sharedStyles.input, quickForm === 'nota' && styles.quickNote]}
+                    value={quickValue}
+                    onChangeText={setQuickValue}
+                    placeholder={quickForm === 'peso' ? 'Peso in kg (es. 72,5)' : 'Nota di oggi per il coach'}
+                    placeholderTextColor={colors.textSecondary}
+                    keyboardType={quickForm === 'peso' ? 'decimal-pad' : 'default'}
+                    multiline={quickForm === 'nota'}
+                  />
+                  <PrimaryButton label="Salva" onPress={saveQuick} loading={quickSaving} />
+                </>
+              ) : null}
+            </Card>
+
             <Card title="Nutrizione di oggi">
               {data.nutritionDay ? (
                 <>
@@ -238,6 +351,42 @@ const styles = StyleSheet.create({
     color: colors.success,
     fontSize: 15,
     fontWeight: '700',
+  },
+  biofeedbackRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  linkText: {
+    color: colors.accent,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  quickRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  quickButton: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+  },
+  quickButtonActive: {
+    borderColor: colors.accent,
+  },
+  quickButtonText: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  quickNote: {
+    minHeight: 70,
+    textAlignVertical: 'top',
   },
   kcalRow: {
     flexDirection: 'row',
