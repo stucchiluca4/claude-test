@@ -43,13 +43,13 @@ type WindowDays = (typeof WINDOWS)[number];
 
 const DAYS_IT = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
 
-const GRID = '#1F2937';
-const AXIS = '#9CA3AF';
+const GRID = '#22314F';
+const AXIS = '#8FA3C0';
 const tooltipStyle = {
-  background: '#111827',
-  border: '1px solid #1F2937',
+  background: '#0D1626',
+  border: '1px solid #22314F',
   borderRadius: 8,
-  color: '#F9FAFB',
+  color: '#FFFFFF',
 } as const;
 
 function parseDate(iso: string): Date {
@@ -289,10 +289,10 @@ export function BiofeedbackDashboard({
   const recent = entries.slice(-7).reverse();
 
   const smallBars = [
-    { key: 'stress', title: 'Stress giornaliero', color: '#F97316', domain10: true },
-    { key: 'energia', title: 'Energia', color: '#22C55E', domain10: true },
-    { key: 'recupero', title: 'Recupero', color: '#2563EB', domain10: true },
-    { key: 'passi', title: 'Passi giornalieri', color: '#3B82F6', domain10: false },
+    { key: 'stress', title: 'Stress giornaliero', color: '#2E6BE0', domain10: true },
+    { key: 'energia', title: 'Energia', color: '#38BDF8', domain10: true },
+    { key: 'recupero', title: 'Recupero', color: '#1D4ED8', domain10: true },
+    { key: 'passi', title: 'Passi giornalieri', color: '#9CD9FF', domain10: false },
   ] as const;
 
   return (
@@ -382,7 +382,7 @@ export function BiofeedbackDashboard({
                     />
                     <Tooltip
                       contentStyle={tooltipStyle}
-                      cursor={{ fill: '#1F2937', opacity: 0.4 }}
+                      cursor={{ fill: '#22314F', opacity: 0.4 }}
                       formatter={(value: number, name: string) =>
                         name === 'Ore di sonno' ? [formatSleep(value), name] : [`${value}/10`, name]
                       }
@@ -392,7 +392,7 @@ export function BiofeedbackDashboard({
                       yAxisId="ore"
                       dataKey="ore"
                       name="Ore di sonno"
-                      fill="#2563EB"
+                      fill="#2E6BE0"
                       radius={[4, 4, 0, 0]}
                       maxBarSize={18}
                     />
@@ -401,9 +401,10 @@ export function BiofeedbackDashboard({
                       type="monotone"
                       dataKey="qualita"
                       name="Qualità"
-                      stroke="#22C55E"
+                      stroke="#9CD9FF"
                       strokeWidth={2}
-                      dot={{ fill: '#22C55E', r: 3 }}
+                      strokeDasharray="6 4"
+                      dot={{ fill: '#9CD9FF', r: 3 }}
                     />
                   </ComposedChart>
                 </ResponsiveContainer>
@@ -425,19 +426,19 @@ export function BiofeedbackDashboard({
                     {kcalTarget != null && (
                       <ReferenceLine
                         y={kcalTarget}
-                        stroke="#9CA3AF"
+                        stroke="#8FA3C0"
                         strokeDasharray="6 4"
                         ifOverflow="extendDomain"
-                        label={{ value: 'Target', fill: '#9CA3AF', fontSize: 11, position: 'insideTopRight' }}
+                        label={{ value: 'Target', fill: '#8FA3C0', fontSize: 11, position: 'insideTopRight' }}
                       />
                     )}
                     <Line
                       type="monotone"
                       dataKey="kcal"
                       name="Kcal"
-                      stroke="#F97316"
+                      stroke="#38BDF8"
                       strokeWidth={2}
-                      dot={{ fill: '#F97316', r: 3 }}
+                      dot={{ fill: '#38BDF8', r: 3 }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -461,25 +462,27 @@ export function BiofeedbackDashboard({
                       type="monotone"
                       dataKey="carboidrati"
                       name="Carboidrati"
-                      stroke="#F97316"
+                      stroke="#2E6BE0"
                       strokeWidth={2}
-                      dot={{ fill: '#F97316', r: 3 }}
+                      dot={{ fill: '#2E6BE0', r: 3 }}
                     />
                     <Line
                       type="monotone"
                       dataKey="proteine"
                       name="Proteine"
-                      stroke="#22C55E"
+                      stroke="#38BDF8"
                       strokeWidth={2}
-                      dot={{ fill: '#22C55E', r: 3 }}
+                      strokeDasharray="6 4"
+                      dot={{ fill: '#38BDF8', r: 3 }}
                     />
                     <Line
                       type="monotone"
                       dataKey="grassi"
                       name="Grassi"
-                      stroke="#EAB308"
+                      stroke="#9CD9FF"
                       strokeWidth={2}
-                      dot={{ fill: '#EAB308', r: 3 }}
+                      strokeDasharray="2 5"
+                      dot={{ fill: '#9CD9FF', r: 3 }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -508,9 +511,9 @@ export function BiofeedbackDashboard({
                         type="monotone"
                         dataKey="peso"
                         name="Peso"
-                        stroke="#2563EB"
+                        stroke="#38BDF8"
                         strokeWidth={2}
-                        dot={{ fill: '#2563EB', r: 3 }}
+                        dot={{ fill: '#38BDF8', r: 3 }}
                       />
                     </LineChart>
                   </ResponsiveContainer>
@@ -537,7 +540,7 @@ export function BiofeedbackDashboard({
                       />
                       <Tooltip
                         contentStyle={tooltipStyle}
-                        cursor={{ fill: '#1F2937', opacity: 0.4 }}
+                        cursor={{ fill: '#22314F', opacity: 0.4 }}
                         formatter={(value: number) => [
                           cfg.domain10 ? `${value}/10` : fmtInt(value),
                           cfg.title,

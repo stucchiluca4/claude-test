@@ -8,7 +8,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <Dumbbell className="text-accent" size={24} />
           Workout Companion AI
         </div>
-        <div className="bg-card border border-border rounded-xl p-8">{children}</div>
+        <div className="glass rounded-xl p-8">{children}</div>
       </div>
     </main>
   );

@@ -506,7 +506,7 @@ function ExercisePicker({
         <Plus size={12} className="inline -mt-0.5" /> Esercizio
       </button>
       {open && (
-        <div className="absolute right-0 mt-2 w-80 bg-card border border-border rounded-xl p-3 shadow-xl z-20">
+        <div className="absolute right-0 mt-2 w-80 glass rounded-xl p-3 shadow-xl z-20">
           <div className="relative">
             <Search size={14} className="absolute left-2.5 top-2.5 text-text-secondary" />
             <input

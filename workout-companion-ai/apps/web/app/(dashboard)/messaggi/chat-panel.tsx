@@ -161,7 +161,7 @@ export function ChatPanel({ contacts, myId }: { contacts: Contact[]; myId: strin
               <div
                 className={cn(
                   'max-w-[70%] rounded-2xl px-4 py-2.5 text-sm',
-                  m.sender_id === myId ? 'bg-accent text-white' : 'bg-card border border-border'
+                  m.sender_id === myId ? 'grad-primary text-white' : 'glass'
                 )}
               >
                 {m.body}

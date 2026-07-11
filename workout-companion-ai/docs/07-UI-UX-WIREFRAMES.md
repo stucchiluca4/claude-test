@@ -3,14 +3,14 @@
 
 ---
 
-## 1. Design System (ispirato agli screenshot forniti)
+## 1. Design System — "Executive Control Room" (VINCOLANTE, vedi docs/08-DESIGN-SYSTEM.md)
 
-- **Tema**: dark mode primario (`#0A0E17` sfondo, card `#111827`, bordi `#1F2937`), light mode secondario
-- **Accento**: blu elettrico `#2563EB` (bottoni primari, elementi attivi)
-- **Semantici**: verde `#22C55E` (successo/progresso) · ambra `#F59E0B` (attenzione) · rosso `#EF4444` (rischio/PR mancati)
-- **Grafici**: linee/barre colorate su sfondo scuro, medie mobili tratteggiate (come "Tonnellaggio nel tempo")
-- **Font**: Inter — numeri grandi e leggibili per i KPI
-- **Componenti ricorrenti**: card KPI con delta % (↑8% verde), badge di stato (Attivo/OFF/Top set), tabelle editabili inline, sidebar sinistra fissa (desktop), tab bar inferiore (mobile)
+- **Tema**: solo dark "Control Room" — sfondo Deep Navy `#070D1A`, contenitori dati `#0D1626` con **glassmorphism** (`rgba(16,20,30,.65)` + `backdrop-filter: blur(12px)` + bordo `rgba(255,255,255,.08)`)
+- **Palette corporate all-blue**: Electric Blue `#38BDF8` (accenti, trend positivi, CTA) · Avio `#2E6BE0` (barre e grafici) · Celeste `#9CD9FF` (bordi e indicatori secondari) · Bianco puro solo per testi e numeri KPI. Rosso/ambra ammessi SOLO come stati funzionali (distruttivo/avviso)
+- **Pseudo-3D**: gradienti Deep→Electric sui CTA, ombre direzionali, KPI card con **glow neon** sul bordo
+- **Animazioni 60fps**: rolling counter sui KPI, barre che si sollevano da zero, ingressi translateY+fade con stagger; sempre rispettato `prefers-reduced-motion`
+- **Font**: Inter — ExtraBold per titoli e macro-numeri (tabular-nums), pesi leggeri per le diciture secondarie
+- **Componenti ricorrenti**: card KPI con delta % (↑ in Electric Blue), badge di stato, tabelle editabili inline su vetro, sidebar sinistra fissa (desktop), tab bar inferiore (mobile)
 
 ---
 

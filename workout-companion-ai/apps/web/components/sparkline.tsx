@@ -1,7 +1,7 @@
 /** Mini-grafico a linea (SVG puro, renderizzato sul server). */
 export function Sparkline({
   values,
-  color = '#2563EB',
+  color = '#38BDF8',
   width = 120,
   height = 32,
 }: {

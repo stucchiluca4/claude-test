@@ -64,7 +64,7 @@ export function PlanButtons({ hasSubscription }: { hasSubscription: boolean }) {
             className={p.highlight ? 'border-accent relative' : ''}
           >
             {p.highlight && (
-              <span className="absolute -top-2.5 left-4 bg-accent text-white text-xs font-semibold px-2 py-0.5 rounded-md">
+              <span className="absolute -top-2.5 left-4 grad-primary text-white text-xs font-bold px-2 py-0.5 rounded-md">
                 Più scelto
               </span>
             )}

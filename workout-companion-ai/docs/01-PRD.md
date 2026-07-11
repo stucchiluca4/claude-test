@@ -78,7 +78,7 @@ Dare ai coach strumenti da azienda enterprise a prezzo da freelancer, e agli atl
 - **Sicurezza**: Row Level Security su ogni tabella; un coach vede SOLO i propri clienti; GDPR-ready (dati salute = categoria speciale → consenso esplicito, export/cancellazione dati).
 - **Performance**: workout tracker utilizzabile offline-first (v1.1), salvataggio automatico < 1s.
 - **Lingue**: IT + EN dal lancio (i18n dal giorno 1).
-- **Design**: dark mode primario, light mode secondario, stile SaaS premium (riferimenti: screenshot PT Coach Pro, Trainerize, PT Distinction).
+- **Design**: VINCOLANTE il design system "Executive Control Room" (vedi `docs/08-DESIGN-SYSTEM.md`): palette corporate all-blue (Deep Navy sfondi, Electric Blue accenti/CTA, Avio grafici, Celeste bordi, Bianco per testi/KPI), tipografia Inter con gerarchia rigida Bold/ExtraBold, glassmorphism sui pannelli, KPI card con glow neon, micro-animazioni 60fps (rolling counter, barre che crescono). Riferimenti visivi: screenshot PT Coach Pro.
 
 ## 8. Cosa NON è in scope per l'MVP
 

@@ -19,7 +19,7 @@ export default function Home() {
           </Link>
           <Link
             href="/registrati"
-            className="px-4 py-2 rounded-lg bg-accent hover:bg-accent-hover transition font-medium"
+            className="px-4 py-2 rounded-lg grad-primary hover:brightness-110 transition font-bold text-white"
           >
             Inizia gratis
           </Link>
@@ -36,7 +36,7 @@ export default function Home() {
         </p>
         <Link
           href="/registrati"
-          className="mt-10 px-8 py-4 rounded-xl bg-accent hover:bg-accent-hover transition text-lg font-semibold"
+          className="mt-10 px-8 py-4 rounded-xl grad-primary hover:brightness-110 transition text-lg font-bold text-white shadow-[0_0_30px_-8px_rgba(56,189,248,.8)]"
         >
           Prova gratis 14 giorni
         </Link>
@@ -47,7 +47,7 @@ export default function Home() {
             { icon: Utensils, title: 'Nutrizione precisa', desc: 'Macro per giorno, rotazione calorie, TDEE automatico.' },
             { icon: Brain, title: 'AI Coach', desc: 'Report automatici e suggerimenti basati sui dati dei tuoi clienti.' },
           ].map((f) => (
-            <div key={f.title} className="bg-card border border-border rounded-xl p-6 text-left">
+            <div key={f.title} className="glass rounded-xl p-6 text-left rise">
               <f.icon className="text-accent mb-3" size={26} />
               <h3 className="font-semibold mb-1">{f.title}</h3>
               <p className="text-sm text-text-secondary">{f.desc}</p>

@@ -39,7 +39,7 @@ export function Sidebar({ userName }: { userName: string }) {
   }
 
   return (
-    <aside className="w-60 shrink-0 border-r border-border flex flex-col h-screen sticky top-0">
+    <aside className="w-60 shrink-0 border-r border-white/[.06] bg-card/40 backdrop-blur-xl flex flex-col h-screen sticky top-0">
       <div className="px-5 py-5 font-bold flex items-center gap-2">
         <Dumbbell className="text-accent" size={20} />
         <span className="text-sm">WORKOUT COMPANION</span>
@@ -55,7 +55,7 @@ export function Sidebar({ userName }: { userName: string }) {
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition',
                 active
-                  ? 'bg-accent text-white font-medium'
+                  ? 'grad-primary text-white font-bold shadow-[0_0_18px_-6px_rgba(56,189,248,.55)]'
                   : 'text-text-secondary hover:bg-card hover:text-text-primary'
               )}
             >

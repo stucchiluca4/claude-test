@@ -175,7 +175,7 @@ export default async function DashboardPage() {
           <div>
             <div className="text-sm text-text-secondary">Allenamenti (7 giorni)</div>
             <div className="text-3xl font-bold mt-1">{workouts7d}</div>
-            <Sparkline values={weeklyWorkouts} color="#2563EB" />
+            <Sparkline values={weeklyWorkouts} color="#38BDF8" />
           </div>
           <div>
             <div className="text-sm text-text-secondary">Check ricevuti (30 giorni)</div>

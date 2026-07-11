@@ -280,7 +280,7 @@ export function MacroEditor({
                 key={w}
                 onClick={() => setWeekView(w)}
                 className={`px-2.5 py-1 rounded-md text-sm font-medium transition ${
-                  weekView === w ? 'bg-accent text-white' : 'text-text-secondary hover:bg-card-hover'
+                  weekView === w ? 'grad-primary text-white font-bold' : 'text-text-secondary hover:bg-card-hover'
                 }`}
               >
                 {w}
@@ -312,7 +312,7 @@ export function MacroEditor({
                       }
                       className={`px-2 py-0.5 rounded-md text-xs font-semibold transition ${
                         d.day_type === 'training'
-                          ? 'bg-accent text-white'
+                          ? 'grad-primary text-white'
                           : 'bg-border text-text-secondary'
                       }`}
                     >

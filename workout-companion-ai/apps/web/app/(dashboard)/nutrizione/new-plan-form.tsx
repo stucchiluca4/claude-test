@@ -78,7 +78,7 @@ export function NewPlanForm({ clients }: { clients: { id: string; label: string 
       {open && (
         <form
           onSubmit={handleCreate}
-          className="absolute right-0 mt-2 w-96 bg-card border border-border rounded-xl p-4 shadow-xl z-10 space-y-3"
+          className="absolute right-0 mt-2 w-96 glass rounded-xl p-4 shadow-xl z-10 space-y-3"
         >
           <div>
             <label className="block text-sm mb-1.5 text-text-secondary">Nome piano</label>

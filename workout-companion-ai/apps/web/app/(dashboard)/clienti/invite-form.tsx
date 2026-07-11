@@ -53,7 +53,7 @@ export function InviteClientForm() {
       {open && (
         <form
           onSubmit={handleInvite}
-          className="absolute right-0 mt-2 w-80 bg-card border border-border rounded-xl p-4 shadow-xl z-10"
+          className="absolute right-0 mt-2 w-80 glass rounded-xl p-4 shadow-xl z-10"
         >
           <label className="block text-sm mb-1.5 text-text-secondary">Email del cliente</label>
           <input

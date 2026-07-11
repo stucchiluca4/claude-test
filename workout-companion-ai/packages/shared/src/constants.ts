@@ -74,15 +74,24 @@ export const PLANS = {
 
 export type PlanKey = keyof typeof PLANS;
 
-/** Palette del design system (dark mode). */
+/**
+ * Palette "Executive Control Room" — VINCOLANTE (docs/08-DESIGN-SYSTEM.md).
+ * Corporate all-blue: navy per gli sfondi, Electric Blue per accenti/CTA/trend
+ * positivi, avio per i grafici, celeste per bordi e dettagli, bianco puro solo
+ * per testi e numeri KPI. Rosso/ambra ammessi solo come stati funzionali.
+ */
 export const COLORS = {
-  background: '#0A0E17',
-  card: '#111827',
-  border: '#1F2937',
-  accent: '#2563EB',
-  success: '#22C55E',
-  warning: '#F59E0B',
-  danger: '#EF4444',
-  textPrimary: '#F9FAFB',
-  textSecondary: '#9CA3AF',
+  background: '#070D1A',            // Blu Deep / Navy — sfondo dashboard
+  card: '#0D1626',                  // contenitori dati
+  cardGlass: 'rgba(16,20,30,0.65)', // pannelli in glassmorphism (web)
+  border: 'rgba(186,224,255,0.12)', // bordi celeste sottili
+  accent: '#38BDF8',                // Blu Primario (Electric) — CTA, stati attivi
+  accentDeep: '#1D4ED8',            // estremo scuro dei gradienti Deep→Electric
+  avio: '#2E6BE0',                  // Blu Medio — barre, elementi grafici standard
+  celeste: '#9CD9FF',               // Light Blue — indicatori secondari
+  success: '#38BDF8',               // trend positivi = Electric Blue (mai verde)
+  warning: '#F59E0B',               // solo stato funzionale di avviso
+  danger: '#EF4444',                // solo azioni distruttive / rischio
+  textPrimary: '#FFFFFF',           // bianco puro: testi e numeri chiave
+  textSecondary: '#8FA3C0',         // diciture di contorno
 } as const;

@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "scheme": "workoutcompanion",
     "userInterfaceStyle": "dark",
-    "backgroundColor": "#0A0E17",
+    "backgroundColor": "#070D1A",
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": false

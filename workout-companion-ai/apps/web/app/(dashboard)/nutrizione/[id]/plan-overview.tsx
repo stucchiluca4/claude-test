@@ -25,12 +25,12 @@ interface DayRow {
   fat_g: number;
 }
 
-const AXIS = { stroke: '#9CA3AF', fontSize: 12, tickLine: false } as const;
+const AXIS = { stroke: '#8FA3C0', fontSize: 12, tickLine: false } as const;
 const TOOLTIP_STYLE = {
-  background: '#111827',
-  border: '1px solid #1F2937',
+  background: '#0D1626',
+  border: '1px solid #22314F',
   borderRadius: 8,
-  color: '#F9FAFB',
+  color: '#FFFFFF',
 } as const;
 
 /**
@@ -66,9 +66,9 @@ export function PlanOverview({
   const avgKcal = weeklyAverage(series.map((s) => s.kcal));
 
   const donut = [
-    { name: 'Proteine', kcal: avgProtein * 4, grams: avgProtein, color: '#22C55E' },
-    { name: 'Carboidrati', kcal: avgCarbs * 4, grams: avgCarbs, color: '#F97316' },
-    { name: 'Grassi', kcal: avgFat * 9, grams: avgFat, color: '#EAB308' },
+    { name: 'Proteine', kcal: avgProtein * 4, grams: avgProtein, color: '#38BDF8' },
+    { name: 'Carboidrati', kcal: avgCarbs * 4, grams: avgCarbs, color: '#2E6BE0' },
+    { name: 'Grassi', kcal: avgFat * 9, grams: avgFat, color: '#9CD9FF' },
   ];
   const donutTotal = donut.reduce((a, d) => a + d.kcal, 0) || 1;
   const surplus = tdeeKcal != null ? avgKcal - tdeeKcal : null;
@@ -105,18 +105,18 @@ export function PlanOverview({
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={series} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
-                <CartesianGrid stroke="#1F2937" strokeDasharray="3 3" />
+                <CartesianGrid stroke="#22314F" strokeDasharray="3 3" />
                 <XAxis dataKey="settimana" {...AXIS} />
                 <YAxis {...AXIS} domain={['dataMin - 200', 'dataMax + 200']} />
                 <Tooltip contentStyle={TOOLTIP_STYLE} />
                 {(targetKcal ?? tdeeKcal) != null && (
                   <ReferenceLine
                     y={(targetKcal ?? tdeeKcal)!}
-                    stroke="#9CA3AF"
+                    stroke="#8FA3C0"
                     strokeDasharray="6 4"
                     label={{
                       value: targetKcal != null ? 'TEE' : 'TDEE',
-                      fill: '#9CA3AF',
+                      fill: '#8FA3C0',
                       fontSize: 11,
                       position: 'insideTopRight',
                     }}
@@ -125,9 +125,9 @@ export function PlanOverview({
                 <Line
                   type="monotone"
                   dataKey="kcal"
-                  stroke="#2563EB"
+                  stroke="#38BDF8"
                   strokeWidth={2}
-                  dot={{ fill: '#2563EB', r: 3 }}
+                  dot={{ fill: '#38BDF8', r: 3 }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -142,14 +142,14 @@ export function PlanOverview({
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={series} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
-                <CartesianGrid stroke="#1F2937" strokeDasharray="3 3" />
+                <CartesianGrid stroke="#22314F" strokeDasharray="3 3" />
                 <XAxis dataKey="settimana" {...AXIS} />
                 <YAxis {...AXIS} />
                 <Tooltip contentStyle={TOOLTIP_STYLE} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Line type="monotone" dataKey="carboidrati" stroke="#F97316" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="proteine" stroke="#22C55E" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="grassi" stroke="#EAB308" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="carboidrati" stroke="#2E6BE0" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="proteine" stroke="#38BDF8" strokeWidth={2} strokeDasharray="6 4" dot={false} />
+                <Line type="monotone" dataKey="grassi" stroke="#9CD9FF" strokeWidth={2} strokeDasharray="2 5" dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -167,7 +167,8 @@ export function PlanOverview({
                   innerRadius={55}
                   outerRadius={85}
                   paddingAngle={2}
-                  strokeWidth={0}
+                  stroke="#070D1A"
+                  strokeWidth={2}
                 >
                   {donut.map((d) => (
                     <Cell key={d.name} fill={d.color} />
