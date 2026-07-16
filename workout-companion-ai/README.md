@@ -14,6 +14,14 @@
 | [06-SETUP-GUIDA-PRINCIPIANTI](./docs/06-SETUP-GUIDA-PRINCIPIANTI.md) | ⭐ Setup passo-passo (account, chiavi, dove cliccare) |
 | [07-UI-UX-WIREFRAMES](./docs/07-UI-UX-WIREFRAMES.md) | Design system + wireframe di tutte le schermate |
 
+## ⚡ Avvio rapido sul tuo computer (1 doppio click)
+
+1. Scarica UN solo file: [`avvia-windows.bat`](./avvia-windows.bat) (Windows) o [`avvia-mac.sh`](./avvia-mac.sh) (Mac/Linux) — aprilo su GitHub e usa l'icona ⤓ "Download raw file"
+2. Fai **doppio click** sul file scaricato (su Mac: apri il Terminale e trascina il file dentro, poi Invio)
+3. Lo script fa tutto da solo: controlla Git/Node, scarica il progetto, ti chiede le 2 chiavi Supabase (solo la prima volta), installa e apre **http://localhost:3000** nel browser
+
+> Prerequisiti (solo la prima volta): [Node.js LTS](https://nodejs.org) e [Git](https://git-scm.com) — installazione avanti-avanti-fine.
+
 ## Stack
 
 Next.js (Vercel) · React Native Expo · Supabase (PostgreSQL, Auth, Storage, Realtime) · Stripe · OpenAI · PostHog
