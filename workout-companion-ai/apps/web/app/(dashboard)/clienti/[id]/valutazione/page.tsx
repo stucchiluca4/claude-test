@@ -4,15 +4,16 @@ import { PageHeader } from '@/components/ui';
 import { fullName } from '@/lib/utils';
 import { AssessmentPanel } from './assessment-panel';
 
-export default async function BodyAssessmentPage({ params }: { params: { id: string } }) {
-  const supabase = createClient();
+export default async function BodyAssessmentPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const supabase = await createClient();
 
   const { data: cc } = await supabase
     .from('coach_clients')
     .select(
       'id, invite_email, client:profiles!coach_clients_client_id_fkey(id, first_name, last_name, sex, date_of_birth)'
     )
-    .eq('id', params.id)
+    .eq('id', id)
     .single();
 
   if (!cc) notFound();

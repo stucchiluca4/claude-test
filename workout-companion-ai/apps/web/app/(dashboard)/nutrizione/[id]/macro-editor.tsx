@@ -342,7 +342,7 @@ export function MacroEditor({
                     </td>
                   ))}
                   <td className="px-4 py-2.5 text-text-secondary">
-                    {carbFatRatio(d.carbs_g, d.fat_g)} : 1
+                    {carbFatRatio(d.carbs_g, d.fat_g) ?? '—'} : 1
                   </td>
                 </tr>
               ))}
@@ -355,7 +355,7 @@ export function MacroEditor({
                 <td className="px-4 py-3">{avgCarbs} g</td>
                 <td className="px-4 py-3">{avgFat} g</td>
                 <td className="px-4 py-3 text-text-secondary">
-                  {carbFatRatio(avgCarbs, avgFat)} : 1
+                  {carbFatRatio(avgCarbs, avgFat) ?? '—'} : 1
                 </td>
               </tr>
             </tbody>
@@ -385,7 +385,7 @@ export function MacroEditor({
                 ['Media proteine', `${avgProtein} g`],
                 ['Media carboidrati', `${avgCarbs} g`],
                 ['Media grassi', `${avgFat} g`],
-                ['C:G Ratio medio', `${carbFatRatio(avgCarbs, avgFat)} : 1`],
+                ['C:G Ratio medio', `${carbFatRatio(avgCarbs, avgFat) ?? '—'} : 1`],
                 ['Durata', `${plan.duration_weeks} settimane`],
                 ['Formula', formula === 'mifflin' ? 'Mifflin-St Jeor' : 'Katch-McArdle'],
                 ['PAL', String(pal)],

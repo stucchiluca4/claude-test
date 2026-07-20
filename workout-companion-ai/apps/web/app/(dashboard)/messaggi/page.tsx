@@ -4,7 +4,7 @@ import { fullName } from '@/lib/utils';
 import { ChatPanel } from './chat-panel';
 
 export default async function MessagesPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

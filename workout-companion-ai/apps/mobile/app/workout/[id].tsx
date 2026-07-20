@@ -90,14 +90,60 @@ export default function WorkoutTrackerScreen() {
           we.exercise_sets = [...(we.exercise_sets ?? [])].sort((a, b) => a.set_number - b.set_number);
         }
 
-        const { data: log, error: logError } = await supabase
+        // Riprende un'eventuale sessione ancora aperta di oggi (completed_at null)
+        // invece di creare una nuova riga a ogni apertura della schermata.
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const { data: openLog, error: openError } = await supabase
           .from('workout_logs')
-          .insert({ program_workout_id: id, client_id: uid })
           .select('id, started_at')
-          .single();
-        if (logError) throw new Error(logError.message);
-        const newLog = log as { id: string; started_at: string };
-        startedAtRef.current = new Date(newLog.started_at).getTime();
+          .eq('program_workout_id', id)
+          .eq('client_id', uid)
+          .is('completed_at', null)
+          .gte('started_at', todayStart.toISOString())
+          .order('started_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (openError) throw new Error(openError.message);
+
+        let newLog = openLog as { id: string; started_at: string } | null;
+        if (!newLog) {
+          const { data: log, error: logError } = await supabase
+            .from('workout_logs')
+            .insert({ program_workout_id: id, client_id: uid })
+            .select('id, started_at')
+            .single();
+          if (logError) throw new Error(logError.message);
+          newLog = log as { id: string; started_at: string };
+        }
+
+        // Se riprendiamo una sessione, ripristiniamo le serie già registrate.
+        const resumedEntries: Record<string, RowState> = {};
+        if (openLog) {
+          const { data: prevSets, error: prevSetsError } = await supabase
+            .from('set_logs')
+            .select('*')
+            .eq('workout_log_id', newLog.id);
+          if (prevSetsError) throw new Error(prevSetsError.message);
+          for (const row of (prevSets ?? []) as SetLog[]) {
+            if (!row.workout_exercise_id) continue;
+            resumedEntries[entryKey(row.workout_exercise_id, row.set_number)] = {
+              load: row.load_kg != null ? String(row.load_kg) : '',
+              reps: row.reps != null ? String(row.reps) : '',
+              rpe: row.rpe != null ? String(row.rpe) : '',
+              completed: row.completed,
+              logRowId: row.id,
+            };
+          }
+        }
+
+        // Cronometro con un unico riferimento: l'orologio del dispositivo.
+        // Per una sessione ripresa ricaviamo una sola volta i secondi già
+        // trascorsi, poi il tempo avanza solo con Date.now() e non salta.
+        const alreadyElapsedMs = openLog
+          ? Math.max(0, Date.now() - new Date(newLog.started_at).getTime())
+          : 0;
+        startedAtRef.current = Date.now() - alreadyElapsedMs;
 
         // Ultima performance per esercizio: serie dell'ultima seduta registrata.
         const exerciseIds = loaded.workout_exercises.map((we) => we.exercise_id);
@@ -128,6 +174,7 @@ export default function WorkoutTrackerScreen() {
         setWorkout(loaded);
         setLogId(newLog.id);
         setLastPerf(perf);
+        if (Object.keys(resumedEntries).length > 0) setEntries(resumedEntries);
         // Il primo esercizio parte aperto.
         const first = loaded.workout_exercises[0];
         if (first) setExpanded({ [first.id]: true });

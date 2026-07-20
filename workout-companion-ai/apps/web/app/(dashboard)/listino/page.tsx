@@ -3,7 +3,7 @@ import { PageHeader } from '@/components/ui';
 import { OffersManager, type Offer } from './offers-manager';
 
 export default async function ListinoPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

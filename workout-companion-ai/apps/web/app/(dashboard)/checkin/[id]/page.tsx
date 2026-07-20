@@ -14,8 +14,9 @@ const SCALE_FIELDS: [string, string][] = [
   ['recovery', '❤️ Stato di recupero'],
 ];
 
-export default async function CheckinDetailPage({ params }: { params: { id: string } }) {
-  const supabase = createClient();
+export default async function CheckinDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const supabase = await createClient();
 
   const { data: ci } = await supabase
     .from('checkins')
@@ -23,7 +24,7 @@ export default async function CheckinDetailPage({ params }: { params: { id: stri
       `*, coach_client:coach_clients(client:profiles!coach_clients_client_id_fkey(first_name, last_name)),
        checkin_photos (id, pose, storage_path)`
     )
-    .eq('id', params.id)
+    .eq('id', id)
     .single();
 
   if (!ci) notFound();

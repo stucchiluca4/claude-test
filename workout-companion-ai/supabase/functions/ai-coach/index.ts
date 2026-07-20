@@ -31,8 +31,11 @@ Deno.serve(async (req: Request) => {
 
   try {
     const { question, coachClientId } = await req.json();
-    if (!question) {
+    if (!question || typeof question !== 'string') {
       return json({ error: 'Domanda mancante' }, 400);
+    }
+    if (question.length > 2000) {
+      return json({ error: 'Domanda troppo lunga (max 2000 caratteri)' }, 400);
     }
 
     // Client Supabase con il token dell'utente: le query rispettano la RLS,
@@ -47,6 +50,17 @@ Deno.serve(async (req: Request) => {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return json({ error: 'Non autenticato' }, 401);
+
+    // Tetto anti-abuso: max 30 richieste AI per utente nell'ultima ora
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { count: recentCount } = await supabase
+      .from('ai_conversations')
+      .select('id', { count: 'exact', head: true })
+      .eq('profile_id', user.id)
+      .gte('created_at', oneHourAgo);
+    if ((recentCount ?? 0) >= 30) {
+      return json({ error: 'Hai raggiunto il limite orario di richieste AI. Riprova più tardi.' }, 429);
+    }
 
     // ----- Raccolta contesto (ultimi progressi del cliente) -----
     let context = '';

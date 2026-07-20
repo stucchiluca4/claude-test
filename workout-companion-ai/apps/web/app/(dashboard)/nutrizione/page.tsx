@@ -5,7 +5,7 @@ import { fullName } from '@/lib/utils';
 import { NewPlanForm } from './new-plan-form';
 
 export default async function NutritionPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

@@ -200,7 +200,7 @@ export function PlanOverview({
               ))}
               <li className="flex items-center gap-2.5 pt-2 border-t border-border text-text-secondary">
                 C:G Ratio medio
-                <span className="ml-auto tabular-nums">{carbFatRatio(avgCarbs, avgFat)} : 1</span>
+                <span className="ml-auto tabular-nums">{carbFatRatio(avgCarbs, avgFat) ?? '—'} : 1</span>
               </li>
             </ul>
           </div>

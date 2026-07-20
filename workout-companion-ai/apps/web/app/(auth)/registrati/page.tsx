@@ -14,6 +14,7 @@ export default function RegisterPage() {
   const [role, setRole] = useState<'coach' | 'athlete'>('coach');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
@@ -21,25 +22,59 @@ export default function RegisterPage() {
     setError(null);
 
     const supabase = createClient();
+    // Il ruolo viaggia nei metadati: lo legge il trigger del DB alla creazione
+    // del profilo, così vale anche quando serve la conferma via email.
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { first_name: firstName, last_name: lastName } },
+      options: {
+        data: { first_name: firstName, last_name: lastName, role },
+        emailRedirectTo: `${window.location.origin}/auth/confirm`,
+      },
     });
 
     if (error) {
-      setError(error.message);
+      setError(
+        error.message === 'User already registered'
+          ? 'Esiste già un account con questa email. Prova ad accedere.'
+          : error.message
+      );
       setLoading(false);
       return;
     }
 
-    // Imposta il ruolo scelto sul profilo (creato automaticamente da un trigger nel DB)
-    if (data.user) {
-      await supabase.from('profiles').update({ role }).eq('id', data.user.id);
+    if (data.session) {
+      // Conferma email disattivata: sei già dentro
+      router.push('/dashboard');
+      router.refresh();
+      return;
     }
 
-    router.push('/dashboard');
-    router.refresh();
+    // Conferma email attiva: l'accesso avverrà dal link ricevuto via email
+    setEmailSent(true);
+    setLoading(false);
+  }
+
+  if (emailSent) {
+    return (
+      <div>
+        <h1 className="text-2xl font-bold mb-1">Controlla la tua email 📬</h1>
+        <p className="text-text-secondary text-sm mb-6">
+          Ti abbiamo inviato un messaggio a <span className="text-text-primary font-medium">{email}</span>.
+        </p>
+        <div className="bg-card border border-border rounded-lg p-4 text-sm text-text-secondary space-y-2">
+          <p>1. Apri la tua casella di posta (controlla anche lo spam).</p>
+          <p>2. Clicca il pulsante di conferma nel messaggio.</p>
+          <p>3. Verrai portato direttamente alla tua dashboard, già connesso.</p>
+        </div>
+        <p className="text-sm text-text-secondary mt-6 text-center">
+          Hai già confermato?{' '}
+          <Link href="/login" className="text-accent hover:underline">
+            Accedi
+          </Link>
+        </p>
+      </div>
+    );
   }
 
   return (

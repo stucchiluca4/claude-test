@@ -108,7 +108,14 @@ export function AssessmentPanel({
 }) {
   const router = useRouter();
   const [formOpen, setFormOpen] = useState(assessments.length === 0);
-  const [measuredAt, setMeasuredAt] = useState(() => new Date().toISOString().slice(0, 10));
+  // Data locale (YYYY-MM-DD): con toISOString (UTC) tra mezzanotte e le 2
+  // ora italiana verrebbe mostrato il giorno precedente.
+  const [measuredAt, setMeasuredAt] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
+      now.getDate()
+    ).padStart(2, '0')}`;
+  });
   const [weight, setWeight] = useState('');
   const [skinfolds, setSkinfolds] = useState<SkinfoldState>(emptySkinfolds);
   const [circumferences, setCircumferences] = useState<Record<string, string>>(

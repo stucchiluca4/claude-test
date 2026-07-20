@@ -12,7 +12,7 @@ const STATUS_LABEL: Record<string, { label: string; color: 'success' | 'warning'
 };
 
 export default async function ClientsPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

@@ -17,8 +17,14 @@ export function RestTimer({ seconds, resetToken, onFinish, onSkip }: Props) {
   const [remaining, setRemaining] = useState(seconds);
 
   useEffect(() => {
+    // Timer basato su timestamp: memorizziamo l'istante di fine e a ogni tick
+    // ricalcoliamo il rimanente da Date.now(), così al rientro dal background
+    // (dove gli interval sono sospesi) il tempo mostrato resta corretto.
+    const endsAt = Date.now() + seconds * 1000;
     setRemaining(seconds);
-    const id = setInterval(() => setRemaining((r) => r - 1), 1000);
+    const id = setInterval(() => {
+      setRemaining(Math.max(0, Math.ceil((endsAt - Date.now()) / 1000)));
+    }, 250);
     return () => clearInterval(id);
   }, [seconds, resetToken]);
 

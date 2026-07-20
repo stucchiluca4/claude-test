@@ -3,7 +3,7 @@ import { PageHeader } from '@/components/ui';
 import { ProfileForm } from './profile-form';
 
 export default async function SettingsPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

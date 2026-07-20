@@ -12,14 +12,20 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    storage: AsyncStorage,
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: false, // su mobile non ci sono URL di callback
-  },
-});
+// Placeholder innocui quando manca il .env: createClient lancerebbe un errore
+// con valori vuoti e l'app crasherebbe all'avvio invece di partire col warning.
+export const supabase = createClient(
+  supabaseUrl || 'https://placeholder.supabase.co',
+  supabaseAnonKey || 'placeholder-anon-key',
+  {
+    auth: {
+      storage: AsyncStorage,
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: false, // su mobile non ci sono URL di callback
+    },
+  }
+);
 
 // Il refresh automatico del token gira solo quando l'app è in primo piano.
 AppState.addEventListener('change', (state) => {

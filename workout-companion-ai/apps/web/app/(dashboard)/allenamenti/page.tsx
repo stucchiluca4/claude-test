@@ -6,7 +6,7 @@ import { fullName } from '@/lib/utils';
 import { NewProgramForm } from './new-program-form';
 
 export default async function ProgramsPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from 'react';
  */
 export function AnimatedNumber({ value, duration = 900 }: { value: string; duration?: number }) {
   const [display, setDisplay] = useState(value);
-  const raf = useRef<number>();
+  const raf = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     const match = value.match(/-?[\d.]{1,3}(?:\.\d{3})*(?:,\d+)?|-?\d+/);

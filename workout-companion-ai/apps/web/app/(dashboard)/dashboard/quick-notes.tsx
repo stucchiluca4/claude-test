@@ -7,7 +7,7 @@ import { Card } from '@/components/ui';
 /** Il "post-it" del coach: si salva da solo quando smetti di scrivere. */
 export function QuickNotes({ initialBody }: { initialBody: string }) {
   const [body, setBody] = useState(initialBody);
-  const [state, setState] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   async function save() {
     setState('saving');
@@ -15,21 +15,28 @@ export function QuickNotes({ initialBody }: { initialBody: string }) {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    await supabase
+    const { error } = await supabase
       .from('quick_notes')
       .upsert(
         { coach_id: user!.id, body, updated_at: new Date().toISOString() },
         { onConflict: 'coach_id' }
       );
-    setState('saved');
+    // Conferma solo se l'upsert è andato a buon fine
+    setState(error ? 'error' : 'saved');
   }
 
   return (
     <Card className="h-full">
       <div className="flex items-center justify-between mb-2">
         <h3 className="font-semibold text-sm">📝 Note rapide</h3>
-        <span className="text-xs text-text-secondary">
-          {state === 'saving' ? 'salvataggio…' : state === 'saved' ? '✓ salvato' : ''}
+        <span className={state === 'error' ? 'text-xs text-danger' : 'text-xs text-text-secondary'}>
+          {state === 'saving'
+            ? 'salvataggio…'
+            : state === 'saved'
+              ? '✓ salvato'
+              : state === 'error'
+                ? 'errore nel salvataggio'
+                : ''}
         </span>
       </div>
       <textarea

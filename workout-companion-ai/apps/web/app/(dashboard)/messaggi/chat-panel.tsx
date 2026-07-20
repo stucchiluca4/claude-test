@@ -27,18 +27,30 @@ export function ChatPanel({ contacts, myId }: { contacts: Contact[]; myId: strin
   );
   const [messages, setMessages] = useState<Msg[]>([]);
   const [text, setText] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Al cambio contatto: assicura che la conversazione esista, poi carica i messaggi
+  // Segna come letti i messaggi ricevuti dall'altro partecipante (KPI "Messaggi da leggere")
+  async function markAsRead(convId: string) {
+    await supabase
+      .from('messages')
+      .update({ status: 'read' })
+      .eq('conversation_id', convId)
+      .neq('sender_id', myId)
+      .neq('status', 'read');
+  }
+
+  // Al cambio contatto: assicura che la conversazione esista
   useEffect(() => {
     if (!selected) return;
     let cancelled = false;
+    setError(null);
 
     async function init() {
       let convId = selected!.conversationId;
       if (!convId) {
         // Crea la conversazione al primo messaggio del coach
-        const { data } = await supabase
+        const { data, error: convError } = await supabase
           .from('conversations')
           .upsert(
             { coach_client_id: selected!.coachClientId },
@@ -46,19 +58,16 @@ export function ChatPanel({ contacts, myId }: { contacts: Contact[]; myId: strin
           )
           .select('id')
           .single();
+        if (convError) {
+          if (!cancelled) {
+            setConversationId(null);
+            setError('Impossibile aprire la conversazione. Riprova.');
+          }
+          return;
+        }
         convId = data?.id ?? null;
       }
-      if (cancelled) return;
-      setConversationId(convId);
-      if (!convId) return;
-
-      const { data: msgs } = await supabase
-        .from('messages')
-        .select('id, sender_id, body, created_at')
-        .eq('conversation_id', convId)
-        .order('created_at', { ascending: true })
-        .limit(200);
-      if (!cancelled) setMessages(msgs ?? []);
+      if (!cancelled) setConversationId(convId);
     }
 
     init();
@@ -67,29 +76,48 @@ export function ChatPanel({ contacts, myId }: { contacts: Contact[]; myId: strin
     };
   }, [selected]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Realtime: nuovi messaggi in arrivo
+  // Realtime: sottoscrivi prima e carica lo storico dopo, così i messaggi
+  // arrivati nel frattempo non si perdono (deduplica per id)
   useEffect(() => {
     if (!conversationId) return;
+    const convId = conversationId;
+    let cancelled = false;
     const channel = supabase
-      .channel(`chat-${conversationId}`)
+      .channel(`chat-${convId}`)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
           table: 'messages',
-          filter: `conversation_id=eq.${conversationId}`,
+          filter: `conversation_id=eq.${convId}`,
         },
         (payload) => {
+          const msg = payload.new as Msg;
           setMessages((prev) =>
-            prev.some((m) => m.id === (payload.new as Msg).id)
-              ? prev
-              : [...prev, payload.new as Msg]
+            prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]
           );
+          // Conversazione aperta: il messaggio ricevuto è subito letto
+          if (msg.sender_id !== myId) markAsRead(convId);
         }
       )
-      .subscribe();
+      .subscribe(async (status) => {
+        if (status !== 'SUBSCRIBED') return;
+        const { data: msgs } = await supabase
+          .from('messages')
+          .select('id, sender_id, body, created_at')
+          .eq('conversation_id', convId)
+          .order('created_at', { ascending: true })
+          .limit(200);
+        if (cancelled || !msgs) return;
+        setMessages((prev) => [
+          ...msgs,
+          ...prev.filter((p) => !msgs.some((m) => m.id === p.id)),
+        ]);
+        markAsRead(convId);
+      });
     return () => {
+      cancelled = true;
       supabase.removeChannel(channel);
     };
   }, [conversationId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -102,20 +130,25 @@ export function ChatPanel({ contacts, myId }: { contacts: Contact[]; myId: strin
     e.preventDefault();
     if (!text.trim() || !conversationId) return;
     const body = text.trim();
-    setText('');
 
-    const { data } = await supabase
+    const { data, error: sendError } = await supabase
       .from('messages')
       .insert({ conversation_id: conversationId, sender_id: myId, body })
       .select('id, sender_id, body, created_at')
       .single();
-    if (data) {
-      setMessages((prev) => (prev.some((m) => m.id === data.id) ? prev : [...prev, data]));
-      await supabase
-        .from('conversations')
-        .update({ last_message_at: new Date().toISOString() })
-        .eq('id', conversationId);
+    if (sendError || !data) {
+      // Mantieni il testo nell'input per permettere di riprovare
+      setError('Invio non riuscito. Riprova.');
+      return;
     }
+    // Svuota l'input solo a invio riuscito
+    setError(null);
+    setText('');
+    setMessages((prev) => (prev.some((m) => m.id === data.id) ? prev : [...prev, data]));
+    await supabase
+      .from('conversations')
+      .update({ last_message_at: new Date().toISOString() })
+      .eq('id', conversationId);
   }
 
   return (
@@ -181,6 +214,8 @@ export function ChatPanel({ contacts, myId }: { contacts: Contact[]; myId: strin
           ))}
           <div ref={bottomRef} />
         </div>
+
+        {error && <p className="text-danger text-sm px-5 pb-2">{error}</p>}
 
         <form onSubmit={send} className="p-4 border-t border-border flex gap-2">
           <input

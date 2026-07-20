@@ -149,9 +149,23 @@ export function ProgressionWizard({
       .from('nutrition_days')
       .upsert(rows, { onConflict: 'nutrition_plan_id,week_number,day_of_week' });
 
-    setApplying(false);
     if (err2) {
+      setApplying(false);
       setMessage('Errore: ' + err2.message);
+      return;
+    }
+
+    // Elimina le settimane oltre la nuova durata: residui di una
+    // progressione precedente più lunga resterebbero nel piano.
+    const { error: err3 } = await supabase
+      .from('nutrition_days')
+      .delete()
+      .eq('nutrition_plan_id', planId)
+      .gt('week_number', duration);
+
+    setApplying(false);
+    if (err3) {
+      setMessage('Errore nella pulizia delle settimane extra: ' + err3.message);
       return;
     }
     setMessage(`✓ Progressione applicata: generate le settimane 2–${duration}.`);

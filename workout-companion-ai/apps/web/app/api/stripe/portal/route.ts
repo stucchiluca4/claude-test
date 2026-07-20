@@ -4,7 +4,7 @@ import { getStripe } from '@/lib/stripe';
 
 /** Apre il Customer Portal di Stripe (cambio piano, carta, disdetta). */
 export async function POST() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

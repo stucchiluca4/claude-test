@@ -9,24 +9,24 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@supabase/ssr": "^0.5.1",
-    "@supabase/supabase-js": "^2.45.4",
+    "@supabase/ssr": "^0.12.3",
+    "@supabase/supabase-js": "^2.110.7",
     "@wc/shared": "*",
     "clsx": "^2.1.1",
     "lucide-react": "^0.441.0",
-    "next": "14.2.15",
-    "react": "18.2.0",
-    "react-dom": "18.2.0",
+    "next": "^16.2.10",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
     "recharts": "^2.12.7",
     "stripe": "^16.12.0",
     "tailwind-merge": "^2.5.2"
   },
   "devDependencies": {
     "@types/node": "^20.16.5",
-    "@types/react": "~18.2.79",
-    "@types/react-dom": "~18.2.25",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
     "autoprefixer": "^10.4.20",
-    "postcss": "^8.4.45",
+    "postcss": "^8.5.20",
     "tailwindcss": "^3.4.10",
     "typescript": "^5.5.4"
   }

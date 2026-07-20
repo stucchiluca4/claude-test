@@ -4,7 +4,7 @@ import { PageHeader, Card, Badge, EmptyState } from '@/components/ui';
 import { fullName, formatDate, formatKg } from '@/lib/utils';
 
 export default async function CheckinsPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

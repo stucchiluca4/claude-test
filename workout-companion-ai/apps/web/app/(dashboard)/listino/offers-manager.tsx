@@ -305,10 +305,9 @@ export function OffersManager({ offers: initialOffers }: { offers: Offer[] }) {
                     name: offer.name,
                     description: offer.description ?? '',
                     duration_months: String(offer.duration_months),
-                    price_euro: (offer.price_cents / 100).toLocaleString('it-IT', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    }),
+                    // Numero "puro" (punto decimale, senza separatore migliaia):
+                    // deve rispettare il pattern del campo ed essere rileggibile da euroToCents.
+                    price_euro: (offer.price_cents / 100).toFixed(2),
                     check_frequency: offer.check_frequency,
                   }}
                   submitLabel="Salva modifiche"

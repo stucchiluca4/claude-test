@@ -2,8 +2,9 @@ import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { ProgramBuilder } from './program-builder';
 
-export default async function ProgramPage({ params }: { params: { id: string } }) {
-  const supabase = createClient();
+export default async function ProgramPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const supabase = await createClient();
 
   const { data: program } = await supabase
     .from('programs')
@@ -21,7 +22,7 @@ export default async function ProgramPage({ params }: { params: { id: string } }
          )
        )`
     )
-    .eq('id', params.id)
+    .eq('id', id)
     .single();
 
   if (!program) notFound();

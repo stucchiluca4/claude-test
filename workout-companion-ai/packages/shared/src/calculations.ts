@@ -59,18 +59,21 @@ export function macrosToKcal(macros: {
   return Math.round(macros.proteinG * 4 + macros.carbsG * 4 + macros.fatG * 9);
 }
 
-/** Rapporto carboidrati:grassi (es. 4.2 significa "4,2 : 1"). */
-export function carbFatRatio(carbsG: number, fatG: number): number {
-  if (fatG <= 0) return 0;
+/** Rapporto carboidrati:grassi (es. 4.2 significa "4,2 : 1").
+ *  Restituisce null quando non è calcolabile (grassi a zero). */
+export function carbFatRatio(carbsG: number, fatG: number): number | null {
+  if (fatG <= 0) return null;
   return Math.round((carbsG / fatG) * 10) / 10;
 }
 
 /** Età a partire dalla data di nascita (stringa ISO `YYYY-MM-DD`). */
 export function ageFromBirthDate(isoDate: string, today: Date = new Date()): number {
-  const birth = new Date(isoDate);
-  let age = today.getFullYear() - birth.getFullYear();
-  const m = today.getMonth() - birth.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  // Niente `new Date(iso)`: verrebbe interpretata in UTC e confrontata con
+  // getter locali, sbagliando di un giorno nei fusi a ovest di Greenwich.
+  const [birthYear, birthMonth, birthDay] = isoDate.split('-').map(Number);
+  let age = today.getFullYear() - birthYear;
+  const m = today.getMonth() + 1 - birthMonth;
+  if (m < 0 || (m === 0 && today.getDate() < birthDay)) age--;
   return Math.max(0, age);
 }
 
@@ -121,7 +124,7 @@ export function katchMcArdleBMR(leanMassKg: number): number {
 export const PAL_LEVELS = [
   { value: 1.2, label: 'Sedentario (niente sport)' },
   { value: 1.375, label: 'Leggermente attivo (1-2 allenamenti/settimana)' },
-  { value: 1.52, label: 'Moderatamente attivo (3-5 allenamenti/settimana)' },
+  { value: 1.55, label: 'Moderatamente attivo (3-5 allenamenti/settimana)' },
   { value: 1.725, label: 'Molto attivo (6-7 allenamenti/settimana)' },
   { value: 1.9, label: 'Atleta / lavoro fisico pesante' },
 ] as const;
@@ -170,7 +173,8 @@ export function progressionPreview(input: ProgressionInput): ProgressionWeek[] {
     const apply = (base: number, inc: number) => {
       if (sign === 0 || applications === 0) return Math.round(base);
       if (input.incrementType === 'percent') {
-        return Math.round(base * Math.pow(1 + (sign * inc) / 100, applications));
+        // Clamp a 0: un cut con incremento >= 100% non deve produrre negativi
+        return Math.max(0, Math.round(base * Math.pow(Math.max(0, 1 + (sign * inc) / 100), applications)));
       }
       return Math.max(0, Math.round(base + sign * inc * applications));
     };

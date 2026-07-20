@@ -26,8 +26,15 @@ export function InviteClientForm() {
       data: { user },
     } = await supabase.auth.getUser();
 
+    // Sessione scaduta o utente non autenticato: evita il TypeError su user.id
+    if (!user) {
+      setError('Errore: sessione scaduta. Ricarica la pagina ed effettua di nuovo l’accesso.');
+      setLoading(false);
+      return;
+    }
+
     const { error } = await supabase.from('coach_clients').insert({
-      coach_id: user!.id,
+      coach_id: user.id,
       invite_email: email.trim().toLowerCase(),
       status: 'invited',
     });

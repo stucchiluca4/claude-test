@@ -38,7 +38,17 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/login') ||
     request.nextUrl.pathname.startsWith('/registrati');
 
-  if (!user && !isAuthPage && request.nextUrl.pathname !== '/') {
+  // /auth/* (es. conferma email) deve restare raggiungibile senza sessione
+  const isAuthFlow = request.nextUrl.pathname.startsWith('/auth');
+
+  // Link di conferma che atterra sulla home con ?code=... → completa l'accesso
+  if (request.nextUrl.pathname === '/' && request.nextUrl.searchParams.has('code')) {
+    const confirmUrl = new URL('/auth/confirm', request.url);
+    confirmUrl.searchParams.set('code', request.nextUrl.searchParams.get('code')!);
+    return NextResponse.redirect(confirmUrl);
+  }
+
+  if (!user && !isAuthPage && !isAuthFlow && request.nextUrl.pathname !== '/') {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 

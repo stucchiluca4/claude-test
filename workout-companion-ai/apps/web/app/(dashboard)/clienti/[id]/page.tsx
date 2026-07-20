@@ -6,15 +6,16 @@ import { fullName, formatDate, formatKg } from '@/lib/utils';
 import { WeightChart } from '@/components/weight-chart';
 import { AiCoachWidget } from '@/components/ai-coach-widget';
 
-export default async function ClientDetailPage({ params }: { params: { id: string } }) {
-  const supabase = createClient();
+export default async function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const supabase = await createClient();
 
   const { data: cc } = await supabase
     .from('coach_clients')
     .select(
       'id, status, started_at, invite_email, client:profiles!coach_clients_client_id_fkey(id, first_name, last_name, sex, date_of_birth, height_cm)'
     )
-    .eq('id', params.id)
+    .eq('id', id)
     .single();
 
   if (!cc) notFound();

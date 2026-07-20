@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Card, Badge, buttonPrimary, buttonSecondary, inputClass } from '@/components/ui';
@@ -62,6 +62,7 @@ export function ProgramBuilder({ initialProgram }: { initialProgram: ProgramData
   const [program, setProgram] = useState(initialProgram);
   const [weekIdx, setWeekIdx] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const weeks = [...program.program_weeks].sort((a, b) => a.week_number - b.week_number);
   const week = weeks[weekIdx];
@@ -84,25 +85,31 @@ export function ProgramBuilder({ initialProgram }: { initialProgram: ProgramData
   }
 
   async function addWorkout() {
+    // Guardia: senza settimane non c'è dove creare la sessione
+    if (!week) return setErrorMsg('Il programma non ha settimane: impossibile aggiungere una sessione.');
     const name = prompt('Nome della sessione (es. "Pull Lower"):');
     if (!name) return;
     const day = Number(prompt('Giorno della settimana (1=Lunedì … 7=Domenica):', '1'));
     if (!day || day < 1 || day > 7) return;
-    await supabase
+    const { error } = await supabase
       .from('program_workouts')
       .insert({ program_week_id: week.id, name, day_of_week: day });
+    if (error) return setErrorMsg('Creazione della sessione non riuscita: ' + error.message);
+    setErrorMsg(null);
     await reload();
   }
 
   async function deleteWorkout(id: string) {
     if (!confirm('Eliminare questa sessione e tutti i suoi esercizi?')) return;
-    await supabase.from('program_workouts').delete().eq('id', id);
+    const { error } = await supabase.from('program_workouts').delete().eq('id', id);
+    if (error) return setErrorMsg('Eliminazione della sessione non riuscita: ' + error.message);
+    setErrorMsg(null);
     await reload();
   }
 
   async function addSet(wex: WexRow) {
     const last = wex.exercise_sets.at(-1);
-    await supabase.from('exercise_sets').insert({
+    const { error } = await supabase.from('exercise_sets').insert({
       workout_exercise_id: wex.id,
       set_number: (last?.set_number ?? 0) + 1,
       set_type: last?.set_type ?? 'normal',
@@ -111,34 +118,64 @@ export function ProgramBuilder({ initialProgram }: { initialProgram: ProgramData
       target_rpe: last?.target_rpe ?? 8,
       rest_seconds: last?.rest_seconds ?? 120,
     });
+    if (error) return setErrorMsg('Aggiunta della serie non riuscita: ' + error.message);
+    setErrorMsg(null);
     await reload();
   }
 
   async function updateSet(id: string, patch: Partial<SetRow>) {
     setSaving(true);
-    await supabase.from('exercise_sets').update(patch).eq('id', id);
+    const { error } = await supabase.from('exercise_sets').update(patch).eq('id', id);
     setSaving(false);
+    if (error) return setErrorMsg('Salvataggio della serie non riuscito: ' + error.message);
+    setErrorMsg(null);
+    // Aggiorna anche lo stato locale: "+ serie" e "Copia nella settimana
+    // successiva" devono leggere i valori appena modificati, non quelli vecchi.
+    setProgram((prev) => ({
+      ...prev,
+      program_weeks: prev.program_weeks.map((wk) => ({
+        ...wk,
+        program_workouts: wk.program_workouts.map((w) => ({
+          ...w,
+          workout_exercises: w.workout_exercises.map((wex) => ({
+            ...wex,
+            exercise_sets: wex.exercise_sets.map((s) => (s.id === id ? { ...s, ...patch } : s)),
+          })),
+        })),
+      })),
+    }));
   }
 
   async function deleteExercise(id: string) {
     if (!confirm('Rimuovere questo esercizio dalla sessione?')) return;
-    await supabase.from('workout_exercises').delete().eq('id', id);
+    const { error } = await supabase.from('workout_exercises').delete().eq('id', id);
+    if (error) return setErrorMsg('Rimozione dell’esercizio non riuscita: ' + error.message);
+    setErrorMsg(null);
     await reload();
   }
 
   async function activateProgram() {
-    await supabase.from('programs').update({ status: 'active' }).eq('id', program.id);
+    const { error } = await supabase.from('programs').update({ status: 'active' }).eq('id', program.id);
+    // Non mostrare "Attivo" se l'update è fallito
+    if (error) return setErrorMsg('Attivazione del programma non riuscita: ' + error.message);
+    setErrorMsg(null);
     setProgram({ ...program, status: 'active' });
     router.refresh();
   }
 
   /** Copia tutte le sessioni della settimana corrente nella successiva. */
   async function copyWeekToNext() {
+    // Guardia: senza settimane non c'è nulla da copiare
+    if (!week) return setErrorMsg('Il programma non ha settimane: nulla da copiare.');
     const next = weeks[weekIdx + 1];
     if (!next) return alert('Questa è l’ultima settimana.');
     setSaving(true);
+    const fail = (message: string) => {
+      setSaving(false);
+      setErrorMsg('Copia della settimana non riuscita: ' + message);
+    };
     for (const w of week.program_workouts) {
-      const { data: newWorkout } = await supabase
+      const { data: newWorkout, error: workoutError } = await supabase
         .from('program_workouts')
         .insert({
           program_week_id: next.id,
@@ -148,9 +185,11 @@ export function ProgramBuilder({ initialProgram }: { initialProgram: ProgramData
         })
         .select('id')
         .single();
-      if (!newWorkout) continue;
+      if (workoutError || !newWorkout) {
+        return fail(workoutError?.message ?? 'sessione non creata');
+      }
       for (const wex of w.workout_exercises) {
-        const { data: newWex } = await supabase
+        const { data: newWex, error: wexError } = await supabase
           .from('workout_exercises')
           .insert({
             program_workout_id: newWorkout.id,
@@ -161,7 +200,9 @@ export function ProgramBuilder({ initialProgram }: { initialProgram: ProgramData
           })
           .select('id')
           .single();
-        if (!newWex) continue;
+        if (wexError || !newWex) {
+          return fail(wexError?.message ?? 'esercizio non creato');
+        }
         const sets = wex.exercise_sets.map((s) => ({
           workout_exercise_id: newWex.id,
           set_number: s.set_number,
@@ -172,16 +213,27 @@ export function ProgramBuilder({ initialProgram }: { initialProgram: ProgramData
           rest_seconds: s.rest_seconds,
           tempo: s.tempo,
         }));
-        if (sets.length) await supabase.from('exercise_sets').insert(sets);
+        if (sets.length) {
+          const { error: setsError } = await supabase.from('exercise_sets').insert(sets);
+          if (setsError) return fail(setsError.message);
+        }
       }
     }
     setSaving(false);
+    setErrorMsg(null);
     await reload();
     setWeekIdx(weekIdx + 1);
   }
 
   return (
     <div>
+      {/* Banner errore: mostrato quando una mutazione fallisce */}
+      {errorMsg && (
+        <div className="mb-4 px-4 py-2.5 rounded-xl border border-danger/40 bg-danger/10 text-danger text-sm">
+          {errorMsg}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
@@ -249,7 +301,13 @@ export function ProgramBuilder({ initialProgram }: { initialProgram: ProgramData
                     {DAYS_OF_WEEK[w.day_of_week - 1]} — {w.name}
                   </h3>
                   <div className="flex gap-2">
-                    <ExercisePicker programWorkoutId={w.id} onAdded={reload} />
+                    <ExercisePicker
+                      programWorkoutId={w.id}
+                      nextSortOrder={
+                        w.workout_exercises.reduce((max, e) => Math.max(max, e.sort_order), 0) + 1
+                      }
+                      onAdded={reload}
+                    />
                     <button
                       onClick={() => deleteWorkout(w.id)}
                       className="text-text-secondary hover:text-danger transition p-1.5"
@@ -452,48 +510,66 @@ function VolumeSummary({ week }: { week: WeekRow }) {
 /** Ricerca nella libreria esercizi e aggiunta alla sessione. */
 function ExercisePicker({
   programWorkoutId,
+  nextSortOrder,
   onAdded,
 }: {
   programWorkoutId: string;
+  nextSortOrder: number;
   onAdded: () => void;
 }) {
   const supabase = createClient();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [results, setResults] = useState<
     { id: string; name: string; muscle_group: string; equipment: string | null }[]
   >([]);
+  // Id incrementale dell'ultima ricerca: le risposte arrivate fuori ordine vengono ignorate
+  const searchReqId = useRef(0);
 
   async function search(q: string) {
     setQuery(q);
+    const reqId = ++searchReqId.current;
     if (q.length < 2) return setResults([]);
     const { data } = await supabase
       .from('exercises')
       .select('id, name, muscle_group, equipment')
       .ilike('name', `%${q}%`)
       .limit(8);
+    if (reqId !== searchReqId.current) return; // risposta obsoleta
     setResults(data ?? []);
   }
 
   async function add(exerciseId: string) {
-    // Aggiunge l'esercizio con 3 serie di default 8-10 reps @ RPE 8
-    const { data: wex } = await supabase
+    // Aggiunge l'esercizio in coda alla sessione con 3 serie di default 8-10 reps @ RPE 8
+    const { data: wex, error: wexError } = await supabase
       .from('workout_exercises')
-      .insert({ program_workout_id: programWorkoutId, exercise_id: exerciseId, sort_order: 99 })
+      .insert({
+        program_workout_id: programWorkoutId,
+        exercise_id: exerciseId,
+        sort_order: nextSortOrder,
+      })
       .select('id')
       .single();
-    if (wex) {
-      await supabase.from('exercise_sets').insert(
-        [1, 2, 3].map((n) => ({
-          workout_exercise_id: wex.id,
-          set_number: n,
-          reps_min: 8,
-          reps_max: 10,
-          target_rpe: 8,
-          rest_seconds: 120,
-        }))
+    if (wexError || !wex) {
+      return setErrorMsg(
+        'Aggiunta dell’esercizio non riuscita: ' + (wexError?.message ?? 'esercizio non creato')
       );
     }
+    const { error: setsError } = await supabase.from('exercise_sets').insert(
+      [1, 2, 3].map((n) => ({
+        workout_exercise_id: wex.id,
+        set_number: n,
+        reps_min: 8,
+        reps_max: 10,
+        target_rpe: 8,
+        rest_seconds: 120,
+      }))
+    );
+    if (setsError) {
+      return setErrorMsg('Creazione delle serie di default non riuscita: ' + setsError.message);
+    }
+    setErrorMsg(null);
     setOpen(false);
     setQuery('');
     setResults([]);
@@ -517,6 +593,7 @@ function ExercisePicker({
               placeholder="Cerca esercizio… (min 2 lettere)"
             />
           </div>
+          {errorMsg && <p className="mt-2 px-2.5 text-xs text-danger">{errorMsg}</p>}
           <ul className="mt-2 max-h-64 overflow-y-auto">
             {results.map((r) => (
               <li key={r.id}>

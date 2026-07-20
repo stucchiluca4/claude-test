@@ -2,8 +2,9 @@ import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { MacroEditor } from './macro-editor';
 
-export default async function NutritionPlanPage({ params }: { params: { id: string } }) {
-  const supabase = createClient();
+export default async function NutritionPlanPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const supabase = await createClient();
 
   const { data: plan } = await supabase
     .from('nutrition_plans')
@@ -13,7 +14,7 @@ export default async function NutritionPlanPage({ params }: { params: { id: stri
          client:profiles!coach_clients_client_id_fkey(first_name, last_name, sex, date_of_birth, height_cm)),
        nutrition_days (id, week_number, day_of_week, day_type, kcal, protein_g, carbs_g, fat_g)`
     )
-    .eq('id', params.id)
+    .eq('id', id)
     .single();
 
   if (!plan) notFound();

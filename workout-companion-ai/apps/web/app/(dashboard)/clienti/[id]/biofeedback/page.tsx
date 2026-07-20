@@ -10,23 +10,25 @@ function toNum(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-export default async function BiofeedbackPage({ params }: { params: { id: string } }) {
-  const supabase = createClient();
+export default async function BiofeedbackPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const supabase = await createClient();
 
   const { data: cc } = await supabase
     .from('coach_clients')
     .select(
       'id, invite_email, client:profiles!coach_clients_client_id_fkey(id, first_name, last_name)'
     )
-    .eq('id', params.id)
+    .eq('id', id)
     .single();
 
   if (!cc) notFound();
 
   const client = cc.client as any;
 
+  // 60 giorni: servono anche i 30 precedenti per i confronti "vs periodo prima"
   const since = new Date();
-  since.setDate(since.getDate() - 30);
+  since.setDate(since.getDate() - 60);
   const sinceIso = since.toISOString().slice(0, 10);
 
   const [{ data: rawEntries }, { data: plan }] = await Promise.all([

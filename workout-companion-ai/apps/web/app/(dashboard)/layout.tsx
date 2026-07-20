@@ -4,7 +4,7 @@ import { Sidebar } from '@/components/sidebar';
 import { fullName } from '@/lib/utils';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
