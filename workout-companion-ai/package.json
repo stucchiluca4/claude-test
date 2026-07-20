@@ -16,5 +16,8 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "@expo/ngrok": "^4.1.3"
   }
 }

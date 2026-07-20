@@ -6,8 +6,15 @@
     "noUnusedParameters": true,
     "baseUrl": ".",
     "paths": {
-      "@wc/shared": ["../../packages/shared/src"]
+      "@wc/shared": [
+        "../../packages/shared/src"
+      ]
     }
   },
-  "include": ["app/**/*.ts", "app/**/*.tsx", "components/**/*.tsx", "lib/**/*.ts", "expo-env.d.ts"]
+  "include": [
+    "app/**/*.ts",
+    "app/**/*.tsx",
+    "components/**/*.tsx",
+    "lib/**/*.ts"
+  ]
 }
