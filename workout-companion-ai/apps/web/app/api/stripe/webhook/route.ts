@@ -50,8 +50,19 @@ export async function POST(request: Request) {
     case 'customer.subscription.created':
     case 'customer.subscription.updated':
     case 'customer.subscription.deleted': {
-      const sub = event.data.object as Stripe.Subscription;
-      const profileId = sub.metadata?.profile_id;
+      const eventSub = event.data.object as Stripe.Subscription;
+      // Gli eventi webhook possono arrivare fuori ordine (es. un "updated"
+      // vecchio dopo un "deleted"): rileggiamo lo stato autorevole da Stripe,
+      // così non sovrascriviamo mai una disdetta con uno stato attivo.
+      let sub = eventSub;
+      try {
+        sub = await stripe.subscriptions.retrieve(eventSub.id);
+      } catch {
+        if (event.type === 'customer.subscription.deleted') {
+          sub = { ...eventSub, status: 'canceled' } as Stripe.Subscription;
+        }
+      }
+      const profileId = sub.metadata?.profile_id ?? eventSub.metadata?.profile_id;
       if (!profileId) break;
 
       const { error } = await db.from('subscriptions').upsert(

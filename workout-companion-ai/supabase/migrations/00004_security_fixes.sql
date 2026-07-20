@@ -343,7 +343,17 @@ create policy "chat attachments read" on storage.objects for select
 -- ---------- 11. Chat in tempo reale ----------
 -- La tabella non era mai stata aggiunta alla pubblicazione realtime:
 -- le subscription di web e mobile non ricevevano alcun evento.
-alter publication supabase_realtime add table public.messages;
+-- Idempotente: non fallisce se la tabella è già nella pubblicazione.
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public' and tablename = 'messages'
+  ) then
+    alter publication supabase_realtime add table public.messages;
+  end if;
+end $$;
 
 -- ---------- 12. Allinea i profili esistenti al ruolo scelto al signup ----------
 update public.profiles p

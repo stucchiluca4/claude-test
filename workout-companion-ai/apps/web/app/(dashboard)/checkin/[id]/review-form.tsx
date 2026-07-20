@@ -16,13 +16,15 @@ export function CheckinReviewForm({
   const [feedback, setFeedback] = useState(initialFeedback ?? '');
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
+    setError(null);
 
     const supabase = createClient();
-    const { error } = await supabase
+    const { error: saveError } = await supabase
       .from('checkins')
       .update({
         coach_feedback: feedback,
@@ -32,10 +34,12 @@ export function CheckinReviewForm({
       .eq('id', checkinId);
 
     setLoading(false);
-    if (!error) {
-      setSaved(true);
-      router.refresh();
+    if (saveError) {
+      setError('Salvataggio non riuscito. Riprova.');
+      return;
     }
+    setSaved(true);
+    router.refresh();
   }
 
   return (
@@ -53,6 +57,7 @@ export function CheckinReviewForm({
       <button type="submit" disabled={loading || !feedback} className={buttonPrimary + ' mt-3'}>
         {loading ? 'Invio…' : saved ? '✓ Feedback inviato' : 'Invia feedback e segna come rivisto'}
       </button>
+      {error && <p className="text-danger text-sm mt-2">{error}</p>}
     </form>
   );
 }
