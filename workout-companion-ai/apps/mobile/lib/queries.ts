@@ -1,6 +1,16 @@
-import type { CoachClient, ExerciseFeedback, NutritionDay, Program, ProgramWorkout, RecordType } from '@wc/shared';
+import type {
+  CoachClient,
+  ExerciseFeedback,
+  ExerciseMedia,
+  NutritionDay,
+  Program,
+  ProgramWorkout,
+  RecordType,
+} from '@wc/shared';
 import { supabase } from './supabase';
 import { todayDayOfWeek } from './utils';
+
+const WORKOUT_MEDIA_BUCKET = 'workout-media';
 
 function throwIf(error: { message: string } | null): void {
   if (error) throw new Error(error.message);
@@ -173,6 +183,66 @@ export async function upsertExerciseFeedback(row: ExerciseFeedbackInput): Promis
     .single();
   throwIf(error);
   return data as ExerciseFeedback;
+}
+
+export interface ExerciseMediaWithUrl extends ExerciseMedia {
+  url: string | null;
+}
+
+/** Allegati di una seduta con URL firmati temporanei (bucket privato). */
+export async function getExerciseMediaForLog(workoutLogId: string): Promise<ExerciseMediaWithUrl[]> {
+  const { data, error } = await supabase
+    .from('exercise_media')
+    .select('*')
+    .eq('workout_log_id', workoutLogId)
+    .order('created_at', { ascending: false });
+  throwIf(error);
+  const rows = (data ?? []) as ExerciseMedia[];
+  if (rows.length === 0) return [];
+
+  const { data: signed } = await supabase.storage
+    .from(WORKOUT_MEDIA_BUCKET)
+    .createSignedUrls(rows.map((r) => r.storage_path), 3600);
+  const urlByPath = new Map((signed ?? []).map((s) => [s.path ?? '', s.signedUrl]));
+  return rows.map((r) => ({ ...r, url: urlByPath.get(r.storage_path) ?? null }));
+}
+
+/** Carica una foto/video nel bucket privato e registra la riga in exercise_media. */
+export async function uploadExerciseMedia(params: {
+  clientId: string;
+  workoutLogId: string;
+  workoutExerciseId: string;
+  exerciseId: string;
+  uri: string;
+  mediaType: 'photo' | 'video';
+}): Promise<void> {
+  const ext = (params.uri.split('?')[0].split('.').pop() || (params.mediaType === 'photo' ? 'jpg' : 'mp4')).toLowerCase();
+  const path = `${params.clientId}/${params.workoutLogId}/${Date.now()}-${Math.round(Math.random() * 1e6)}.${ext}`;
+  const contentType = params.mediaType === 'photo' ? 'image/jpeg' : 'video/mp4';
+
+  const resp = await fetch(params.uri);
+  const blob = await resp.blob();
+
+  const { error: uploadError } = await supabase.storage
+    .from(WORKOUT_MEDIA_BUCKET)
+    .upload(path, blob, { contentType, upsert: false });
+  throwIf(uploadError);
+
+  const { error: insertError } = await supabase.from('exercise_media').insert({
+    workout_log_id: params.workoutLogId,
+    workout_exercise_id: params.workoutExerciseId,
+    exercise_id: params.exerciseId,
+    storage_path: path,
+    media_type: params.mediaType,
+  });
+  throwIf(insertError);
+}
+
+/** Rimuove un allegato: prima il file, poi la riga. */
+export async function deleteExerciseMedia(item: ExerciseMedia): Promise<void> {
+  await supabase.storage.from(WORKOUT_MEDIA_BUCKET).remove([item.storage_path]);
+  const { error } = await supabase.from('exercise_media').delete().eq('id', item.id);
+  throwIf(error);
 }
 
 /** Miglior valore di seduta per un tipo di record, con la serie che l'ha prodotto. */

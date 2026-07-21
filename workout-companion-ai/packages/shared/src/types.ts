@@ -146,6 +146,17 @@ export interface PersonalRecord {
   exercise?: Exercise;
 }
 
+/** Allegato foto/video di un esercizio eseguito (tabella `exercise_media`). */
+export interface ExerciseMedia {
+  id: string;
+  workout_log_id: string;
+  workout_exercise_id: string | null;
+  exercise_id: string | null;
+  storage_path: string;
+  media_type: 'photo' | 'video';
+  created_at: string;
+}
+
 /** Feedback dell'atleta su un esercizio eseguito (tabella `exercise_feedback`). */
 export interface ExerciseFeedback {
   id: string;

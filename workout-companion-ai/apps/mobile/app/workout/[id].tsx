@@ -31,6 +31,7 @@ import { SetRow, type SetEntry } from '../../components/SetRow';
 import { ExerciseFeedbackModal, type ExerciseFeedbackValues } from '../../components/ExerciseFeedbackModal';
 import { AdvancedTimer } from '../../components/AdvancedTimer';
 import { AiCoachSheet } from '../../components/AiCoachSheet';
+import { ExerciseMediaBar } from '../../components/ExerciseMediaBar';
 
 interface RowState extends SetEntry {
   /** id della riga in set_logs una volta salvata (per gli update successivi). */
@@ -80,6 +81,7 @@ export default function WorkoutTrackerScreen() {
   const [showTimer, setShowTimer] = useState(false);
   const [aiFor, setAiFor] = useState<WorkoutExercise | null>(null);
   const [coachClientId, setCoachClientId] = useState<string | null>(null);
+  const [clientUid, setClientUid] = useState<string | null>(null);
 
   // Caricamento scheda + apertura del workout_log + ultima performance.
   useEffect(() => {
@@ -200,6 +202,7 @@ export default function WorkoutTrackerScreen() {
         setLastPerf(perf);
         setFeedbacks(fbMap);
         setCoachClientId(activeCc?.id ?? null);
+        setClientUid(uid);
         if (Object.keys(resumedEntries).length > 0) setEntries(resumedEntries);
         // Il primo esercizio parte aperto.
         const first = loaded.workout_exercises[0];
@@ -531,6 +534,12 @@ export default function WorkoutTrackerScreen() {
                       <Pressable style={styles.aiBtn} onPress={() => setAiFor(we)}>
                         <Text style={styles.aiBtnText}>🤖 Chiedi al coach AI</Text>
                       </Pressable>
+                      <ExerciseMediaBar
+                        clientId={clientUid}
+                        workoutLogId={logId ?? ''}
+                        workoutExerciseId={we.id}
+                        exerciseId={we.exercise_id}
+                      />
                     </View>
                   ) : null}
                 </View>
