@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { Profile, UserRole } from '@wc/shared';
 import { supabase } from '../../lib/supabase';
@@ -26,6 +27,7 @@ interface ProfileData {
 }
 
 export default function ProfiloScreen() {
+  const router = useRouter();
   const [data, setData] = useState<ProfileData | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -145,6 +147,13 @@ export default function ProfiloScreen() {
           <Text style={sharedStyles.muted}>
             Volume totale sollevato: {Math.round(data.totalVolumeKg).toLocaleString('it-IT')} kg
           </Text>
+        </Card>
+
+        <Card title="Salute e dispositivi">
+          <Pressable style={styles.settingRow} onPress={() => router.push('/salute')}>
+            <Text style={sharedStyles.body}>🩺 Integrazioni salute</Text>
+            <Text style={styles.chevron}>›</Text>
+          </Pressable>
         </Card>
 
         <Card title="Impostazioni">
