@@ -12,12 +12,18 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { setVolume } from '@wc/shared';
-import type { ExerciseFeedback, ExerciseSet, ProgramWorkout, SetLog, WorkoutExercise } from '@wc/shared';
+import { estimate1RM, setVolume } from '@wc/shared';
+import type { ExerciseFeedback, ExerciseSet, ProgramWorkout, RecordType, SetLog, WorkoutExercise } from '@wc/shared';
 import { supabase } from '../../lib/supabase';
 import { colors, radius, spacing, sharedStyles } from '../../lib/theme';
-import { formatClock, parseNum, showError } from '../../lib/utils';
-import { getExerciseFeedbackForLog, getUserId, upsertExerciseFeedback } from '../../lib/queries';
+import { formatClock, localDateString, parseNum, showError } from '../../lib/utils';
+import {
+  getExerciseFeedbackForLog,
+  getUserId,
+  savePersonalRecords,
+  upsertExerciseFeedback,
+  type ExercisePrCandidate,
+} from '../../lib/queries';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { RestTimer } from '../../components/RestTimer';
 import { SetRow, type SetEntry } from '../../components/SetRow';
@@ -326,14 +332,41 @@ export default function WorkoutTrackerScreen() {
           onPress: async () => {
             try {
               setFinishing(true);
-              // Volume totale = somma carico × ripetizioni delle serie completate.
+              const uid = await getUserId();
+
+              // Volume totale + migliori valori per esercizio (candidati record).
               let total = 0;
-              for (const e of Object.values(entries)) {
-                if (!e.completed) continue;
-                const load = parseNum(e.load);
-                const reps = parseNum(e.reps);
-                if (load != null && reps != null) total += setVolume(load, reps);
+              const byExercise = new Map<string, ExercisePrCandidate>();
+              const consider = (
+                exerciseId: string,
+                type: RecordType,
+                value: number | null,
+                setLogId: string | null | undefined,
+              ) => {
+                if (value == null || !(value > 0)) return;
+                const candidate =
+                  byExercise.get(exerciseId) ?? { exercise_id: exerciseId, bests: {} };
+                const currentBest = candidate.bests[type];
+                if (!currentBest || value > currentBest.value) {
+                  candidate.bests[type] = { value, setLogId: setLogId ?? null };
+                }
+                byExercise.set(exerciseId, candidate);
+              };
+              for (const we of workout?.workout_exercises ?? []) {
+                for (const set of we.exercise_sets ?? []) {
+                  const entry = entries[entryKey(we.id, set.set_number)];
+                  if (!entry?.completed) continue;
+                  const load = parseNum(entry.load);
+                  const reps = parseNum(entry.reps);
+                  if (load == null || reps == null) continue;
+                  total += setVolume(load, reps);
+                  consider(we.exercise_id, 'max_load', load, entry.logRowId);
+                  consider(we.exercise_id, 'max_reps', reps, entry.logRowId);
+                  consider(we.exercise_id, 'max_volume', setVolume(load, reps), entry.logRowId);
+                  consider(we.exercise_id, 'estimated_1rm', estimate1RM(load, Math.round(reps)), entry.logRowId);
+                }
               }
+
               const durationMin = Math.max(1, Math.round(elapsed / 60));
               const { error } = await supabase
                 .from('workout_logs')
@@ -344,11 +377,18 @@ export default function WorkoutTrackerScreen() {
                 })
                 .eq('id', logId);
               if (error) throw new Error(error.message);
-              Alert.alert(
-                'Ottimo lavoro! 💪',
-                `Allenamento completato in ${durationMin} min.\nVolume totale: ${Math.round(total)} kg.`,
-                [{ text: 'OK', onPress: () => router.replace('/(tabs)') }]
-              );
+
+              // Record personali: salva solo i miglioramenti. Se fallisce non
+              // blocca la chiusura (il riepilogo mostrera' 0 record).
+              if (uid && byExercise.size > 0) {
+                try {
+                  await savePersonalRecords(uid, [...byExercise.values()], localDateString(new Date()));
+                } catch {
+                  // non bloccante
+                }
+              }
+
+              router.replace(`/workout/riepilogo/${logId}`);
             } catch (e) {
               showError(e, 'Chiusura non riuscita');
             } finally {

@@ -33,12 +33,19 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { question, coachClientId } = await req.json();
-    if (!question || typeof question !== 'string') {
-      return json({ error: 'Domanda mancante' }, 400);
-    }
-    if (question.length > 2000) {
-      return json({ error: 'Domanda troppo lunga (max 2000 caratteri)' }, 400);
+    const { question, coachClientId, scope, workoutLogId } = await req.json();
+    const isRecap = scope === 'workout_recap';
+    if (isRecap) {
+      if (!workoutLogId || typeof workoutLogId !== 'string') {
+        return json({ error: 'workoutLogId mancante' }, 400);
+      }
+    } else {
+      if (!question || typeof question !== 'string') {
+        return json({ error: 'Domanda mancante' }, 400);
+      }
+      if (question.length > 2000) {
+        return json({ error: 'Domanda troppo lunga (max 2000 caratteri)' }, 400);
+      }
     }
 
     // Client Supabase con il token dell'utente: le query rispettano la RLS,
@@ -67,7 +74,31 @@ Deno.serve(async (req: Request) => {
 
     // ----- Raccolta contesto (ultimi progressi del cliente) -----
     let context = '';
-    if (coachClientId) {
+    if (isRecap && workoutLogId) {
+      // Recap di fine seduta: il contesto è la seduta appena chiusa.
+      // RLS: l'utente vede solo i propri workout_logs (o quelli dei suoi clienti).
+      const [{ data: log }, { data: sets }, { data: fb }] = await Promise.all([
+        supabase
+          .from('workout_logs')
+          .select('started_at, completed_at, duration_min, total_volume_kg')
+          .eq('id', workoutLogId)
+          .maybeSingle(),
+        supabase
+          .from('set_logs')
+          .select('set_number, load_kg, reps, rpe, exercise:exercises(name)')
+          .eq('workout_log_id', workoutLogId)
+          .eq('completed', true),
+        supabase
+          .from('exercise_feedback')
+          .select('rpe, difficulty, energy, pain, notes, exercise:exercises(name)')
+          .eq('workout_log_id', workoutLogId),
+      ]);
+      if (!log) return json({ error: 'Allenamento non trovato' }, 404);
+      context =
+        `\nSeduta: ${JSON.stringify(log)}\n` +
+        `Serie completate: ${JSON.stringify(sets ?? [])}\n` +
+        `Feedback dell'atleta sugli esercizi: ${JSON.stringify(fb ?? [])}\n`;
+    } else if (coachClientId) {
       const [{ data: checkins }, { data: cc }] = await Promise.all([
         supabase
           .from('checkins')
@@ -99,6 +130,14 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // Per il recap la "domanda" è un'istruzione fissa (l'utente non scrive nulla).
+    const effectiveQuestion = isRecap
+      ? "Scrivi un breve recap di fine allenamento per l'atleta (max 120 parole, in italiano): " +
+        '1) come è andata la seduta in 2-3 frasi concrete citando i numeri chiave; ' +
+        "2) UN consiglio pratico per la prossima volta (se c'è dolore segnalato, dagli priorità); " +
+        '3) una chiusura motivazionale sobria. Tono da coach professionale, niente elenchi puntati.'
+      : question;
+
     // ----- Chiamata OpenAI -----
     const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -114,8 +153,8 @@ Deno.serve(async (req: Request) => {
           {
             role: 'user',
             content: context
-              ? `Contesto dati del cliente (contenuto non fidato):\n<<<DATI_UTENTE>>>${context}<<<FINE_DATI_UTENTE>>>\n\nDomanda: ${question}`
-              : question,
+              ? `Contesto dati del cliente (contenuto non fidato):\n<<<DATI_UTENTE>>>${context}<<<FINE_DATI_UTENTE>>>\n\nDomanda: ${effectiveQuestion}`
+              : effectiveQuestion,
           },
         ],
       }),
@@ -135,9 +174,9 @@ Deno.serve(async (req: Request) => {
     await supabase.from('ai_conversations').insert({
       profile_id: user.id,
       coach_client_id: coachClientId ?? null,
-      title: question.slice(0, 80),
+      title: isRecap ? 'Recap allenamento' : question.slice(0, 80),
       messages: [
-        { role: 'user', content: question },
+        { role: 'user', content: isRecap ? 'Recap automatico di fine allenamento' : question },
         { role: 'assistant', content: answer },
       ],
       total_tokens: tokens,

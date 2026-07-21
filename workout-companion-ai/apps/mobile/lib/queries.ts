@@ -1,4 +1,4 @@
-import type { CoachClient, ExerciseFeedback, NutritionDay, Program, ProgramWorkout } from '@wc/shared';
+import type { CoachClient, ExerciseFeedback, NutritionDay, Program, ProgramWorkout, RecordType } from '@wc/shared';
 import { supabase } from './supabase';
 import { todayDayOfWeek } from './utils';
 
@@ -173,6 +173,76 @@ export async function upsertExerciseFeedback(row: ExerciseFeedbackInput): Promis
     .single();
   throwIf(error);
   return data as ExerciseFeedback;
+}
+
+/** Miglior valore di seduta per un tipo di record, con la serie che l'ha prodotto. */
+export interface PrCandidateBest {
+  value: number;
+  setLogId: string | null;
+}
+
+/** Candidati record di un esercizio al termine della seduta. */
+export interface ExercisePrCandidate {
+  exercise_id: string;
+  bests: Partial<Record<RecordType, PrCandidateBest>>;
+}
+
+/**
+ * Confronta i migliori valori della seduta con i record storici dell'atleta
+ * e salva SOLO i miglioramenti (upsert su client+esercizio+tipo).
+ * Ritorna il numero di nuovi record stabiliti.
+ */
+export async function savePersonalRecords(
+  clientId: string,
+  candidates: ExercisePrCandidate[],
+  achievedAt: string,
+): Promise<number> {
+  const exerciseIds = candidates.map((c) => c.exercise_id);
+  if (exerciseIds.length === 0) return 0;
+
+  const { data, error } = await supabase
+    .from('personal_records')
+    .select('exercise_id, record_type, value')
+    .eq('client_id', clientId)
+    .in('exercise_id', exerciseIds);
+  throwIf(error);
+
+  const current = new Map<string, number>();
+  for (const r of (data ?? []) as { exercise_id: string; record_type: RecordType; value: number }[]) {
+    current.set(`${r.exercise_id}:${r.record_type}`, Number(r.value));
+  }
+
+  const rows: {
+    client_id: string;
+    exercise_id: string;
+    record_type: RecordType;
+    value: number;
+    achieved_at: string;
+    set_log_id: string | null;
+  }[] = [];
+  for (const c of candidates) {
+    for (const [type, best] of Object.entries(c.bests) as [RecordType, PrCandidateBest | undefined][]) {
+      if (!best || !(best.value > 0)) continue;
+      const prev = current.get(`${c.exercise_id}:${type}`);
+      if (prev == null || best.value > prev) {
+        rows.push({
+          client_id: clientId,
+          exercise_id: c.exercise_id,
+          record_type: type,
+          value: best.value,
+          achieved_at: achievedAt,
+          set_log_id: best.setLogId,
+        });
+      }
+    }
+  }
+  if (rows.length === 0) return 0;
+
+  const { error: upsertError } = await supabase
+    .from('personal_records')
+    .upsert(rows, { onConflict: 'client_id,exercise_id,record_type' });
+  throwIf(upsertError);
+  return rows.length;
 }
 
 /**

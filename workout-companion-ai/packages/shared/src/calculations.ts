@@ -187,6 +187,98 @@ export function progressionPreview(input: ProgressionInput): ProgressionWeek[] {
 }
 
 // ============================================================
+// RIEPILOGO ALLENAMENTO (record, punteggio, calorie, recupero)
+// ============================================================
+
+/** Migliori risultati di un esercizio nella seduta (per rilevare i record). */
+export interface SessionBests {
+  maxLoadKg: number | null;
+  maxReps: number | null;
+  maxSetVolumeKg: number | null;
+  estimated1RM: number | null;
+}
+
+/** Estrae i migliori valori dalle serie completate di un esercizio. */
+export function sessionBests(sets: { loadKg: number | null; reps: number | null }[]): SessionBests {
+  let maxLoadKg: number | null = null;
+  let maxReps: number | null = null;
+  let maxSetVolumeKg: number | null = null;
+  let estimated1RM: number | null = null;
+  for (const s of sets) {
+    if (s.loadKg != null && (maxLoadKg == null || s.loadKg > maxLoadKg)) maxLoadKg = s.loadKg;
+    if (s.reps != null && (maxReps == null || s.reps > maxReps)) maxReps = s.reps;
+    if (s.loadKg != null && s.reps != null) {
+      const vol = setVolume(s.loadKg, s.reps);
+      if (maxSetVolumeKg == null || vol > maxSetVolumeKg) maxSetVolumeKg = vol;
+      const e1 = estimate1RM(s.loadKg, s.reps);
+      if (estimated1RM == null || e1 > estimated1RM) estimated1RM = e1;
+    }
+  }
+  return { maxLoadKg, maxReps, maxSetVolumeKg, estimated1RM };
+}
+
+/** Stima kcal di una seduta coi pesi (MET ≈ 6 per resistance training). */
+export function workoutKcal(durationMin: number, weightKg: number): number {
+  if (durationMin <= 0 || weightKg <= 0) return 0;
+  return Math.round(((6 * 3.5 * weightKg) / 200) * durationMin);
+}
+
+export interface WorkoutScoreInput {
+  /** Serie completate / serie prescritte (0..1). */
+  completionRate: number;
+  /** Nuovi record personali della seduta. */
+  prCount: number;
+  /** Volume seduta / volume della stessa seduta precedente (null = prima volta). */
+  volumeRatio: number | null;
+}
+
+/**
+ * Punteggio seduta 0-100, spiegabile: 60 punti dal completamento,
+ * 20 dal trend di volume (≥ +10% = pieni), 20 dai record (10 l'uno).
+ * Senza storico, il peso del trend ricade sul completamento.
+ */
+export function workoutScore(input: WorkoutScoreInput): number {
+  const completion = Math.min(1, Math.max(0, input.completionRate));
+  let score = 60 * completion;
+  if (input.volumeRatio == null) {
+    score += 20 * completion;
+  } else {
+    score += 20 * Math.min(1, Math.max(0, (input.volumeRatio - 0.9) / 0.2));
+  }
+  score += Math.min(20, Math.max(0, input.prCount) * 10);
+  return Math.round(Math.min(100, score));
+}
+
+export interface RecoveryPrediction {
+  hours: 24 | 36 | 48 | 72;
+  label: string;
+}
+
+/** Previsione di recupero dai feedback della seduta (regole semplici e spiegabili). */
+export function recoveryPrediction(params: {
+  avgRpe: number | null;
+  maxPain: number | null;
+  tonnageKg: number;
+}): RecoveryPrediction {
+  const rpe = params.avgRpe ?? 6;
+  const pain = params.maxPain ?? 1;
+  let hours: RecoveryPrediction['hours'];
+  if (pain >= 6 || rpe >= 8.5) hours = 72;
+  else if (rpe >= 7 || params.tonnageKg >= 12000) hours = 48;
+  else if (rpe >= 5) hours = 36;
+  else hours = 24;
+  const label =
+    hours === 72
+      ? 'Sforzo molto alto: recupera a fondo e segnala al coach eventuali dolori.'
+      : hours === 48
+        ? 'Sforzo importante: concediti un giorno pieno di recupero.'
+        : hours === 36
+          ? 'Buon lavoro: recupero standard prima di ricaricare questi muscoli.'
+          : 'Seduta leggera: puoi riallenarti già domani.';
+  return { hours, label };
+}
+
+// ============================================================
 // ANALISI VOLUME SCHEDA (push / pull / gambe)
 // ============================================================
 

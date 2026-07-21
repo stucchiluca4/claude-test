@@ -131,6 +131,21 @@ export interface WorkoutLog {
   client_notes: string | null;
 }
 
+/** Tipi di record personale (tabella `personal_records`). */
+export type RecordType = 'max_load' | 'max_reps' | 'max_volume' | 'estimated_1rm';
+
+/** Record personale di un atleta su un esercizio. */
+export interface PersonalRecord {
+  id: string;
+  client_id: string;
+  exercise_id: string;
+  record_type: RecordType;
+  value: number;
+  achieved_at: string;
+  set_log_id: string | null;
+  exercise?: Exercise;
+}
+
 /** Feedback dell'atleta su un esercizio eseguito (tabella `exercise_feedback`). */
 export interface ExerciseFeedback {
   id: string;
