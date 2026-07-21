@@ -18,6 +18,7 @@ import { supabase } from '../../lib/supabase';
 import { colors, radius, spacing, sharedStyles } from '../../lib/theme';
 import { formatClock, localDateString, parseNum, showError } from '../../lib/utils';
 import {
+  getActiveCoachClient,
   getExerciseFeedbackForLog,
   getUserId,
   savePersonalRecords,
@@ -29,6 +30,7 @@ import { RestTimer } from '../../components/RestTimer';
 import { SetRow, type SetEntry } from '../../components/SetRow';
 import { ExerciseFeedbackModal, type ExerciseFeedbackValues } from '../../components/ExerciseFeedbackModal';
 import { AdvancedTimer } from '../../components/AdvancedTimer';
+import { AiCoachSheet } from '../../components/AiCoachSheet';
 
 interface RowState extends SetEntry {
   /** id della riga in set_logs una volta salvata (per gli update successivi). */
@@ -76,6 +78,8 @@ export default function WorkoutTrackerScreen() {
   const [feedbackFor, setFeedbackFor] = useState<WorkoutExercise | null>(null);
   const [savingFeedback, setSavingFeedback] = useState(false);
   const [showTimer, setShowTimer] = useState(false);
+  const [aiFor, setAiFor] = useState<WorkoutExercise | null>(null);
+  const [coachClientId, setCoachClientId] = useState<string | null>(null);
 
   // Caricamento scheda + apertura del workout_log + ultima performance.
   useEffect(() => {
@@ -86,6 +90,8 @@ export default function WorkoutTrackerScreen() {
       try {
         const uid = await getUserId();
         if (!uid) throw new Error('Sessione scaduta, effettua di nuovo l’accesso.');
+
+        const activeCc = await getActiveCoachClient(uid);
 
         const { data: pw, error: pwError } = await supabase
           .from('program_workouts')
@@ -193,6 +199,7 @@ export default function WorkoutTrackerScreen() {
         setLogId(newLog.id);
         setLastPerf(perf);
         setFeedbacks(fbMap);
+        setCoachClientId(activeCc?.id ?? null);
         if (Object.keys(resumedEntries).length > 0) setEntries(resumedEntries);
         // Il primo esercizio parte aperto.
         const first = loaded.workout_exercises[0];
@@ -506,6 +513,9 @@ export default function WorkoutTrackerScreen() {
                             : '💬 Com’è andato questo esercizio?'}
                         </Text>
                       </Pressable>
+                      <Pressable style={styles.aiBtn} onPress={() => setAiFor(we)}>
+                        <Text style={styles.aiBtnText}>🤖 Chiedi al coach AI</Text>
+                      </Pressable>
                     </View>
                   ) : null}
                 </View>
@@ -557,6 +567,17 @@ export default function WorkoutTrackerScreen() {
             goToNextExercise();
           }}
         />
+
+        {aiFor ? (
+          <AiCoachSheet
+            visible={aiFor != null}
+            exerciseId={aiFor.exercise_id}
+            workoutExerciseId={aiFor.id}
+            exerciseName={aiFor.exercise?.name ?? 'Esercizio'}
+            coachClientId={coachClientId}
+            onClose={() => setAiFor(null)}
+          />
+        ) : null}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -656,6 +677,20 @@ const styles = StyleSheet.create({
   },
   feedbackBtnText: {
     color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  aiBtn: {
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
+    backgroundColor: 'rgba(56,189,248,0.06)',
+  },
+  aiBtnText: {
+    color: colors.accent,
     fontSize: 14,
     fontWeight: '700',
   },

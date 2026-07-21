@@ -33,7 +33,8 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { question, coachClientId, scope, workoutLogId } = await req.json();
+    const { question, coachClientId, scope, workoutLogId, exerciseId, workoutExerciseId } =
+      await req.json();
     const isRecap = scope === 'workout_recap';
     if (isRecap) {
       if (!workoutLogId || typeof workoutLogId !== 'string') {
@@ -128,6 +129,57 @@ Deno.serve(async (req: Request) => {
           context += `\nUltimi allenamenti:\n${JSON.stringify(logs)}\n`;
         }
       }
+
+      // Dati di salute/recupero disponibili (biofeedback giornaliero recente).
+      const { data: bio } = await supabase
+        .from('daily_biofeedback')
+        .select('log_date, sleep_quality, sleep_hours, stress_level, energy_level, muscle_soreness, joint_stress, recovery, steps, weight_kg')
+        .eq('coach_client_id', coachClientId)
+        .order('log_date', { ascending: false })
+        .limit(3);
+      if (bio?.length) {
+        context += `\nRecupero/salute (biofeedback recente):\n${JSON.stringify(bio)}\n`;
+      }
+    }
+
+    // ----- Contesto specifico dell'esercizio corrente (per l'AI ask in scheda) -----
+    if (!isRecap && exerciseId && typeof exerciseId === 'string') {
+      const [{ data: exercise }, { data: prescribed }] = await Promise.all([
+        supabase
+          .from('exercises')
+          .select('name, muscle_group, secondary_muscles, equipment, mechanics, instructions')
+          .eq('id', exerciseId)
+          .maybeSingle(),
+        workoutExerciseId && typeof workoutExerciseId === 'string'
+          ? supabase
+              .from('exercise_sets')
+              .select('set_number, set_type, reps_min, reps_max, target_rpe, target_load_kg, rest_seconds, tempo')
+              .eq('workout_exercise_id', workoutExerciseId)
+              .order('set_number', { ascending: true })
+          : Promise.resolve({ data: null }),
+      ]);
+
+      // Ultime esecuzioni e feedback dell'atleta su QUESTO esercizio.
+      const [{ data: recentSets }, { data: recentFb }] = await Promise.all([
+        supabase
+          .from('set_logs')
+          .select('load_kg, reps, rpe, logged_at')
+          .eq('exercise_id', exerciseId)
+          .eq('completed', true)
+          .order('logged_at', { ascending: false })
+          .limit(12),
+        supabase
+          .from('exercise_feedback')
+          .select('rpe, difficulty, energy, pain, notes, created_at')
+          .eq('exercise_id', exerciseId)
+          .order('created_at', { ascending: false })
+          .limit(5),
+      ]);
+
+      if (exercise) context += `\nEsercizio corrente: ${JSON.stringify(exercise)}\n`;
+      if (prescribed?.length) context += `Serie prescritte oggi: ${JSON.stringify(prescribed)}\n`;
+      if (recentSets?.length) context += `Ultime esecuzioni su questo esercizio: ${JSON.stringify(recentSets)}\n`;
+      if (recentFb?.length) context += `Feedback precedenti su questo esercizio: ${JSON.stringify(recentFb)}\n`;
     }
 
     // Per il recap la "domanda" è un'istruzione fissa (l'utente non scrive nulla).
