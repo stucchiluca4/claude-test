@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { DAYS_OF_WEEK } from '@wc/shared';
+import { DAYS_OF_WEEK, readinessFromBiofeedback } from '@wc/shared';
 import type { CoachClient, NutritionDay, ProgramWorkout } from '@wc/shared';
 import { supabase } from '../../lib/supabase';
 import { colors, radius, spacing, sharedStyles } from '../../lib/theme';
@@ -199,6 +199,7 @@ export default function HomeScreen() {
 
   const today = new Date();
   const dateLabel = `${DAYS_OF_WEEK[todayDayOfWeek() - 1]} ${today.getDate()}/${today.getMonth() + 1}`;
+  const readiness = readinessFromBiofeedback(data.todayBiofeedback);
 
   return (
     <SafeAreaView style={sharedStyles.screen} edges={['top']}>
@@ -222,6 +223,18 @@ export default function HomeScreen() {
           </Card>
         ) : (
           <>
+            {readiness ? (
+              <Card title="Prontezza di oggi">
+                <View style={styles.readinessRow}>
+                  <Text style={styles.readinessEmoji}>{readiness.emoji}</Text>
+                  <View style={styles.readinessInfo}>
+                    <Text style={styles.readinessLabel}>{readiness.label}</Text>
+                    <Text style={sharedStyles.muted}>{readiness.advice}</Text>
+                  </View>
+                </View>
+              </Card>
+            ) : null}
+
             <Card title="Oggi">
               {data.todayWorkout ? (
                 <>
@@ -348,6 +361,23 @@ const styles = StyleSheet.create({
   workoutName: {
     color: colors.textPrimary,
     fontSize: 22,
+    fontWeight: '800',
+  },
+  readinessRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.lg,
+  },
+  readinessEmoji: {
+    fontSize: 40,
+  },
+  readinessInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  readinessLabel: {
+    color: colors.textPrimary,
+    fontSize: 17,
     fontWeight: '800',
   },
   doneText: {

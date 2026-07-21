@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { estimate1RM, setVolume } from '@wc/shared';
+import { estimate1RM, loadSuggestion, setVolume } from '@wc/shared';
 import type { ExerciseFeedback, ExerciseSet, ProgramWorkout, RecordType, SetLog, WorkoutExercise } from '@wc/shared';
 import { supabase } from '../../lib/supabase';
 import { colors, radius, spacing, sharedStyles } from '../../lib/theme';
@@ -488,6 +488,21 @@ export default function WorkoutTrackerScreen() {
                         Ultima performance:{' '}
                         {prev && prev.length > 0 ? lastPerformanceText(prev) : 'nessun dato precedente'}
                       </Text>
+                      {(() => {
+                        if (!prev || prev.length === 0) return null;
+                        const topSet = prev.reduce((a, b) =>
+                          Number(b.load_kg ?? 0) > Number(a.load_kg ?? 0) ? b : a,
+                        );
+                        const firstPrescribed = we.exercise_sets?.[0];
+                        const tip = loadSuggestion({
+                          lastLoadKg: topSet.load_kg,
+                          lastReps: topSet.reps,
+                          lastRpe: topSet.rpe,
+                          targetRpe: firstPrescribed?.target_rpe ?? null,
+                          repsMax: firstPrescribed?.reps_max ?? null,
+                        });
+                        return tip ? <Text style={styles.tip}>💡 {tip}</Text> : null;
+                      })()}
                       {(we.exercise_sets ?? []).map((set) => {
                         const key = entryKey(we.id, set.set_number);
                         const entry = entries[key] ?? emptyEntry;
@@ -661,6 +676,11 @@ const styles = StyleSheet.create({
   coachNotes: {
     color: colors.warning,
     fontSize: 13,
+  },
+  tip: {
+    color: colors.celeste,
+    fontSize: 13,
+    fontWeight: '600',
   },
   feedbackBtn: {
     marginTop: spacing.xs,
