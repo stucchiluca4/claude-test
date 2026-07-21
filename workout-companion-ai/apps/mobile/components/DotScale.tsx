@@ -40,7 +40,7 @@ export function DotScale({ label, value, onChange, emoji, bands }: Props) {
               key={n}
               onPress={() => onChange(n)}
               style={[styles.dot, active && styles.dotActive]}
-              hitSlop={4}
+              hitSlop={10}
             />
           );
         })}

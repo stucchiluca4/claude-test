@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -23,6 +23,7 @@ import { getActiveCoachClient, getUserId } from '../../lib/queries';
 import { Card } from '../../components/Card';
 import { StatPill } from '../../components/StatPill';
 import { BarChart, type BarDatum } from '../../components/BarChart';
+import { EmptyState, LoadingState } from '../../components/States';
 
 const RECORD_LABELS: Record<RecordType, string> = {
   max_load: 'Carico max',
@@ -238,16 +239,7 @@ export default function ProgressiScreen() {
     setRefreshing(false);
   }
 
-  if (!data) {
-    return (
-      <SafeAreaView style={sharedStyles.screen} edges={['top']}>
-        <View style={sharedStyles.center}>
-          <ActivityIndicator size="large" color={colors.accent} />
-          <Text style={sharedStyles.muted}>Calcolo i tuoi progressi…</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  if (!data) return <LoadingState message="Calcolo i tuoi progressi…" />;
 
   if (data.totalWorkouts === 0) {
     return (
@@ -257,12 +249,11 @@ export default function ProgressiScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
         >
           <Text style={sharedStyles.screenTitle}>Progressi</Text>
-          <Card title="📈 Ancora nessun dato">
-            <Text style={sharedStyles.body}>
-              Completa il tuo primo allenamento e qui vedrai volume, record, streak e la
-              progressione della forza. Tira su un po' di ferro! 💪
-            </Text>
-          </Card>
+          <EmptyState
+            emoji="📈"
+            title="Ancora nessun dato"
+            message="Completa il tuo primo allenamento e qui vedrai volume, record, streak e la progressione della forza. Tira su un po' di ferro! 💪"
+          />
         </ScrollView>
       </SafeAreaView>
     );
