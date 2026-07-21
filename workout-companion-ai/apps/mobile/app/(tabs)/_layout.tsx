@@ -45,6 +45,13 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="progressi"
+        options={{
+          title: 'Progressi',
+          tabBarIcon: ({ focused }) => <TabIcon emoji="📈" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
         name="chat"
         options={{
           title: 'Chat',
