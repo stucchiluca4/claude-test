@@ -131,6 +131,20 @@ export interface WorkoutLog {
   client_notes: string | null;
 }
 
+/** Feedback dell'atleta su un esercizio eseguito (tabella `exercise_feedback`). */
+export interface ExerciseFeedback {
+  id: string;
+  workout_log_id: string;
+  workout_exercise_id: string;
+  exercise_id: string | null;
+  rpe: number | null;
+  difficulty: number | null;
+  energy: number | null;
+  pain: number | null;
+  notes: string | null;
+  created_at: string;
+}
+
 export interface NutritionDay {
   id: string;
   nutrition_plan_id: string;

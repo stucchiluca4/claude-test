@@ -13,14 +13,15 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { setVolume } from '@wc/shared';
-import type { ExerciseSet, ProgramWorkout, SetLog, WorkoutExercise } from '@wc/shared';
+import type { ExerciseFeedback, ExerciseSet, ProgramWorkout, SetLog, WorkoutExercise } from '@wc/shared';
 import { supabase } from '../../lib/supabase';
 import { colors, radius, spacing, sharedStyles } from '../../lib/theme';
 import { formatClock, parseNum, showError } from '../../lib/utils';
-import { getUserId } from '../../lib/queries';
+import { getExerciseFeedbackForLog, getUserId, upsertExerciseFeedback } from '../../lib/queries';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { RestTimer } from '../../components/RestTimer';
 import { SetRow, type SetEntry } from '../../components/SetRow';
+import { ExerciseFeedbackModal, type ExerciseFeedbackValues } from '../../components/ExerciseFeedbackModal';
 
 interface RowState extends SetEntry {
   /** id della riga in set_logs una volta salvata (per gli update successivi). */
@@ -63,6 +64,10 @@ export default function WorkoutTrackerScreen() {
   const [elapsed, setElapsed] = useState(0);
   const [finishing, setFinishing] = useState(false);
   const startedAtRef = useRef<number>(Date.now());
+  // Feedback per esercizio (chiave = workout_exercise_id).
+  const [feedbacks, setFeedbacks] = useState<Record<string, ExerciseFeedback>>({});
+  const [feedbackFor, setFeedbackFor] = useState<WorkoutExercise | null>(null);
+  const [savingFeedback, setSavingFeedback] = useState(false);
 
   // Caricamento scheda + apertura del workout_log + ultima performance.
   useEffect(() => {
@@ -170,10 +175,16 @@ export default function WorkoutTrackerScreen() {
           }
         }
 
+        // Feedback per esercizio già registrati in questa seduta (per riprenderli).
+        const fbRows = await getExerciseFeedbackForLog(newLog.id);
+        const fbMap: Record<string, ExerciseFeedback> = {};
+        for (const fb of fbRows) fbMap[fb.workout_exercise_id] = fb;
+
         if (cancelled) return;
         setWorkout(loaded);
         setLogId(newLog.id);
         setLastPerf(perf);
+        setFeedbacks(fbMap);
         if (Object.keys(resumedEntries).length > 0) setEntries(resumedEntries);
         // Il primo esercizio parte aperto.
         const first = loaded.workout_exercises[0];
@@ -243,6 +254,16 @@ export default function WorkoutTrackerScreen() {
         if (set.rest_seconds && set.rest_seconds > 0) {
           setRest({ seconds: set.rest_seconds, token: Date.now() });
         }
+        // Ultima serie dell'esercizio completata: chiedi il feedback (una volta).
+        const setsOfEx = we.exercise_sets ?? [];
+        const allDone =
+          setsOfEx.length > 0 &&
+          setsOfEx.every((s) =>
+            s.set_number === set.set_number
+              ? true
+              : (entries[entryKey(we.id, s.set_number)]?.completed ?? false),
+          );
+        if (allDone && !feedbacks[we.id]) setFeedbackFor(we);
       } else if (entry.logRowId) {
         // Deseleziona: la serie torna modificabile.
         updateEntry(key, { saving: true });
@@ -256,6 +277,30 @@ export default function WorkoutTrackerScreen() {
     } catch (e) {
       updateEntry(key, { saving: false });
       showError(e, 'Salvataggio non riuscito');
+    }
+  }
+
+  async function saveFeedback(values: ExerciseFeedbackValues) {
+    const we = feedbackFor;
+    if (!we || !logId) return;
+    setSavingFeedback(true);
+    try {
+      const saved = await upsertExerciseFeedback({
+        workout_log_id: logId,
+        workout_exercise_id: we.id,
+        exercise_id: we.exercise_id,
+        rpe: values.rpe,
+        difficulty: values.difficulty,
+        energy: values.energy,
+        pain: values.pain,
+        notes: values.notes || null,
+      });
+      setFeedbacks((prev) => ({ ...prev, [we.id]: saved }));
+      setFeedbackFor(null);
+    } catch (e) {
+      showError(e, 'Salvataggio feedback non riuscito');
+    } finally {
+      setSavingFeedback(false);
     }
   }
 
@@ -396,6 +441,17 @@ export default function WorkoutTrackerScreen() {
                           />
                         );
                       })}
+
+                      <Pressable
+                        style={[styles.feedbackBtn, feedbacks[we.id] && styles.feedbackBtnDone]}
+                        onPress={() => setFeedbackFor(we)}
+                      >
+                        <Text style={styles.feedbackBtnText}>
+                          {feedbacks[we.id]
+                            ? '✓ Feedback salvato · tocca per modificare'
+                            : '💬 Com’è andato questo esercizio?'}
+                        </Text>
+                      </Pressable>
                     </View>
                   ) : null}
                 </View>
@@ -419,6 +475,25 @@ export default function WorkoutTrackerScreen() {
             onSkip={() => setRest(null)}
           />
         ) : null}
+
+        <ExerciseFeedbackModal
+          visible={feedbackFor != null}
+          exerciseName={feedbackFor?.exercise?.name ?? 'Esercizio'}
+          initial={
+            feedbackFor && feedbacks[feedbackFor.id]
+              ? {
+                  rpe: feedbacks[feedbackFor.id].rpe,
+                  difficulty: feedbacks[feedbackFor.id].difficulty,
+                  energy: feedbacks[feedbackFor.id].energy,
+                  pain: feedbacks[feedbackFor.id].pain,
+                  notes: feedbacks[feedbackFor.id].notes ?? '',
+                }
+              : undefined
+          }
+          saving={savingFeedback}
+          onSave={saveFeedback}
+          onClose={() => setFeedbackFor(null)}
+        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -490,5 +565,23 @@ const styles = StyleSheet.create({
   coachNotes: {
     color: colors.warning,
     fontSize: 13,
+  },
+  feedbackBtn: {
+    marginTop: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
+  },
+  feedbackBtnDone: {
+    borderColor: colors.accent,
+    backgroundColor: 'rgba(56,189,248,0.08)',
+  },
+  feedbackBtnText: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

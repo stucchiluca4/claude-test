@@ -1,4 +1,4 @@
-import type { CoachClient, NutritionDay, Program, ProgramWorkout } from '@wc/shared';
+import type { CoachClient, ExerciseFeedback, NutritionDay, Program, ProgramWorkout } from '@wc/shared';
 import { supabase } from './supabase';
 import { todayDayOfWeek } from './utils';
 
@@ -134,6 +134,45 @@ export async function upsertDailyBiofeedback(row: DailyBiofeedbackInput): Promis
     .from('daily_biofeedback')
     .upsert(row, { onConflict: 'coach_client_id,log_date' });
   throwIf(error);
+}
+
+/** Campi modificabili del feedback per esercizio (per l'upsert). */
+export interface ExerciseFeedbackInput {
+  workout_log_id: string;
+  workout_exercise_id: string;
+  exercise_id: string | null;
+  rpe?: number | null;
+  difficulty?: number | null;
+  energy?: number | null;
+  pain?: number | null;
+  notes?: string | null;
+}
+
+/** Tutti i feedback per esercizio di una seduta (per ripristinare la UI). */
+export async function getExerciseFeedbackForLog(workoutLogId: string): Promise<ExerciseFeedback[]> {
+  const { data, error } = await supabase
+    .from('exercise_feedback')
+    .select('*')
+    .eq('workout_log_id', workoutLogId);
+  throwIf(error);
+  return (data ?? []) as ExerciseFeedback[];
+}
+
+/**
+ * Inserisce o aggiorna il feedback di un esercizio della seduta
+ * (chiave: workout_log_id + workout_exercise_id).
+ */
+export async function upsertExerciseFeedback(row: ExerciseFeedbackInput): Promise<ExerciseFeedback> {
+  const { data, error } = await supabase
+    .from('exercise_feedback')
+    .upsert(
+      { ...row, updated_at: new Date().toISOString() },
+      { onConflict: 'workout_log_id,workout_exercise_id' },
+    )
+    .select('*')
+    .single();
+  throwIf(error);
+  return data as ExerciseFeedback;
 }
 
 /**

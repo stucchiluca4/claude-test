@@ -52,6 +52,19 @@ export const SET_TYPES = {
   amrap: 'AMRAP',
 } as const;
 
+/**
+ * Scale 1-10 del feedback per esercizio (atleta). `bands` descrive le fasce
+ * 1-3 / 4-6 / 7-10 mostrate accanto al valore (usato da DotScale).
+ */
+export const FEEDBACK_SCALES = {
+  rpe: { key: 'rpe', label: 'Sforzo percepito (RPE)', emoji: '🔥', bands: ['leggero', 'impegnativo', 'massimale'] },
+  difficulty: { key: 'difficulty', label: 'Difficoltà', emoji: '🎯', bands: ['facile', 'giusta', 'troppo dura'] },
+  energy: { key: 'energy', label: 'Energia', emoji: '⚡', bands: ['scarica', 'discreta', 'al top'] },
+  pain: { key: 'pain', label: 'Dolore / fastidio', emoji: '🩹', bands: ['nessuno', 'un po’', 'forte'] },
+} as const;
+
+export type FeedbackMetric = keyof typeof FEEDBACK_SCALES;
+
 export const DAYS_OF_WEEK = [
   'Lunedì',
   'Martedì',
