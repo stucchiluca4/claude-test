@@ -28,6 +28,7 @@ import { PrimaryButton } from '../../components/PrimaryButton';
 import { RestTimer } from '../../components/RestTimer';
 import { SetRow, type SetEntry } from '../../components/SetRow';
 import { ExerciseFeedbackModal, type ExerciseFeedbackValues } from '../../components/ExerciseFeedbackModal';
+import { AdvancedTimer } from '../../components/AdvancedTimer';
 
 interface RowState extends SetEntry {
   /** id della riga in set_logs una volta salvata (per gli update successivi). */
@@ -74,6 +75,7 @@ export default function WorkoutTrackerScreen() {
   const [feedbacks, setFeedbacks] = useState<Record<string, ExerciseFeedback>>({});
   const [feedbackFor, setFeedbackFor] = useState<WorkoutExercise | null>(null);
   const [savingFeedback, setSavingFeedback] = useState(false);
+  const [showTimer, setShowTimer] = useState(false);
 
   // Caricamento scheda + apertura del workout_log + ultima performance.
   useEffect(() => {
@@ -310,6 +312,15 @@ export default function WorkoutTrackerScreen() {
     }
   }
 
+  /** Porta il focus sul primo esercizio con serie ancora da completare. */
+  function goToNextExercise() {
+    const list = workout?.workout_exercises ?? [];
+    const next = list.find((we) =>
+      (we.exercise_sets ?? []).some((s) => !(entries[entryKey(we.id, s.set_number)]?.completed)),
+    );
+    if (next) setExpanded({ [next.id]: true });
+  }
+
   const completedCount = useMemo(
     () => Object.values(entries).filter((e) => e.completed).length,
     [entries]
@@ -429,6 +440,9 @@ export default function WorkoutTrackerScreen() {
               {completedCount}/{totalSets} serie
             </Text>
           </View>
+          <Pressable style={styles.timerBtn} onPress={() => setShowTimer(true)} hitSlop={8}>
+            <Text style={styles.timerBtnText}>⏱</Text>
+          </Pressable>
           <Text style={styles.stopwatch}>{formatClock(elapsed)}</Text>
         </View>
 
@@ -534,6 +548,15 @@ export default function WorkoutTrackerScreen() {
           onSave={saveFeedback}
           onClose={() => setFeedbackFor(null)}
         />
+
+        <AdvancedTimer
+          visible={showTimer}
+          onClose={() => setShowTimer(false)}
+          onAutoNext={() => {
+            setShowTimer(false);
+            goToNextExercise();
+          }}
+        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -564,6 +587,18 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: 17,
     fontWeight: '800',
+  },
+  timerBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  timerBtnText: {
+    fontSize: 20,
   },
   stopwatch: {
     color: colors.accent,

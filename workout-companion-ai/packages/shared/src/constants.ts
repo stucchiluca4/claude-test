@@ -65,6 +65,17 @@ export const FEEDBACK_SCALES = {
 
 export type FeedbackMetric = keyof typeof FEEDBACK_SCALES;
 
+/** Modalità dei timer di allenamento (lato atleta). */
+export const TIMER_MODES = {
+  countdown: { key: 'countdown', label: 'Countdown', emoji: '⏳', hint: 'Conto alla rovescia fino a zero.' },
+  countup: { key: 'countup', label: 'Cronometro', emoji: '⏱', hint: 'Conta in avanti, fermi quando vuoi.' },
+  emom: { key: 'emom', label: 'EMOM', emoji: '🔁', hint: 'A ogni intervallo parte un nuovo round.' },
+  amrap: { key: 'amrap', label: 'AMRAP', emoji: '🔥', hint: 'Più round possibili nel tempo dato.' },
+  hold: { key: 'hold', label: 'Isometria / Plank', emoji: '🧱', hint: 'Tieni la posizione; avviso al target.' },
+} as const;
+
+export type TimerMode = keyof typeof TIMER_MODES;
+
 export const DAYS_OF_WEEK = [
   'Lunedì',
   'Martedì',
