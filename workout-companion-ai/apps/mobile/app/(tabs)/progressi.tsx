@@ -5,9 +5,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   avgFrequencyPerWeek,
   currentStreak,
+  DAYS_OF_WEEK,
   estimate1RM,
+  generateInsights,
+  setVolume,
   volumeTrendPct,
   weeklyActivity,
+  type Insight,
   type PersonalRecord,
   type RecordType,
   type WeekBucket,
@@ -42,10 +46,18 @@ interface Analytics {
   trendPct: number | null;
   prs: PersonalRecord[];
   strength: StrengthSeries | null;
+  insights: Insight[];
 }
 
 function throwIf(error: { message: string } | null): void {
   if (error) throw new Error(error.message);
+}
+
+/** Colore del bordo/titolo insight in base alla gravità. */
+function insightColor(severity: Insight['severity']): string {
+  if (severity === 'warning') return colors.warning;
+  if (severity === 'positive') return colors.accent;
+  return colors.celeste;
 }
 
 /** Data "solo giorno" (YYYY-MM-DD) formattata in it-IT senza sfasamenti di fuso. */
@@ -100,14 +112,29 @@ export default function ProgressiScreen() {
         if (vals.length > 0) avgWeight = Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10;
       }
 
-      // Progressione forza: esercizio con più sedute registrate (1RM stimato per seduta).
+      // Recupero recente (per gli insight sul sovrallenamento).
+      let recovery: { recovery: number | null; muscle_soreness: number | null; sleep_quality: number | null }[] = [];
+      if (cc) {
+        const { data: rec } = await supabase
+          .from('daily_biofeedback')
+          .select('recovery, muscle_soreness, sleep_quality')
+          .eq('coach_client_id', cc.id)
+          .order('log_date', { ascending: false })
+          .limit(6);
+        recovery = (rec ?? []) as typeof recovery;
+      }
+
+      // Progressione forza + volume per gruppo muscolare (dalle serie recenti).
       let strength: StrengthSeries | null = null;
+      let strengthDeltaPct: number | null = null;
+      let strengthExerciseName: string | null = null;
+      const muscleMap = new Map<string, number>();
       const recentLogIds = logs.slice(0, 20).map((l) => l.id);
       const dateByLog = new Map(logs.map((l) => [l.id, l.started_at]));
       if (recentLogIds.length > 0) {
         const { data: setData2, error: setError } = await supabase
           .from('set_logs')
-          .select('workout_log_id, exercise_id, load_kg, reps, exercise:exercises(name)')
+          .select('workout_log_id, exercise_id, load_kg, reps, exercise:exercises(name, muscle_group)')
           .in('workout_log_id', recentLogIds)
           .eq('completed', true);
         throwIf(setError);
@@ -116,12 +143,14 @@ export default function ProgressiScreen() {
           exercise_id: string;
           load_kg: number | null;
           reps: number | null;
-          exercise: { name: string } | null;
+          exercise: { name: string; muscle_group: string | null } | null;
         }[];
 
         const byExercise = new Map<string, { name: string; bestByLog: Map<string, number> }>();
         for (const s of rows) {
           if (s.load_kg == null || s.reps == null) continue;
+          const group = s.exercise?.muscle_group;
+          if (group) muscleMap.set(group, (muscleMap.get(group) ?? 0) + setVolume(Number(s.load_kg), Number(s.reps)));
           const e1 = estimate1RM(Number(s.load_kg), Math.round(Number(s.reps)));
           if (!(e1 > 0)) continue;
           const rec = byExercise.get(s.exercise_id) ?? { name: s.exercise?.name ?? 'Esercizio', bestByLog: new Map() };
@@ -145,19 +174,52 @@ export default function ProgressiScreen() {
               return { label: `${d.getDate()}/${d.getMonth() + 1}`, value: Math.round(p.e1), display: `${Math.round(p.e1)}` };
             });
           strength = { exerciseName: top.name, points };
+          strengthExerciseName = top.name;
+          const first = points[0]?.value;
+          const last = points[points.length - 1]?.value;
+          if (first && first > 0 && last != null) strengthDeltaPct = Math.round(((last - first) / first) * 100);
         }
       }
+
+      // Giorno della settimana col volume medio più alto.
+      const dayVolume = new Array(7).fill(0) as number[];
+      for (const l of logs) {
+        const idx = (new Date(l.started_at).getDay() + 6) % 7; // 0 = lunedì
+        dayVolume[idx] += Number(l.total_volume_kg ?? 0);
+      }
+      const bestIdx = dayVolume.indexOf(Math.max(...dayVolume));
+      const bestDay = dayVolume[bestIdx] > 0 ? DAYS_OF_WEEK[bestIdx] : null;
+
+      // Media allenamenti/settimana prima e seconda metà del periodo.
+      const halfAvg = (arr: WeekBucket[]) =>
+        arr.length ? Math.round((arr.reduce((a, b) => a + b.count, 0) / arr.length) * 10) / 10 : 0;
+      const trendPct = volumeTrendPct(buckets);
+      const streak = currentStreak(buckets);
+
+      const insights = generateInsights({
+        totalWorkouts: logs.length,
+        trendPct,
+        countFirstHalfAvg: halfAvg(buckets.slice(0, 4)),
+        countLateHalfAvg: halfAvg(buckets.slice(4)),
+        streak,
+        recovery,
+        strengthDeltaPct,
+        strengthExerciseName,
+        muscleVolume: [...muscleMap.entries()].map(([group, volumeKg]) => ({ group, volumeKg })),
+        bestDay,
+      });
 
       setData({
         totalWorkouts: logs.length,
         totalVolumeKg,
-        streak: currentStreak(buckets),
+        streak,
         frequency: avgFrequencyPerWeek(buckets),
         avgWeight,
         buckets,
-        trendPct: volumeTrendPct(buckets),
+        trendPct,
         prs,
         strength,
+        insights,
       });
     } catch (e) {
       showError(e, 'Errore di caricamento');
@@ -232,6 +294,17 @@ export default function ProgressiScreen() {
           <StatPill label="Peso medio" value={data.avgWeight != null ? `${data.avgWeight} kg` : '—'} />
         </View>
 
+        {data.insights.length > 0 ? (
+          <Card title="🧠 Insight per te">
+            {data.insights.map((ins) => (
+              <View key={ins.id} style={[styles.insight, { borderLeftColor: insightColor(ins.severity) }]}>
+                <Text style={[styles.insightTitle, { color: insightColor(ins.severity) }]}>{ins.title}</Text>
+                <Text style={sharedStyles.body}>{ins.body}</Text>
+              </View>
+            ))}
+          </Card>
+        ) : null}
+
         <Card title="Volume settimanale (8 settimane)">
           <BarChart data={volumeBars} />
           {data.trendPct != null ? (
@@ -285,6 +358,17 @@ const styles = StyleSheet.create({
   pillRow: {
     flexDirection: 'row',
     gap: spacing.sm,
+  },
+  insight: {
+    borderLeftWidth: 3,
+    paddingLeft: spacing.md,
+    paddingVertical: spacing.sm,
+    gap: 2,
+    marginBottom: spacing.md,
+  },
+  insightTitle: {
+    fontSize: 14,
+    fontWeight: '800',
   },
   prRow: {
     flexDirection: 'row',
