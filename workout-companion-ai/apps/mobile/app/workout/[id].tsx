@@ -32,6 +32,7 @@ import { ExerciseFeedbackModal, type ExerciseFeedbackValues } from '../../compon
 import { AdvancedTimer } from '../../components/AdvancedTimer';
 import { AiCoachSheet } from '../../components/AiCoachSheet';
 import { ExerciseMediaBar } from '../../components/ExerciseMediaBar';
+import { demoLastPerf, demoWorkout } from '../../lib/demo';
 
 interface RowState extends SetEntry {
   /** id della riga in set_logs una volta salvata (per gli update successivi). */
@@ -89,6 +90,22 @@ export default function WorkoutTrackerScreen() {
 
     async function init() {
       if (!id) return;
+
+      // Modalità demo: allenamento di esempio, nessun accesso al database.
+      if (id === 'demo') {
+        const w = demoWorkout();
+        if (cancelled) return;
+        setWorkout(w);
+        setLogId('demo');
+        setLastPerf(demoLastPerf());
+        setClientUid(null);
+        setCoachClientId(null);
+        setExpanded(w.workout_exercises?.[0] ? { [w.workout_exercises[0].id]: true } : {});
+        startedAtRef.current = Date.now();
+        setLoading(false);
+        return;
+      }
+
       try {
         const uid = await getUserId();
         if (!uid) throw new Error('Sessione scaduta, effettua di nuovo l’accesso.');
@@ -240,6 +257,32 @@ export default function WorkoutTrackerScreen() {
     const key = entryKey(we.id, set.set_number);
     const entry = entries[key] ?? emptyEntry;
 
+    // Demo: tutto in locale, niente database.
+    if (logId === 'demo') {
+      if (!entry.completed) {
+        const load = parseNum(entry.load);
+        const reps = parseNum(entry.reps);
+        if (load == null || reps == null) {
+          Alert.alert('Dati mancanti', 'Inserisci carico e ripetizioni prima di completare la serie.');
+          return;
+        }
+        updateEntry(key, { completed: true });
+        if (set.rest_seconds && set.rest_seconds > 0) setRest({ seconds: set.rest_seconds, token: Date.now() });
+        const setsOfEx = we.exercise_sets ?? [];
+        const allDone =
+          setsOfEx.length > 0 &&
+          setsOfEx.every((s) =>
+            s.set_number === set.set_number
+              ? true
+              : (entries[entryKey(we.id, s.set_number)]?.completed ?? false),
+          );
+        if (allDone && !feedbacks[we.id]) setFeedbackFor(we);
+      } else {
+        updateEntry(key, { completed: false });
+      }
+      return;
+    }
+
     try {
       if (!entry.completed) {
         const load = parseNum(entry.load);
@@ -301,6 +344,25 @@ export default function WorkoutTrackerScreen() {
   async function saveFeedback(values: ExerciseFeedbackValues) {
     const we = feedbackFor;
     if (!we || !logId) return;
+    if (logId === 'demo') {
+      setFeedbacks((prev) => ({
+        ...prev,
+        [we.id]: {
+          id: `demo-fb-${we.id}`,
+          workout_log_id: 'demo',
+          workout_exercise_id: we.id,
+          exercise_id: we.exercise_id,
+          rpe: values.rpe,
+          difficulty: values.difficulty,
+          energy: values.energy,
+          pain: values.pain,
+          notes: values.notes || null,
+          created_at: new Date().toISOString(),
+        },
+      }));
+      setFeedbackFor(null);
+      return;
+    }
     setSavingFeedback(true);
     try {
       const saved = await upsertExerciseFeedback({
@@ -353,6 +415,15 @@ export default function WorkoutTrackerScreen() {
           onPress: async () => {
             try {
               setFinishing(true);
+              if (logId === 'demo') {
+                setFinishing(false);
+                Alert.alert(
+                  'Allenamento completato! 💪',
+                  'In modalità demo il riepilogo dettagliato (record, punteggio, recap AI) è disponibile solo con un account.',
+                  [{ text: 'OK', onPress: () => router.replace('/(tabs)') }],
+                );
+                return;
+              }
               const uid = await getUserId();
 
               // Volume totale + migliori valori per esercizio (candidati record).

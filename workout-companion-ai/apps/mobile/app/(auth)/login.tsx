@@ -1,15 +1,22 @@
 import { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Link } from 'expo-router';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Link, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
 import { colors, spacing, sharedStyles } from '../../lib/theme';
 import { PrimaryButton } from '../../components/PrimaryButton';
+import { setDemo } from '../../lib/demo';
 
 export default function LoginScreen() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+
+  function enterDemo() {
+    setDemo(true);
+    router.replace('/(tabs)');
+  }
 
   async function handleLogin() {
     if (!email.trim() || !password) {
@@ -59,6 +66,9 @@ export default function LoginScreen() {
               autoComplete="password"
             />
             <PrimaryButton label="ACCEDI" onPress={handleLogin} loading={loading} />
+            <Pressable style={styles.demoBtn} onPress={enterDemo}>
+              <Text style={styles.demoText}>🧪 Prova la demo (senza account)</Text>
+            </Pressable>
           </View>
 
           <View style={styles.footer}>
@@ -95,6 +105,15 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: spacing.lg,
+  },
+  demoBtn: {
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+  },
+  demoText: {
+    color: colors.celeste,
+    fontSize: 14,
+    fontWeight: '700',
   },
   footer: {
     flexDirection: 'row',

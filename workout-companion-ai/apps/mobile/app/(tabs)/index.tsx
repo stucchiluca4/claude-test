@@ -38,6 +38,7 @@ import {
 import { Card } from '../../components/Card';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { StatPill } from '../../components/StatPill';
+import { demoBiofeedback, demoWorkout, isDemo } from '../../lib/demo';
 
 interface HomeData {
   firstName: string;
@@ -60,6 +61,58 @@ export default function HomeScreen() {
 
   const load = useCallback(async () => {
     try {
+      if (isDemo()) {
+        const bf = demoBiofeedback();
+        setData({
+          firstName: 'Atleta',
+          coachClient: {
+            id: 'demo-cc',
+            coach_id: 'demo-coach',
+            client_id: 'demo-athlete',
+            status: 'active',
+            invite_email: null,
+            started_at: null,
+            created_at: new Date().toISOString(),
+          },
+          todayWorkout: demoWorkout(),
+          todayWorkoutDone: false,
+          nutritionDay: {
+            id: 'demo-nd',
+            nutrition_plan_id: 'demo',
+            week_number: 1,
+            day_of_week: 1,
+            day_type: 'training',
+            kcal: 2400,
+            protein_g: 180,
+            carbs_g: 250,
+            fat_g: 70,
+          },
+          latestWeight: bf.weight_kg,
+          checkinDue: false,
+          todayBiofeedback: {
+            id: 'demo-bf',
+            coach_client_id: 'demo-cc',
+            log_date: localDateString(new Date()),
+            sleep_quality: bf.sleep_quality,
+            sleep_hours: bf.sleep_hours,
+            stress_level: bf.stress_level,
+            energy_level: 7,
+            muscle_soreness: bf.muscle_soreness,
+            joint_stress: 2,
+            recovery: bf.recovery,
+            carbs_g: null,
+            protein_g: null,
+            fat_g: null,
+            kcal_consumed: null,
+            hydration_l: null,
+            steps: bf.steps,
+            weight_kg: bf.weight_kg,
+            notes: null,
+          },
+        });
+        return;
+      }
+
       const uid = await getUserId();
       if (!uid) return;
 
@@ -163,6 +216,11 @@ export default function HomeScreen() {
   async function saveQuick() {
     const cc = data?.coachClient;
     if (!cc || !quickForm) return;
+    if (isDemo()) {
+      Alert.alert('Modalità demo', 'Qui i dati non vengono salvati: è solo una prova.');
+      setQuickForm(null);
+      return;
+    }
     const isWeight = quickForm === 'peso';
     const weightKg = isWeight ? parseNum(quickValue) : null;
     if (isWeight && weightKg == null) {

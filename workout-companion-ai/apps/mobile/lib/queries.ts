@@ -9,6 +9,7 @@ import type {
 } from '@wc/shared';
 import { supabase } from './supabase';
 import { todayDayOfWeek } from './utils';
+import { DEMO_UID, isDemo } from './demo';
 
 const WORKOUT_MEDIA_BUCKET = 'workout-media';
 
@@ -16,8 +17,9 @@ function throwIf(error: { message: string } | null): void {
   if (error) throw new Error(error.message);
 }
 
-/** ID dell'utente loggato (null se la sessione è scaduta). */
+/** ID dell'utente loggato (null se la sessione è scaduta). In demo, un id fittizio. */
 export async function getUserId(): Promise<string | null> {
+  if (isDemo()) return DEMO_UID;
   const { data } = await supabase.auth.getSession();
   return data.session?.user.id ?? null;
 }

@@ -10,6 +10,7 @@ import { getUserId } from '../../lib/queries';
 import { Card } from '../../components/Card';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { StatPill } from '../../components/StatPill';
+import { isDemo, setDemo } from '../../lib/demo';
 
 const ROLE_LABELS: Record<UserRole, string> = {
   athlete: 'Atleta',
@@ -34,6 +35,27 @@ export default function ProfiloScreen() {
 
   const load = useCallback(async () => {
     try {
+      if (isDemo()) {
+        setData({
+          profile: {
+            id: 'demo-athlete',
+            role: 'athlete',
+            first_name: 'Atleta',
+            last_name: 'Demo',
+            avatar_url: null,
+            date_of_birth: null,
+            sex: null,
+            height_cm: null,
+            locale: 'it',
+            unit_system: 'metric',
+            onboarding_completed: true,
+          },
+          totalWorkouts: 8,
+          totalVolumeKg: 39900,
+        });
+        return;
+      }
+
       const uid = await getUserId();
       if (!uid) return;
 
@@ -83,6 +105,11 @@ export default function ProfiloScreen() {
   }
 
   function confirmLogout() {
+    if (isDemo()) {
+      setDemo(false);
+      router.replace('/(auth)/login');
+      return;
+    }
     Alert.alert('Uscire dall’account?', 'Potrai rientrare quando vuoi.', [
       { text: 'Annulla', style: 'cancel' },
       {

@@ -4,6 +4,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { isDemo } from '../lib/demo';
 import { colors, sharedStyles } from '../lib/theme';
 
 export default function RootLayout() {
@@ -22,6 +23,7 @@ export default function RootLayout() {
 
   // Redirect dichiarativo: fuori se sloggato, dentro se loggato.
   useEffect(() => {
+    if (isDemo()) return; // in demo non si tocca la navigazione
     if (session === undefined) return;
     const inAuthGroup = segments[0] === '(auth)';
     if (!session && !inAuthGroup) {
@@ -31,7 +33,7 @@ export default function RootLayout() {
     }
   }, [session, segments, router]);
 
-  if (session === undefined) {
+  if (session === undefined && !isDemo()) {
     return (
       <View style={[sharedStyles.screen, sharedStyles.center]}>
         <ActivityIndicator size="large" color={colors.accent} />

@@ -24,6 +24,7 @@ import { Card } from '../../components/Card';
 import { StatPill } from '../../components/StatPill';
 import { BarChart, type BarDatum } from '../../components/BarChart';
 import { EmptyState, LoadingState } from '../../components/States';
+import { demoBiofeedback, demoPRs, demoStrengthPoints, demoWorkoutLogs, isDemo } from '../../lib/demo';
 
 const RECORD_LABELS: Record<RecordType, string> = {
   max_load: 'Carico max',
@@ -73,6 +74,39 @@ export default function ProgressiScreen() {
 
   const load = useCallback(async () => {
     try {
+      if (isDemo()) {
+        const logs = demoWorkoutLogs(new Date());
+        const buckets = weeklyActivity(logs, 8, new Date());
+        setData({
+          totalWorkouts: logs.length,
+          totalVolumeKg: logs.reduce((a, l) => a + l.total_volume_kg, 0),
+          streak: currentStreak(buckets),
+          frequency: avgFrequencyPerWeek(buckets),
+          avgWeight: 74.5,
+          buckets,
+          trendPct: volumeTrendPct(buckets),
+          prs: demoPRs(),
+          strength: { exerciseName: 'Squat con bilanciere', points: demoStrengthPoints() },
+          insights: generateInsights({
+            totalWorkouts: logs.length,
+            trendPct: volumeTrendPct(buckets),
+            countFirstHalfAvg: 2,
+            countLateHalfAvg: 3,
+            streak: currentStreak(buckets),
+            recovery: [demoBiofeedback()],
+            strengthDeltaPct: 8,
+            strengthExerciseName: 'Squat con bilanciere',
+            muscleVolume: [
+              { group: 'quadricipiti', volumeKg: 12000 },
+              { group: 'petto', volumeKg: 6000 },
+              { group: 'dorso', volumeKg: 4000 },
+            ],
+            bestDay: 'Lunedì',
+          }),
+        });
+        return;
+      }
+
       const uid = await getUserId();
       if (!uid) return;
 
