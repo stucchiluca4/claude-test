@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Dumbbell, Brain, LineChart, Utensils } from 'lucide-react';
+import { Dumbbell, LineChart, Smartphone, Utensils } from 'lucide-react';
 
 /** Landing page minimale — verrà arricchita prima del lancio. */
 export default function Home() {
@@ -15,7 +15,13 @@ export default function Home() {
             href="/demo"
             className="px-4 py-2 rounded-lg border border-border hover:bg-card transition"
           >
-            Demo
+            Demo coach
+          </Link>
+          <Link
+            href="/atleta-demo"
+            className="px-4 py-2 rounded-lg border border-border hover:bg-card transition"
+          >
+            Demo atleta
           </Link>
           <Link
             href="/login"
@@ -40,18 +46,26 @@ export default function Home() {
           Allenamento, nutrizione, check-in, chat e AI Coach. Tutto in una piattaforma premium
           per coach, palestre e atleti.
         </p>
-        <Link
-          href="/demo"
-          className="mt-10 px-8 py-4 rounded-xl grad-primary hover:brightness-110 transition text-lg font-bold text-white shadow-[0_0_30px_-8px_rgba(56,189,248,.8)]"
-        >
-          Guarda la demo avanzata
-        </Link>
+        <div className="mt-10 flex flex-wrap justify-center gap-3">
+          <Link
+            href="/demo"
+            className="px-8 py-4 rounded-xl grad-primary hover:brightness-110 transition text-lg font-bold text-white shadow-[0_0_30px_-8px_rgba(56,189,248,.8)]"
+          >
+            Demo coach
+          </Link>
+          <Link
+            href="/atleta-demo"
+            className="px-8 py-4 rounded-xl border border-border hover:bg-card transition text-lg font-bold text-white"
+          >
+            Demo atleta
+          </Link>
+        </div>
 
         <div className="mt-20 grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl w-full">
           {[
             { icon: LineChart, title: 'Analytics reali', desc: 'Tonnellaggio, PR automatici e progressione per ogni esercizio.' },
             { icon: Utensils, title: 'Nutrizione precisa', desc: 'Macro per giorno, rotazione calorie, TDEE automatico.' },
-            { icon: Brain, title: 'AI Coach', desc: 'Report automatici e suggerimenti basati sui dati dei tuoi clienti.' },
+            { icon: Smartphone, title: 'App atleta', desc: 'Allenamento, nutrizione, check-in e chat visibili anche in demo web.' },
           ].map((f) => (
             <div key={f.title} className="glass rounded-xl p-6 text-left rise">
               <f.icon className="text-accent mb-3" size={26} />

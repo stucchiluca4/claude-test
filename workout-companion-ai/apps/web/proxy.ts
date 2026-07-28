@@ -35,6 +35,7 @@ export async function proxy(request: NextRequest) {
 
   const isAuthFlow = request.nextUrl.pathname.startsWith('/auth');
   const isPublicDemo = request.nextUrl.pathname.startsWith('/demo');
+  const isAthleteDemo = request.nextUrl.pathname.startsWith('/atleta-demo');
   const isStitchAsset = request.nextUrl.pathname.startsWith('/stitch-demo');
 
   if (request.nextUrl.pathname === '/' && request.nextUrl.searchParams.has('code')) {
@@ -48,6 +49,7 @@ export async function proxy(request: NextRequest) {
     !isAuthPage &&
     !isAuthFlow &&
     !isPublicDemo &&
+    !isAthleteDemo &&
     !isStitchAsset &&
     request.nextUrl.pathname !== '/'
   ) {
