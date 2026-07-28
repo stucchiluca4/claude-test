@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Client Intake - PT Coach Pro</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline-variant": "#434655",
+                        "on-secondary-container": "#c4abff",
+                        "primary": "#b6c4ff",
+                        "on-primary-fixed-variant": "#003ab1",
+                        "on-primary": "#00277e",
+                        "tertiary-fixed-dim": "#4cd7f6",
+                        "inverse-surface": "#dfe2ec",
+                        "surface-container-low": "#181c23",
+                        "on-primary-fixed": "#00164f",
+                        "secondary": "#d0bcff",
+                        "inverse-primary": "#014fe6",
+                        "on-surface": "#dfe2ec",
+                        "on-secondary-fixed-variant": "#5516be",
+                        "on-surface-variant": "#c3c5d8",
+                        "surface-container-highest": "#31353d",
+                        "outline": "#8d90a1",
+                        "primary-fixed-dim": "#b6c4ff",
+                        "surface-container-lowest": "#0a0e15",
+                        "background": "#0f141a",
+                        "on-tertiary-fixed": "#001f26",
+                        "primary-fixed": "#dce1ff",
+                        "surface-bright": "#353941",
+                        "on-primary-container": "#e4e7ff",
+                        "on-error-container": "#ffdad6",
+                        "on-error": "#690005",
+                        "surface-container": "#1c2027",
+                        "on-tertiary": "#003640",
+                        "primary-container": "#1e5af0",
+                        "error-container": "#93000a",
+                        "on-secondary-fixed": "#23005c",
+                        "surface": "#0f141a",
+                        "surface-variant": "#31353d",
+                        "secondary-container": "#571bc1",
+                        "on-background": "#dfe2ec",
+                        "tertiary": "#4cd7f6",
+                        "tertiary-container": "#007387",
+                        "error": "#ffb4ab",
+                        "tertiary-fixed": "#acedff",
+                        "inverse-on-surface": "#2d3038",
+                        "on-tertiary-fixed-variant": "#004e5c",
+                        "on-secondary": "#3c0091",
+                        "secondary-fixed-dim": "#d0bcff",
+                        "surface-container-high": "#262a32",
+                        "surface-dim": "#0f141a",
+                        "surface-tint": "#b6c4ff",
+                        "on-tertiary-container": "#c1f1ff",
+                        "secondary-fixed": "#e9ddff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Inter"],
+                        "body-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "data-mono": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-lg-mobile": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "data-mono": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .step-active { color: #b6c4ff; border-color: #b6c4ff; }
+        .glass-card { 
+            background: rgba(21, 25, 32, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface selection:bg-primary/30">
+<!-- Desktop Sidebar (SideNavBar) -->
+<aside class="hidden lg:flex flex-col fixed left-0 top-0 h-full w-64 bg-surface-container-low border-r border-outline-variant z-40">
+<div class="px-6 py-8">
+<h1 class="font-headline-md text-headline-md font-bold text-primary tracking-tight">PT Coach Pro</h1>
+<p class="text-label-md font-label-md text-on-surface-variant uppercase tracking-widest mt-1">Elite Coaching</p>
+</div>
+<nav class="flex-1 px-4 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 rounded-lg group" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<!-- Active State: Clients -->
+<a class="flex items-center gap-3 px-4 py-3 bg-primary-container text-on-primary-container font-bold rounded-lg transition-transform active:scale-95" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-label-md text-label-md">Clients</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 rounded-lg group" href="#">
+<span class="material-symbols-outlined">fitness_center</span>
+<span class="font-label-md text-label-md">Programs</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 rounded-lg group" href="#">
+<span class="material-symbols-outlined">restaurant</span>
+<span class="font-label-md text-label-md">Nutrition</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 rounded-lg group" href="#">
+<span class="material-symbols-outlined">forum</span>
+<span class="font-label-md text-label-md">Messages</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 rounded-lg group" href="#">
+<span class="material-symbols-outlined">folder_open</span>
+<span class="font-label-md text-label-md">Library</span>
+</a>
+</nav>
+<div class="p-4 mt-auto space-y-1 border-t border-outline-variant/30">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 rounded-lg" href="#">
+<span class="material-symbols-outlined">account_circle</span>
+<span class="font-label-md text-label-md">Profile</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 rounded-lg" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+</div>
+</aside>
+<!-- Top App Bar -->
+<header class="flex justify-between items-center px-4 h-16 w-full lg:pl-72 fixed top-0 bg-surface z-30 border-b border-outline-variant/20">
+<div class="flex items-center lg:hidden">
+<span class="material-symbols-outlined text-primary">menu</span>
+<span class="ml-3 font-headline-md-mobile text-headline-md-mobile font-black text-primary">PT Coach Pro</span>
+</div>
+<div class="hidden lg:block">
+<h2 class="text-on-surface font-headline-md text-headline-md">New Client Intake</h2>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors">notifications</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors">mail</span>
+<div class="w-8 h-8 rounded-full bg-surface-container-highest border border-outline-variant overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A professional studio portrait of a high-performance athletic coach with short hair, wearing a sleek black technical polo shirt. The background is a clean, dark-themed gymnasium with subtle blue LED accent lighting, reflecting a corporate modern fitness aesthetic. The coach has a confident and welcoming expression, conveying authority and expertise in sports science and athlete management." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC0ycFK1rN-26bJjNaVcQoG2klGxgLwM558tSnRvFUqhamLhAgQDsIIqz_vH1EdggaMXNuz7KDCl9OxGV0ssasXgdxVrzkFSFySFNKjPw-Gmo8hQl2JMyFHzAlWMYkyUSZOZYUIVwyLiX5ILhI09y2WDSMeb7HiD2bv1xJ8EtwBA4QO7p-9NYNYT5AZlaPm1_FSyCt_UvCF7cm6FZLuZabBdIeVGkdMDaM4qlpr1qUE_o-4CXTj1lc"/>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="min-h-screen pt-20 pb-24 px-4 lg:pl-72 lg:pr-8 lg:pt-24 max-w-[1440px] mx-auto">
+<!-- Multi-Step Progress Indicator -->
+<div class="mb-10 max-w-3xl mx-auto">
+<div class="flex items-center justify-between relative">
+<div class="absolute top-1/2 left-0 w-full h-0.5 bg-surface-container-highest -z-10 -translate-y-1/2"></div>
+<!-- Step 1 -->
+<div class="flex flex-col items-center gap-2 group">
+<div class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold ring-4 ring-background transition-all">1</div>
+<span class="font-label-md text-label-md text-primary">Personal Info</span>
+</div>
+<!-- Step 2 -->
+<div class="flex flex-col items-center gap-2 group">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest text-on-surface-variant border border-outline-variant flex items-center justify-center font-bold ring-4 ring-background">2</div>
+<span class="font-label-md text-label-md text-on-surface-variant">Body Stats</span>
+</div>
+<!-- Step 3 -->
+<div class="flex flex-col items-center gap-2 group">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest text-on-surface-variant border border-outline-variant flex items-center justify-center font-bold ring-4 ring-background">3</div>
+<span class="font-label-md text-label-md text-on-surface-variant">Goals</span>
+</div>
+</div>
+</div>
+<form class="space-y-8 max-w-4xl mx-auto">
+<!-- Section 1: Anagrafica -->
+<section class="glass-card rounded-xl overflow-hidden shadow-2xl transition-all duration-300">
+<button class="w-full px-6 py-5 flex items-center justify-between border-b border-outline-variant/30 hover:bg-surface-container-high transition-colors" onclick="this.nextElementSibling.classList.toggle('hidden');" type="button">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary bg-primary/10 p-2 rounded-lg">person</span>
+<div class="text-left">
+<h3 class="font-headline-md text-headline-md">Anagrafica</h3>
+<p class="text-body-sm text-on-surface-variant">Basic identification and professional data</p>
+</div>
+</div>
+<span class="material-symbols-outlined transition-transform">expand_more</span>
+</button>
+<div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="block font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Full Name</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-3 text-on-surface focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none" placeholder="e.g. Marcus Aurelius" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="block font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Date of Birth</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-3 text-on-surface focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none" type="date"/>
+</div>
+<div class="space-y-2">
+<label class="block font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Gender Identity</label>
+<select class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-3 text-on-surface focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none">
+<option>Male</option>
+<option>Female</option>
+<option>Non-binary</option>
+<option>Prefer not to say</option>
+</select>
+</div>
+<div class="space-y-2">
+<label class="block font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Occupation</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-3 text-on-surface focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none" placeholder="e.g. Software Engineer" type="text"/>
+</div>
+</div>
+</section>
+<!-- Section 2: Physical Evaluation -->
+<section class="glass-card rounded-xl overflow-hidden shadow-2xl transition-all duration-300">
+<button class="w-full px-6 py-5 flex items-center justify-between border-b border-outline-variant/30 hover:bg-surface-container-high transition-colors" onclick="this.nextElementSibling.classList.toggle('hidden');" type="button">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-tertiary bg-tertiary/10 p-2 rounded-lg">monitor_weight</span>
+<div class="text-left">
+<h3 class="font-headline-md text-headline-md">Physical Evaluation</h3>
+<p class="text-body-sm text-on-surface-variant">Plicae and body circumference measurements</p>
+</div>
+</div>
+<span class="material-symbols-outlined transition-transform">expand_more</span>
+</button>
+<div class="p-6 space-y-8">
+<!-- Body Fat Plicae Table -->
+<div>
+<h4 class="font-label-md text-label-md text-on-surface uppercase tracking-widest mb-4">Plicometry (mm)</h4>
+<div class="overflow-hidden border border-outline-variant rounded-xl bg-surface-container-lowest">
+<table class="w-full text-left border-collapse">
+<thead class="bg-surface-container-high border-b border-outline-variant">
+<tr>
+<th class="px-4 py-3 font-label-md text-label-md text-on-surface-variant uppercase">Site</th>
+<th class="px-4 py-3 font-label-md text-label-md text-on-surface-variant uppercase">Measurement</th>
+<th class="px-4 py-3 font-label-md text-label-md text-on-surface-variant uppercase">Notes</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/30">
+<tr>
+<td class="px-4 py-3 font-body-sm text-body-sm">Chest</td>
+<td class="px-4 py-3"><input class="w-24 bg-surface border border-outline-variant rounded px-2 py-1 text-on-surface focus:border-primary outline-none" type="number"/></td>
+<td class="px-4 py-3"><input class="w-full bg-transparent border-none focus:ring-0 text-on-surface-variant text-sm" placeholder="..." type="text"/></td>
+</tr>
+<tr>
+<td class="px-4 py-3 font-body-sm text-body-sm">Abdominal</td>
+<td class="px-4 py-3"><input class="w-24 bg-surface border border-outline-variant rounded px-2 py-1 text-on-surface focus:border-primary outline-none" type="number"/></td>
+<td class="px-4 py-3"><input class="w-full bg-transparent border-none focus:ring-0 text-on-surface-variant text-sm" placeholder="..." type="text"/></td>
+</tr>
+<tr>
+<td class="px-4 py-3 font-body-sm text-body-sm">Thigh</td>
+<td class="px-4 py-3"><input class="w-24 bg-surface border border-outline-variant rounded px-2 py-1 text-on-surface focus:border-primary outline-none" type="number"/></td>
+<td class="px-4 py-3"><input class="w-full bg-transparent border-none focus:ring-0 text-on-surface-variant text-sm" placeholder="..." type="text"/></td>
+</tr>
+<tr>
+<td class="px-4 py-3 font-body-sm text-body-sm">Suprailiac</td>
+<td class="px-4 py-3"><input class="w-24 bg-surface border border-outline-variant rounded px-2 py-1 text-on-surface focus:border-primary outline-none" type="number"/></td>
+<td class="px-4 py-3"><input class="w-full bg-transparent border-none focus:ring-0 text-on-surface-variant text-sm" placeholder="..." type="text"/></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Circumferences -->
+<div>
+<h4 class="font-label-md text-label-md text-on-surface uppercase tracking-widest mb-4">Body Circumferences (cm)</h4>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+<div class="p-4 border border-outline-variant rounded-xl bg-surface-container-lowest">
+<label class="block font-label-md text-label-md text-on-surface-variant mb-1">Neck</label>
+<input class="w-full bg-transparent border-none p-0 text-headline-md focus:ring-0 font-bold" placeholder="0.0" step="0.1" type="number"/>
+</div>
+<div class="p-4 border border-outline-variant rounded-xl bg-surface-container-lowest">
+<label class="block font-label-md text-label-md text-on-surface-variant mb-1">Shoulders</label>
+<input class="w-full bg-transparent border-none p-0 text-headline-md focus:ring-0 font-bold" placeholder="0.0" step="0.1" type="number"/>
+</div>
+<div class="p-4 border border-outline-variant rounded-xl bg-surface-container-lowest">
+<label class="block font-label-md text-label-md text-on-surface-variant mb-1">Waist</label>
+<input class="w-full bg-transparent border-none p-0 text-headline-md focus:ring-0 font-bold" placeholder="0.0" step="0.1" type="number"/>
+</div>
+<div class="p-4 border border-outline-variant rounded-xl bg-surface-container-lowest">
+<label class="block font-label-md text-label-md text-on-surface-variant mb-1">Hips</label>
+<input class="w-full bg-transparent border-none p-0 text-headline-md focus:ring-0 font-bold" placeholder="0.0" step="0.1" type="number"/>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Section 3: Lifestyle -->
+<section class="glass-card rounded-xl overflow-hidden shadow-2xl transition-all duration-300">
+<button class="w-full px-6 py-5 flex items-center justify-between border-b border-outline-variant/30 hover:bg-surface-container-high transition-colors" onclick="this.nextElementSibling.classList.toggle('hidden');" type="button">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-secondary bg-secondary/10 p-2 rounded-lg">auto_awesome</span>
+<div class="text-left">
+<h3 class="font-headline-md text-headline-md">Lifestyle</h3>
+<p class="text-body-sm text-on-surface-variant">Daily habits, nutrition and sleep patterns</p>
+</div>
+</div>
+<span class="material-symbols-outlined transition-transform">expand_more</span>
+</button>
+<div class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<div class="space-y-3">
+<div class="flex items-center gap-2 text-primary">
+<span class="material-symbols-outlined text-sm">restaurant</span>
+<label class="font-label-md text-label-md uppercase">Meals per day</label>
+</div>
+<div class="flex gap-2">
+<button class="flex-1 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg hover:border-primary transition-all font-bold" type="button">3</button>
+<button class="flex-1 py-2 bg-primary-container text-on-primary-container border border-primary rounded-lg font-bold" type="button">5</button>
+<button class="flex-1 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg hover:border-primary transition-all font-bold" type="button">6+</button>
+</div>
+</div>
+<div class="space-y-3">
+<div class="flex items-center gap-2 text-primary">
+<span class="material-symbols-outlined text-sm">bedtime</span>
+<label class="font-label-md text-label-md uppercase">Sleep Schedule</label>
+</div>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2.5 text-on-surface focus:ring-2 focus:ring-primary outline-none" placeholder="e.g. 11PM - 7AM (7 hours)" type="text"/>
+</div>
+<div class="space-y-3">
+<div class="flex items-center gap-2 text-primary">
+<span class="material-symbols-outlined text-sm">exercise</span>
+<label class="font-label-md text-label-md uppercase">Training Frequency</label>
+</div>
+<select class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2.5 text-on-surface focus:ring-2 focus:ring-primary outline-none">
+<option>1-2 times / week</option>
+<option>3-4 times / week</option>
+<option>5+ times / week</option>
+</select>
+</div>
+<div class="col-span-full space-y-3">
+<div class="flex items-center gap-2 text-primary">
+<span class="material-symbols-outlined text-sm">notes</span>
+<label class="font-label-md text-label-md uppercase">Daily Stress Level (1-10)</label>
+</div>
+<input class="w-full h-2 bg-surface-container-highest rounded-lg appearance-none cursor-pointer accent-primary" max="10" min="1" step="1" type="range"/>
+<div class="flex justify-between text-xs text-on-surface-variant px-1">
+<span>Zen</span>
+<span>Critical</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Actions -->
+<div class="flex flex-col md:flex-row items-center justify-end gap-4 pt-6">
+<button class="w-full md:w-auto px-8 py-4 text-on-surface-variant font-label-md text-label-md uppercase tracking-widest hover:text-on-surface transition-colors" type="button">Discard Draft</button>
+<button class="w-full md:w-auto px-10 py-4 bg-primary-container text-on-primary-container font-headline-md text-headline-md rounded-xl shadow-lg shadow-primary-container/20 flex items-center justify-center gap-3 transition-transform active:scale-95 group" type="submit">
+<span>Save &amp; Continue</span>
+<span class="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</button>
+</div>
+</form>
+</main>
+<!-- Bottom Navigation (Mobile Only) -->
+<nav class="fixed bottom-0 w-full z-50 bg-surface-container px-4 py-2 flex justify-around items-center border-t border-outline-variant shadow-lg lg:hidden">
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="text-[10px] font-label-md mt-1">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-2xl p-2 px-4" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="text-[10px] font-label-md mt-1 font-bold">Clients</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2" href="#">
+<span class="material-symbols-outlined">add_circle</span>
+<span class="text-[10px] font-label-md mt-1">Add</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2" href="#">
+<span class="material-symbols-outlined">restaurant</span>
+<span class="text-[10px] font-label-md mt-1">Nutrition</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px] font-label-md mt-1">Profile</span>
+</a>
+</nav>
+<!-- Micro-interaction Script -->
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const inputs = document.querySelectorAll('input, select');
+            inputs.forEach(input => {
+                input.addEventListener('focus', () => {
+                    input.closest('section').style.borderColor = '#1e5af0';
+                });
+                input.addEventListener('blur', () => {
+                    input.closest('section').style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                });
+            });
+        });
+    </script>
+</body></html>

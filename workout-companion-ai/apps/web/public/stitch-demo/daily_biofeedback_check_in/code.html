@@ -1,0 +1,318 @@
+<!DOCTYPE html><html lang="en" class="dark"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=block" rel="stylesheet"><script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script><script id="tailwind-config">try{
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "outline-variant": "#434655",
+                    "on-secondary-container": "#c4abff",
+                    "primary": "#b6c4ff",
+                    "on-primary-fixed-variant": "#003ab1",
+                    "on-primary": "#00277e",
+                    "tertiary-fixed-dim": "#4cd7f6",
+                    "inverse-surface": "#dfe2ec",
+                    "surface-container-low": "#181c23",
+                    "on-primary-fixed": "#00164f",
+                    "secondary": "#d0bcff",
+                    "inverse-primary": "#014fe6",
+                    "on-surface": "#dfe2ec",
+                    "on-secondary-fixed-variant": "#5516be",
+                    "on-surface-variant": "#c3c5d8",
+                    "surface-container-highest": "#31353d",
+                    "outline": "#8d90a1",
+                    "primary-fixed-dim": "#b6c4ff",
+                    "surface-container-lowest": "#0a0e15",
+                    "background": "#0f141a",
+                    "on-tertiary-fixed": "#001f26",
+                    "primary-fixed": "#dce1ff",
+                    "surface-bright": "#353941",
+                    "on-primary-container": "#e4e7ff",
+                    "on-error-container": "#ffdad6",
+                    "on-error": "#690005",
+                    "surface-container": "#1c2027",
+                    "on-tertiary": "#003640",
+                    "primary-container": "#1e5af0",
+                    "error-container": "#93000a",
+                    "on-secondary-fixed": "#23005c",
+                    "surface": "#0f141a",
+                    "surface-variant": "#31353d",
+                    "secondary-container": "#571bc1",
+                    "on-background": "#dfe2ec",
+                    "tertiary": "#4cd7f6",
+                    "tertiary-container": "#007387",
+                    "error": "#ffb4ab",
+                    "tertiary-fixed": "#acedff",
+                    "inverse-on-surface": "#2d3038",
+                    "on-tertiary-fixed-variant": "#004e5c",
+                    "on-secondary": "#3c0091",
+                    "secondary-fixed-dim": "#d0bcff",
+                    "surface-container-high": "#262a32",
+                    "surface-dim": "#0f141a",
+                    "surface-tint": "#b6c4ff",
+                    "on-tertiary-container": "#c1f1ff",
+                    "secondary-fixed": "#e9ddff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "margin-mobile": "16px",
+                    "max-width": "1440px",
+                    "gutter": "16px",
+                    "unit": "4px",
+                    "margin-desktop": "32px"
+            },
+            "fontFamily": {
+                    "headline-md": ["Inter"],
+                    "body-md": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "data-mono": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "label-md": ["Inter"],
+                    "headline-lg-mobile": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "data-mono": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    }catch(_e){}</script><meta charset="utf-8"></head><body class="flex flex-col min-h-screen">
+<!-- Top AppBar -->
+<header class="flex justify-between items-center px-4 h-16 w-full lg:pl-72 fixed top-0 z-40 bg-surface dark:bg-surface border-b border-outline-variant">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary cursor-pointer lg:hidden">menu</span>
+<h1 class="font-headline-md-mobile text-headline-md-mobile font-black text-primary">Workout Companion</h1>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer" data-original-icon="notifications">notifications</span>
+<div class="w-8 h-8 rounded-full bg-surface-container-highest overflow-hidden border border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="A professional high-resolution headshot of an elite fitness coach with a focused expression, set against a dark, technologically advanced gym background. The lighting is dramatic and moody, highlighting a crisp, modern athletic aesthetic with cool blue and deep charcoal tones consistent with a high-end corporate fitness application." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDb2BzlJzR9-YzKg1IO7hFAgirKV8dTibiK7Juc4G0XtlJBkYEkCNcRM2kaW4lvw1rFR16X4vPXN3fd3LGJBl4TrTmnFG8raPqaVSh-mtX18WQ_HiCZhDCUH0PYJVe2Da7Ul4fu38LYoaq04TsUaIrpWVo4IotgFTOOSWC7sUookDj1qpMB9bQAeJfx50e4_MtJ7zuPiTpsr63nV1r2Zd_qW2OLc3HkuK8gQ_fHclEj3m7TD9DBIOA">
+</div>
+</div>
+</header>
+<!-- Side Navigation (Desktop Only) -->
+<aside class="hidden lg:flex flex-col fixed left-0 top-0 h-full bg-surface-container-low dark:bg-surface-container-low w-64 border-r border-outline-variant z-50">
+<div class="p-6">
+<h2 class="font-headline-md text-headline-md font-bold text-primary">Workout Companion</h2>
+<p class="font-label-md text-label-md text-on-surface-variant opacity-70">Elite Coaching</p>
+</div>
+<nav class="flex-1 px-4 py-2 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg bg-primary-container text-on-primary-container font-bold" href="#">
+<span class="material-symbols-outlined">fitness_center</span>
+<span class="font-label-md text-label-md">Programs</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">restaurant</span>
+<span class="font-label-md text-label-md">Nutrition</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">forum</span>
+<span class="font-label-md text-label-md">Messages</span>
+</a>
+</nav>
+<div class="p-4 border-t border-outline-variant">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="flex-1 mt-16 mb-20 lg:mb-0 lg:ml-64 p-4 lg:p-8 max-w-4xl mx-auto w-full">
+<header class="mb-8">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile lg:text-headline-lg font-bold text-on-surface mb-2">Daily Biofeedback</h2>
+<p class="text-on-surface-variant font-body-sm text-body-sm">Assess your physiological readiness and track daily metrics.</p>
+</header>
+<!-- Check-in Cards Grid -->
+<div class="space-y-4 mb-10">
+<!-- Sleep Quality -->
+<div class="glass-card p-5 rounded-xl">
+<div class="flex justify-between items-center mb-4">
+<div class="flex items-center gap-3">
+<div class="p-2 bg-secondary-container rounded-lg text-on-secondary-container">
+<span class="material-symbols-outlined">bedtime</span>
+</div>
+<h3 class="font-body-md text-body-md font-semibold">Sleep Quality</h3>
+</div>
+<span class="font-data-mono text-data-mono text-secondary font-bold text-xl" id="sleep-val">5</span>
+</div>
+<input class="custom-slider" max="10" min="1" oninput="document.getElementById('sleep-val').innerText = this.value" style="accent-color: var(--secondary);" type="range" value="5">
+<div class="flex justify-between mt-2 font-label-md text-label-md text-on-surface-variant opacity-60">
+<span class="">Poor</span>
+<span class="">Excellent</span>
+</div>
+</div>
+<!-- Stress Level -->
+<div class="glass-card p-5 rounded-xl">
+<div class="flex justify-between items-center mb-4">
+<div class="flex items-center gap-3">
+<div class="p-2 bg-orange-900/30 rounded-lg text-orange-400">
+<span class="material-symbols-outlined">bolt</span>
+</div>
+<h3 class="font-body-md text-body-md font-semibold">Stress Level</h3>
+</div>
+<span class="font-data-mono text-data-mono text-orange-400 font-bold text-xl" id="stress-val">3</span>
+</div>
+<input class="custom-slider" max="10" min="1" oninput="document.getElementById('stress-val').innerText = this.value" style="accent-color: #fb923c;" type="range" value="3">
+<div class="flex justify-between mt-2 font-label-md text-label-md text-on-surface-variant opacity-60">
+<span class="">Low</span>
+<span class="">High</span>
+</div>
+</div>
+<!-- Energy -->
+<div class="glass-card p-5 rounded-xl border-l-4 border-l-green-500">
+<div class="flex justify-between items-center mb-4">
+<div class="flex items-center gap-3">
+<div class="p-2 bg-green-900/30 rounded-lg text-green-400">
+<span class="material-symbols-outlined">battery_full</span>
+</div>
+<h3 class="font-body-md text-body-md font-semibold">Energy</h3>
+</div>
+<span class="font-data-mono text-data-mono text-green-400 font-bold text-xl" id="energy-val">7</span>
+</div>
+<input class="custom-slider" max="10" min="1" oninput="document.getElementById('energy-val').innerText = this.value" style="accent-color: #4ade80;" type="range" value="7">
+<div class="flex justify-between mt-2 font-label-md text-label-md text-on-surface-variant opacity-60">
+<span class="">Depleted</span>
+<span class="">Peak</span>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Muscle Soreness -->
+<div class="glass-card p-5 rounded-xl">
+<div class="flex justify-between items-center mb-4">
+<div class="flex items-center gap-3">
+<div class="p-2 bg-tertiary-container rounded-lg text-on-tertiary-container">
+<span class="material-symbols-outlined">person_pin</span>
+</div>
+<h3 class="font-body-md text-body-md font-semibold">Muscle Soreness</h3>
+</div>
+<span class="font-data-mono text-data-mono text-tertiary font-bold text-xl" id="sore-val">4</span>
+</div>
+<input class="custom-slider" max="10" min="1" oninput="document.getElementById('sore-val').innerText = this.value" style="accent-color: #4cd7f6;" type="range" value="4">
+</div>
+<!-- Articular Stress -->
+<div class="glass-card p-5 rounded-xl">
+<div class="flex justify-between items-center mb-4">
+<div class="flex items-center gap-3">
+<div class="p-2 bg-tertiary-container rounded-lg text-on-tertiary-container">
+<span class="material-symbols-outlined" data-original-icon="kneegap">circle</span>
+</div>
+<h3 class="font-body-md text-body-md font-semibold">Articular Stress</h3>
+</div>
+<span class="font-data-mono text-data-mono text-tertiary font-bold text-xl" id="joint-val">2</span>
+</div>
+<input class="custom-slider" max="10" min="1" oninput="document.getElementById('joint-val').innerText = this.value" style="accent-color: #4cd7f6;" type="range" value="2">
+</div>
+</div>
+<!-- Recovery Status -->
+<div class="glass-card p-5 rounded-xl border-l-4 border-l-error">
+<div class="flex justify-between items-center mb-4">
+<div class="flex items-center gap-3">
+<div class="p-2 bg-error-container rounded-lg text-on-error-container">
+<span class="material-symbols-outlined">rebase_edit</span>
+</div>
+<h3 class="font-body-md text-body-md font-semibold">Recovery Status</h3>
+</div>
+<span class="font-data-mono text-data-mono text-error font-bold text-xl" id="recovery-val">6</span>
+</div>
+<input class="custom-slider" max="10" min="1" oninput="document.getElementById('recovery-val').innerText = this.value" style="accent-color: #ffb4ab;" type="range" value="6">
+<div class="flex justify-between mt-2 font-label-md text-label-md text-on-surface-variant opacity-60">
+<span class="">Compromised</span>
+<span class="">Ready</span>
+</div>
+</div>
+</div>
+<!-- Nutrition Section -->
+<section class="mb-12">
+<h3 class="font-headline-md text-headline-md font-bold text-on-surface mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">restaurant</span>
+                Nutrition Logging
+            </h3>
+<div class="grid grid-cols-3 gap-3 md:gap-6">
+<div class="flex flex-col">
+<label class="font-label-md text-label-md text-on-surface-variant mb-2">Protein (g)</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant focus:border-primary-container rounded-lg p-4 font-data-mono text-data-mono text-center text-xl transition-all" placeholder="0" type="number">
+</div>
+<div class="flex flex-col">
+<label class="font-label-md text-label-md text-on-surface-variant mb-2">Carbs (g)</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant focus:border-primary-container rounded-lg p-4 font-data-mono text-data-mono text-center text-xl transition-all" placeholder="0" type="number">
+</div>
+<div class="flex flex-col">
+<label class="font-label-md text-label-md text-on-surface-variant mb-2">Fats (g)</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant focus:border-primary-container rounded-lg p-4 font-data-mono text-data-mono text-center text-xl transition-all" placeholder="0" type="number">
+</div>
+</div>
+</section>
+<!-- CTA Button -->
+<div class="pb-10">
+<button class="w-full bg-primary-container text-on-primary-container font-headline-md py-5 rounded-2xl flex items-center justify-center gap-3 active:scale-[0.97] transition-transform shadow-xl">
+<span class="material-symbols-outlined">check_circle</span>
+                Salva check
+            </button>
+</div>
+</main>
+<!-- -->
+<footer class="fixed bottom-0 w-full z-50 flex justify-around items-center px-4 py-2 lg:hidden bg-surface-container dark:bg-surface-container border-t border-outline-variant shadow-lg">
+<div class="flex flex-col items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-md text-label-md-mobile">Home</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">fitness_center</span>
+<span class="font-label-md text-label-md-mobile">Training</span>
+</div>
+<div class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-2xl p-2 px-4">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">add_circle</span>
+<span class="font-label-md text-label-md-mobile">Add</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">restaurant</span>
+<span class="font-label-md text-label-md-mobile">Nutrition</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-md text-label-md-mobile">Profile</span>
+</div>
+</footer>
+<script class="">
+        // Micro-interaction for range inputs
+        document.querySelectorAll('.custom-slider').forEach(slider => {
+            slider.addEventListener('input', (e) => {
+                const parent = e.target.closest('.glass-card');
+                parent.style.borderColor = 'rgba(182, 196, 255, 0.4)';
+                setTimeout(() => {
+                    parent.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                }, 400);
+            });
+        });
+
+        // Numeric input formatting logic
+        document.querySelectorAll('input[type="number"]').forEach(input => {
+            input.addEventListener('focus', () => {
+                input.parentElement.classList.add('scale-105');
+            });
+            input.addEventListener('blur', () => {
+                input.parentElement.classList.remove('scale-105');
+            });
+        });
+    </script>
+
+</body></html>

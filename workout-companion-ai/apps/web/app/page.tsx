@@ -12,6 +12,12 @@ export default function Home() {
         </div>
         <div className="flex gap-3">
           <Link
+            href="/demo"
+            className="px-4 py-2 rounded-lg border border-border hover:bg-card transition"
+          >
+            Demo
+          </Link>
+          <Link
             href="/login"
             className="px-4 py-2 rounded-lg border border-border hover:bg-card transition"
           >
@@ -35,10 +41,10 @@ export default function Home() {
           per coach, palestre e atleti.
         </p>
         <Link
-          href="/registrati"
+          href="/demo"
           className="mt-10 px-8 py-4 rounded-xl grad-primary hover:brightness-110 transition text-lg font-bold text-white shadow-[0_0_30px_-8px_rgba(56,189,248,.8)]"
         >
-          Prova gratis 14 giorni
+          Guarda la demo avanzata
         </Link>
 
         <div className="mt-20 grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl w-full">

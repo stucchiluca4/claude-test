@@ -1,0 +1,440 @@
+<!DOCTYPE html><html lang="en" class="dark"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=block" rel="stylesheet"><script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script><script id="tailwind-config">try{
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "outline-variant": "#434655",
+                    "on-secondary-container": "#c4abff",
+                    "primary": "#b6c4ff",
+                    "on-primary-fixed-variant": "#003ab1",
+                    "on-primary": "#00277e",
+                    "tertiary-fixed-dim": "#4cd7f6",
+                    "inverse-surface": "#dfe2ec",
+                    "surface-container-low": "#181c23",
+                    "on-primary-fixed": "#00164f",
+                    "secondary": "#d0bcff",
+                    "inverse-primary": "#014fe6",
+                    "on-surface": "#dfe2ec",
+                    "on-secondary-fixed-variant": "#5516be",
+                    "on-surface-variant": "#c3c5d8",
+                    "surface-container-highest": "#31353d",
+                    "outline": "#8d90a1",
+                    "primary-fixed-dim": "#b6c4ff",
+                    "surface-container-lowest": "#0a0e15",
+                    "background": "#0f141a",
+                    "on-tertiary-fixed": "#001f26",
+                    "primary-fixed": "#dce1ff",
+                    "surface-bright": "#353941",
+                    "on-primary-container": "#e4e7ff",
+                    "on-error-container": "#ffdad6",
+                    "on-error": "#690005",
+                    "surface-container": "#1c2027",
+                    "on-tertiary": "#003640",
+                    "primary-container": "#1e5af0",
+                    "error-container": "#93000a",
+                    "on-secondary-fixed": "#23005c",
+                    "surface": "#0f141a",
+                    "surface-variant": "#31353d",
+                    "secondary-container": "#571bc1",
+                    "on-background": "#dfe2ec",
+                    "tertiary": "#4cd7f6",
+                    "tertiary-container": "#007387",
+                    "error": "#ffb4ab",
+                    "tertiary-fixed": "#acedff",
+                    "inverse-on-surface": "#2d3038",
+                    "on-tertiary-fixed-variant": "#004e5c",
+                    "on-secondary": "#3c0091",
+                    "secondary-fixed-dim": "#d0bcff",
+                    "surface-container-high": "#262a32",
+                    "surface-dim": "#0f141a",
+                    "surface-tint": "#b6c4ff",
+                    "on-tertiary-container": "#c1f1ff",
+                    "secondary-fixed": "#e9ddff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "margin-mobile": "16px",
+                    "max-width": "1440px",
+                    "gutter": "16px",
+                    "unit": "4px",
+                    "margin-desktop": "32px"
+            },
+            "fontFamily": {
+                    "headline-md": ["Inter"],
+                    "body-md": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "data-mono": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "label-md": ["Inter"],
+                    "headline-lg-mobile": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "data-mono": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    }catch(_e){}</script><meta charset="utf-8"></head><body class="bg-background text-on-background">
+<!-- Side Navigation Bar (Desktop) -->
+<aside class="hidden lg:flex flex-col fixed left-0 top-0 h-full bg-surface-container-low border-r border-outline-variant w-64 z-40">
+<div class="p-6">
+<h1 class="font-headline-md text-headline-md font-bold text-primary">Workout Companion</h1>
+<p class="text-label-md font-label-md text-on-surface-variant">Elite Coaching</p>
+</div>
+<nav class="flex-1 px-4 space-y-1">
+<a href="#" class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 rounded-lg group">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a href="#" class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 rounded-lg group">
+<span class="material-symbols-outlined">group</span>
+<span class="font-label-md text-label-md">Clients</span>
+</a>
+<a href="#" class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 rounded-lg group">
+<span class="material-symbols-outlined">fitness_center</span>
+<span class="font-label-md text-label-md">Programs</span>
+</a>
+<a href="#" class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 rounded-lg group">
+<span class="material-symbols-outlined">restaurant</span>
+<span class="font-label-md text-label-md">Nutrition</span>
+</a>
+<a href="#" class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 rounded-lg group">
+<span class="material-symbols-outlined">forum</span>
+<span class="font-label-md text-label-md">Messages</span>
+</a>
+<a href="#" class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 rounded-lg group">
+<span class="material-symbols-outlined">folder_open</span>
+<span class="font-label-md text-label-md">Library</span>
+</a>
+<!-- Active Tab: Payments -->
+<a href="#" class="flex items-center gap-3 px-3 py-2 bg-primary-container text-on-primary-container font-bold rounded-lg transition-colors duration-200 group">
+<span class="material-symbols-outlined">payments</span>
+<span class="font-label-md text-label-md">Payments</span>
+</a>
+<a href="#" class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 rounded-lg group">
+<span class="material-symbols-outlined">insights</span>
+<span class="font-label-md text-label-md">Analytics</span>
+</a>
+</nav>
+<div class="p-4 border-t border-outline-variant space-y-1">
+<button class="w-full bg-primary-container text-on-primary-container font-bold py-2 rounded-lg mb-4 text-label-md font-label-md hover:opacity-90 active:scale-95 transition-all">
+                Create New Program
+            </button>
+<a href="#" class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 rounded-lg">
+<span class="material-symbols-outlined">account_circle</span>
+<span class="font-label-md text-label-md">Profile</span>
+</a>
+<a href="#" class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 rounded-lg">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+</div>
+</aside>
+<!-- Top App Bar (Mobile + Tablet) -->
+<header class="flex justify-between items-center px-4 h-16 w-full lg:pl-72 fixed top-0 bg-surface z-30 border-b border-outline-variant lg:border-none">
+<div class="flex items-center gap-2 lg:hidden">
+<h1 class="font-headline-md-mobile text-headline-md-mobile font-black text-primary">Workout Companion</h1>
+</div>
+<div class="hidden lg:block">
+<h2 class="font-headline-md text-headline-md font-bold text-on-surface">Coaching Plans</h2>
+</div>
+<div class="flex items-center gap-4">
+<div class="hidden md:flex bg-surface-container-high rounded-full px-4 py-1.5 items-center gap-2 border border-outline-variant">
+<span class="material-symbols-outlined text-outline text-sm">search</span>
+<input type="text" placeholder="Search plans..." class="bg-transparent border-none focus:ring-0 text-body-sm font-body-sm text-on-surface placeholder:text-outline w-40">
+</div>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors">notifications</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors">mail</span>
+<div class="w-8 h-8 rounded-full bg-surface-container-highest border border-outline-variant flex items-center justify-center overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A professional studio portrait of a fitness coach with short hair wearing technical athletic gear. The lighting is cinematic and high-contrast, emphasizing strength and focus. The background is a dark, modern gym setting with subtle blue accent lights that match the corporate fitness brand aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAV21f6KwJEZW-D5PhtuzpEdiLWnVkKcKrlHygcFxbsP0cgNJJ-_VrKOxVN_UrrE2IfrG_xdSW1_FIYRQf01Dc4nhe0O7J0TLFpI-rm_66dl0L_3XLxqWe9sPxhLcNKAJxCcEwo-_dDuaFyobzQeJiBkz967VJkKI2T_cgk0sbGuyZO0dB_q4Mznt16nRTMsMR8CwsHKDLdZxtO3x23q8tDLLF53M2lYD1JHAAot822RfmX3yqKC8I">
+</div>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="lg:pl-64 pt-20 pb-24 min-h-screen">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<!-- Page Header / Actions -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
+<div>
+<h1 class="font-headline-lg-mobile lg:font-headline-lg text-headline-lg-mobile lg:text-headline-lg text-on-surface">Coaching Pricing Plans</h1>
+<p class="text-body-md font-body-md text-on-surface-variant mt-1">Manage and update your subscription tiers for your athletes.</p>
+</div>
+<button class="flex items-center justify-center gap-2 px-6 py-3 bg-primary-container text-on-primary-container font-bold rounded-xl shadow-lg active:scale-95 transition-all">
+<span class="material-symbols-outlined">add_circle</span>
+<span class="font-label-md text-label-md">Add New Plan</span>
+</button>
+</div>
+<!-- Pricing Bento Grid -->
+<div class="pricing-grid">
+<!-- Plan 1: Mensile -->
+<div class="glass-card rounded-xl p-6 flex flex-col relative overflow-hidden group hover:border-primary transition-all duration-300">
+<div class="absolute top-0 right-0 p-4">
+<span class="px-3 py-1 bg-surface-container-highest text-on-surface-variant text-label-md font-label-md rounded-full border border-outline-variant">Draft</span>
+</div>
+<div class="mb-6">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-1">Mensile</h3>
+<div class="flex items-baseline gap-1">
+<span class="font-display-lg text-display-lg text-primary">79€</span>
+<span class="text-body-md font-body-md text-on-surface-variant">/mo</span>
+</div>
+</div>
+<div class="space-y-4 mb-8 flex-1">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-sm">event_repeat</span>
+</div>
+<div>
+<p class="text-label-md font-label-md text-on-surface-variant">Check Frequency</p>
+<p class="text-body-md font-body-md text-on-surface">Weekly Check-ins</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-sm">fitness_center</span>
+</div>
+<div>
+<p class="text-label-md font-label-md text-on-surface-variant">Training</p>
+<p class="text-body-md font-body-md text-on-surface">Full Custom Program</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-sm">chat_bubble</span>
+</div>
+<div>
+<p class="text-label-md font-label-md text-on-surface-variant">Support</p>
+<p class="text-body-md font-body-md text-on-surface">24/7 Chat Access</p>
+</div>
+</div>
+</div>
+<button class="w-full py-3 border border-outline text-on-surface font-bold rounded-lg hover:bg-surface-container-high transition-colors">
+                        Edit Plan Details
+                    </button>
+</div>
+<!-- Plan 2: 3 Mesi (Popular/Active) -->
+<div class="glass-card rounded-xl p-6 flex flex-col relative overflow-hidden border-primary group hover:shadow-[0px_4px_20px_rgba(30,90,240,0.15)] transition-all duration-300">
+<div class="absolute top-0 right-0 p-4">
+<span class="px-3 py-1 bg-secondary-container text-on-secondary-container text-label-md font-label-md rounded-full border border-secondary-container shadow-sm">Active</span>
+</div>
+<div class="mb-6">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-1">3 Mesi</h3>
+<div class="flex items-baseline gap-1">
+<span class="font-display-lg text-display-lg text-secondary">199€</span>
+<span class="text-body-md font-body-md text-on-surface-variant">/total</span>
+</div>
+<p class="text-label-md font-label-md text-tertiary mt-1">Saves 38€ vs Monthly</p>
+</div>
+<div class="space-y-4 mb-8 flex-1">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-secondary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary text-sm">event_repeat</span>
+</div>
+<div>
+<p class="text-label-md font-label-md text-on-surface-variant">Check Frequency</p>
+<p class="text-body-md font-body-md text-on-surface">Bi-weekly Check-ins</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-secondary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary text-sm">restaurant</span>
+</div>
+<div>
+<p class="text-label-md font-label-md text-on-surface-variant">Nutrition</p>
+<p class="text-body-md font-body-md text-on-surface">Full Macros + Meal Plan</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-secondary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary text-sm">videocam</span>
+</div>
+<div class="">
+<p class="text-label-md font-label-md text-on-surface-variant">Consultations</p>
+<p class="text-body-md font-body-md text-on-surface">1x Video Call / Month</p>
+</div>
+</div>
+</div>
+<button class="w-full py-3 bg-primary-container text-on-primary-container font-bold rounded-lg hover:opacity-90 active:scale-95 transition-all">
+                        View Subscribers
+                    </button>
+</div>
+<!-- Plan 3: Annuale -->
+<div class="glass-card rounded-xl p-6 flex flex-col relative overflow-hidden group hover:border-primary transition-all duration-300">
+<div class="absolute top-0 right-0 p-4">
+<span class="px-3 py-1 bg-surface-container-highest text-on-surface-variant text-label-md font-label-md rounded-full border border-outline-variant">Active</span>
+</div>
+<div class="mb-6">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-1">Annuale</h3>
+<div class="flex items-baseline gap-1">
+<span class="font-display-lg text-display-lg text-tertiary">649€</span>
+<span class="text-body-md font-body-md text-on-surface-variant">/year</span>
+</div>
+<p class="text-label-md font-label-md text-tertiary mt-1">Best Value Plan</p>
+</div>
+<div class="space-y-4 mb-8 flex-1">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-tertiary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-tertiary text-sm">event_repeat</span>
+</div>
+<div class="">
+<p class="text-label-md font-label-md text-on-surface-variant">Check Frequency</p>
+<p class="text-body-md font-body-md text-on-surface">Weekly Premium Check-ins</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-tertiary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-tertiary text-sm">cardiology</span>
+</div>
+<div>
+<p class="text-label-md font-label-md text-on-surface-variant">Analysis</p>
+<p class="text-body-md font-body-md text-on-surface">Bloodwork Review + HRV Data</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-tertiary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-tertiary text-sm">workspace_premium</span>
+</div>
+<div class="">
+<p class="text-label-md font-label-md text-on-surface-variant">Extras</p>
+<p class="text-body-md font-body-md text-on-surface">Priority App Support</p>
+</div>
+</div>
+</div>
+<button class="w-full py-3 border border-outline text-on-surface font-bold rounded-lg hover:bg-surface-container-high transition-colors">
+                        Edit Plan Details
+                    </button>
+</div>
+</div>
+<!-- Stats/Analytics Snapshot -->
+<div class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="bg-surface-container rounded-xl p-5 border border-outline-variant flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary-container">trending_up</span>
+</div>
+<div>
+<p class="text-label-md font-label-md text-on-surface-variant">Total Revenue</p>
+<p class="font-headline-md text-headline-md text-on-surface">€12,450.00</p>
+</div>
+</div>
+<div class="bg-surface-container rounded-xl p-5 border border-outline-variant flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-secondary-container">group</span>
+</div>
+<div>
+<p class="text-label-md font-label-md text-on-surface-variant">Active Subscriptions</p>
+<p class="font-headline-md text-headline-md text-on-surface">42 Athletes</p>
+</div>
+</div>
+<div class="bg-surface-container rounded-xl p-5 border border-outline-variant flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-tertiary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-tertiary-container">replay</span>
+</div>
+<div>
+<p class="text-label-md font-label-md text-on-surface-variant">Churn Rate</p>
+<p class="font-headline-md text-headline-md text-on-surface">2.4%</p>
+</div>
+</div>
+</div>
+<!-- Recent Transactions Table -->
+<div class="mt-12 bg-surface-container rounded-xl border border-outline-variant overflow-hidden">
+<div class="px-6 py-4 border-b border-outline-variant flex justify-between items-center">
+<h3 class="font-headline-md text-headline-md text-on-surface">Recent Payments</h3>
+<button class="text-primary text-label-md font-label-md hover:underline">View All</button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead class="bg-surface-container-highest">
+<tr>
+<th class="px-6 py-3 text-label-md font-label-md text-on-surface-variant uppercase tracking-wider">Athlete</th>
+<th class="px-6 py-3 text-label-md font-label-md text-on-surface-variant uppercase tracking-wider">Plan</th>
+<th class="px-6 py-3 text-label-md font-label-md text-on-surface-variant uppercase tracking-wider">Date</th>
+<th class="px-6 py-3 text-label-md font-label-md text-on-surface-variant uppercase tracking-wider">Amount</th>
+<th class="px-6 py-3 text-label-md font-label-md text-on-surface-variant uppercase tracking-wider text-right">Status</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<tr class="hover:bg-surface-container-high transition-colors">
+<td class="px-6 py-4 flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-outline-variant overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A close up portrait of a young athletic woman with her hair in a ponytail, smiling confidently at the camera. She is wearing a dark grey tech-fabric tank top. The background is blurred with bokeh highlights of gym equipment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDJorATLo2ghHp4aK27LpiEb1LDIL1r6qn5ZCY5bdgNq8n4fz3hago-tQbM7iwXd0rxDNGTud5uMk_dmzhk4MKr44CXy9uK6wAFcRG1u8nPwtdpMZWRimSQm_jUjoWo4calTPUDSHUctz0h-VSkP63A27asStFrV1zuHrklixtJ6nCPKKbY1bKj1E6CfmoudoU1pZZxem0Ftql6hcwReZZbS2UFd-E01pmv7vEeWiu3vPIz0VLFmFg">
+</div>
+<span class="text-body-md font-body-md text-on-surface">Marco Rossi</span>
+</td>
+<td class="px-6 py-4 text-body-md font-body-md text-on-surface-variant">Mensile</td>
+<td class="px-6 py-4 text-body-md font-body-md text-on-surface-variant">Oct 24, 2023</td>
+<td class="px-6 py-4 text-body-md font-body-md text-on-surface">€79.00</td>
+<td class="px-6 py-4 text-right">
+<span class="px-2 py-1 bg-green-500/10 text-green-400 text-label-md font-label-md rounded-md">Paid</span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-high transition-colors">
+<td class="px-6 py-4 flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-outline-variant overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A portrait of a male athlete with a beard, wearing a black training shirt, looking focused. The lighting is moody and dramatic with cold blue tones. High-end professional sports photography style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCxtsm9JNyIkvCwemtGGW6C6eo0jt32r-oRVlmIBJhWv92iR5VjJlXk7J-PcLqkLpl2ndDndIpOP2A7VqyWSL9ly84GOeI53_ZUfs9Kf7x4qIOPkRaQpKN2hraioV5IIgZJDkCoStHVWDV_CXUlkmCMQgZbvR_4pS5yzglXzSl_ZDqbGKtPHS_XRew_QrIn0QZo4PrQXK5hZkhO2CXDZFpvuPp529SnNc1OiQUmHEhWgrUIMFrcdnc">
+</div>
+<span class="text-body-md font-body-md text-on-surface">Luca Bianchi</span>
+</td>
+<td class="px-6 py-4 text-body-md font-body-md text-on-surface-variant">3 Mesi</td>
+<td class="px-6 py-4 text-body-md font-body-md text-on-surface-variant">Oct 22, 2023</td>
+<td class="px-6 py-4 text-body-md font-body-md text-on-surface">€199.00</td>
+<td class="px-6 py-4 text-right">
+<span class="px-2 py-1 bg-green-500/10 text-green-400 text-label-md font-label-md rounded-md">Paid</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar (Mobile only) -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-around items-center px-4 py-2 bg-surface-container border-t border-outline-variant lg:hidden">
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="text-label-md-mobile font-label-md">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">fitness_center</span>
+<span class="text-label-md-mobile font-label-md">Training</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">add_circle</span>
+<span class="text-label-md-mobile font-label-md">Add</span>
+</a>
+<!-- Active Tab: Payments/-->
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-2xl px-4 py-1" href="#">
+<span class="material-symbols-outlined">payments</span>
+<span class="text-label-md-mobile font-label-md">Payments</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="text-label-md-mobile font-label-md">Profile</span>
+</a>
+</nav>
+<script class="">
+        // Micro-interactions for pricing cards
+        document.querySelectorAll('.glass-card').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.transform = 'translateY(-4px)';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'translateY(0)';
+            });
+        });
+    </script>
+</body></html>

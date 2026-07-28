@@ -1,0 +1,404 @@
+<!DOCTYPE html><html lang="en" class="dark"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=block" rel="stylesheet"><script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script><script id="tailwind-config">try{
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "outline-variant": "#434655",
+                    "on-secondary-container": "#c4abff",
+                    "primary": "#b6c4ff",
+                    "on-primary-fixed-variant": "#003ab1",
+                    "on-primary": "#00277e",
+                    "tertiary-fixed-dim": "#4cd7f6",
+                    "inverse-surface": "#dfe2ec",
+                    "surface-container-low": "#181c23",
+                    "on-primary-fixed": "#00164f",
+                    "secondary": "#d0bcff",
+                    "inverse-primary": "#014fe6",
+                    "on-surface": "#dfe2ec",
+                    "on-secondary-fixed-variant": "#5516be",
+                    "on-surface-variant": "#c3c5d8",
+                    "surface-container-highest": "#31353d",
+                    "outline": "#8d90a1",
+                    "primary-fixed-dim": "#b6c4ff",
+                    "surface-container-lowest": "#0a0e15",
+                    "background": "#0f141a",
+                    "on-tertiary-fixed": "#001f26",
+                    "primary-fixed": "#dce1ff",
+                    "surface-bright": "#353941",
+                    "on-primary-container": "#e4e7ff",
+                    "on-error-container": "#ffdad6",
+                    "on-error": "#690005",
+                    "surface-container": "#1c2027",
+                    "on-tertiary": "#003640",
+                    "primary-container": "#1e5af0",
+                    "error-container": "#93000a",
+                    "on-secondary-fixed": "#23005c",
+                    "surface": "#0f141a",
+                    "surface-variant": "#31353d",
+                    "secondary-container": "#571bc1",
+                    "on-background": "#dfe2ec",
+                    "tertiary": "#4cd7f6",
+                    "tertiary-container": "#007387",
+                    "error": "#ffb4ab",
+                    "tertiary-fixed": "#acedff",
+                    "inverse-on-surface": "#2d3038",
+                    "on-tertiary-fixed-variant": "#004e5c",
+                    "on-secondary": "#3c0091",
+                    "secondary-fixed-dim": "#d0bcff",
+                    "surface-container-high": "#262a32",
+                    "surface-dim": "#0f141a",
+                    "surface-tint": "#b6c4ff",
+                    "on-tertiary-container": "#c1f1ff",
+                    "secondary-fixed": "#e9ddff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline-md": ["Inter"],
+                    "body-md": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "data-mono": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "label-md": ["Inter"],
+                    "headline-lg-mobile": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "data-mono": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    }catch(_e){}</script><meta charset="utf-8"></head><body class="flex min-h-screen">
+<!-- SideNavBar (Desktop Shell) -->
+<aside class="hidden lg:flex flex-col fixed left-0 top-0 h-full w-64 bg-surface-container-low border-r border-outline-variant z-40">
+<div class="p-6">
+<h1 class="font-headline-md text-headline-md font-bold text-primary">Workout Companion</h1>
+<p class="font-label-md text-label-md text-on-surface-variant opacity-70">Elite Coaching</p>
+</div>
+<nav class="flex-1 px-4 space-y-1">
+<a href="#" class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 rounded-lg group">
+<span class="material-symbols-outlined" data-original-icon="dashboard">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a href="#" class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 rounded-lg group">
+<span class="material-symbols-outlined">group</span>
+<span class="font-label-md text-label-md">Clients</span>
+</a>
+<!-- Active Tab: Programs -->
+<a href="#" class="flex items-center gap-3 px-4 py-3 bg-primary-container text-on-primary-container font-bold rounded-lg group">
+<span class="material-symbols-outlined">fitness_center</span>
+<span class="font-label-md text-label-md">Programs</span>
+</a>
+<a href="#" class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 rounded-lg group">
+<span class="material-symbols-outlined">restaurant</span>
+<span class="font-label-md text-label-md">Nutrition</span>
+</a>
+<a href="#" class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 rounded-lg group">
+<span class="material-symbols-outlined">forum</span>
+<span class="font-label-md text-label-md">Messages</span>
+</a>
+<a href="#" class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 rounded-lg group">
+<span class="material-symbols-outlined">folder_open</span>
+<span class="font-label-md text-label-md">Library</span>
+</a>
+<a href="#" class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 rounded-lg group">
+<span class="material-symbols-outlined">payments</span>
+<span class="font-label-md text-label-md">Payments</span>
+</a>
+<a href="#" class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 rounded-lg group">
+<span class="material-symbols-outlined">insights</span>
+<span class="font-label-md text-label-md">Analytics</span>
+</a>
+</nav>
+<div class="px-4 py-6 border-t border-outline-variant space-y-1">
+<button class="w-full bg-primary-container text-on-primary-container py-3 px-4 rounded-xl font-label-md text-label-md hover:brightness-110 active:scale-95 transition-all mb-4">
+                Create New Program
+            </button>
+<a href="#" class="flex items-center gap-3 px-4 py-2 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-colors">
+<span class="material-symbols-outlined">account_circle</span>
+<span class="font-label-md text-label-md">Profile</span>
+</a>
+<a href="#" class="flex items-center gap-3 px-4 py-2 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-colors">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+</div>
+</aside>
+<!-- TopAppBar -->
+<header class="fixed top-0 right-0 left-0 lg:left-64 h-16 bg-surface border-b border-outline-variant flex items-center justify-between px-6 z-30">
+<div class="flex items-center gap-4">
+<button class="lg:hidden p-2 text-on-surface-variant">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<span class="font-headline-md text-headline-md font-black text-primary">Workout Companion</span>
+</div>
+<div class="flex items-center gap-4">
+<div class="hidden md:flex items-center bg-surface-container rounded-full px-4 py-1.5 border border-outline-variant">
+<span class="material-symbols-outlined text-outline">search</span>
+<input type="text" placeholder="Search client or program..." class="bg-transparent border-none focus:ring-0 text-sm w-48 text-on-surface">
+</div>
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">mail</span>
+</button>
+<div class="h-8 w-8 rounded-full overflow-hidden border border-primary">
+<img class="h-full w-full object-cover" data-alt="A professional headshot of a male fitness coach in high-performance athletic apparel, positioned against a clean industrial gym background with soft dramatic lighting. He has a focused, professional expression. The image is rendered in high resolution with sharp technical details, featuring a cool blue and dark slate color palette that matches the corporate modern athletic aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB2t9WNSZtjOEfnbP0CWIbFmrlwILOzPFXcznGNt3OtFWkY2X9fhOm0LCMzSL-6GmyDjKJls55MATuGyD_iwM8k82xfNQkZ3aqTuZGCaXbIWUJKokuPpIrB94oPuaIZZjxVBpy7jG2TMGPO81wcdhK30LyqVBe4Dzfq69wqNP3QzSVNhQx21TMTi0ho6trlPRaPc9lIJPcWvf7Rg86giNW2-ggciA9bzit8flPLY9A6YBVigYM8Kq0">
+</div>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-1 mt-16 ml-0 lg:ml-64 p-4 lg:p-8 custom-scrollbar mb-20 lg:mb-0">
+<div class="max-w-7xl mx-auto">
+<!-- Context Header -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
+<div>
+<nav class="flex items-center gap-2 text-on-surface-variant font-label-md text-label-md mb-2">
+<span class="">Programs</span>
+<span class="material-symbols-outlined text-xs">chevron_right</span>
+<span class="text-primary">Hypertrophy Block A</span>
+</nav>
+<h2 class="font-headline-lg text-headline-lg text-on-surface mb-2">Luca Rossi</h2>
+<div class="flex items-center gap-3">
+<span class="bg-success-container text-on-success-container bg-[#1b3b1e] text-[#b4ffb8] px-3 py-1 rounded-full font-label-md text-label-md border border-[#2e5d32]">Active</span>
+<span class="text-on-surface-variant font-label-md text-label-md">Started Oct 12, 2023</span>
+</div>
+</div>
+<div class="flex gap-3">
+<button class="bg-surface-container border border-outline-variant px-6 py-2.5 rounded-xl text-on-surface font-label-md text-label-md flex items-center gap-2 hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined">edit</span>
+                        Edit Program
+                    </button>
+<button class="bg-primary-container text-on-primary-container px-6 py-2.5 rounded-xl font-label-md text-label-md flex items-center gap-2 hover:brightness-110 active:scale-95 transition-all">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;" data-original-icon="play">play_arrow</span>
+                        Log Session
+                    </button>
+</div>
+</div>
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-8">
+<!-- Main Program Table Area -->
+<div class="xl:col-span-9 space-y-6">
+<div class="glass-card rounded-xl overflow-hidden">
+<div class="px-6 py-4 border-b border-outline-variant flex items-center justify-between bg-surface-container-low">
+<h3 class="font-headline-md text-headline-md text-primary">Day 1: Lower Body Focus</h3>
+<span class="text-on-surface-variant font-label-md text-label-md uppercase tracking-wider">Compound Strength</span>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low border-b border-outline-variant">
+<th class="px-6 py-4 font-label-md text-label-md text-outline uppercase tracking-wider">Exercise</th>
+<th class="px-4 py-4 font-label-md text-label-md text-outline uppercase tracking-wider text-center">Sets</th>
+<th class="px-4 py-4 font-label-md text-label-md text-outline uppercase tracking-wider text-center">Reps</th>
+<th class="px-4 py-4 font-label-md text-label-md text-outline uppercase tracking-wider text-center">Load (kg)</th>
+<th class="px-4 py-4 font-label-md text-label-md text-outline uppercase tracking-wider text-center">RPE</th>
+<th class="px-6 py-4 font-label-md text-label-md text-outline uppercase tracking-wider">Note</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/30">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-high transition-colors group">
+<td class="px-6 py-4 flex items-center gap-4">
+<div class="w-12 h-12 rounded-lg bg-surface-container-lowest border border-outline-variant overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all" data-alt="A high-contrast technical illustration of a male athlete performing a barbell back squat, focused on the eccentric phase. Dark technical aesthetic with neon blue highlights on muscle groups. Flat vector style with minimalist shadows, consistent with a high-performance athlete management software UI." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAhQt_PK-yqr0mqRZ4UTY7dw7QuhZ7D3TeLY98q39kVWvt0Uo6IglB9k1nYnmRnkgRmJIcR3kRvIwa-xr8-ZIAMnlFbC36KVmjMeFZ9M2It4j0OwqKY8iOZpqf9HczKjOdBY2FqaeUdm5MxvlQ2wjliAfuQ6cc0QGKApUS9-0amWdZHPMtC-S05g5FS3-GPLYc5LqhzBrgHIY7vrcA_8tuGI43xD8gdtLt46HnZ9InkD3HNrZsjJyI">
+</div>
+<div>
+<div class="font-body-md text-body-md font-bold text-on-surface">Squat</div>
+<div class="text-xs text-on-surface-variant">High Bar, Barbell</div>
+</div>
+</td>
+<td class="px-4 py-4 text-center font-data-mono text-data-mono">4</td>
+<td class="px-4 py-4 text-center font-data-mono text-data-mono">8</td>
+<td class="px-4 py-4 text-center">
+<span class="bg-surface-container-highest px-3 py-1 rounded border border-outline-variant font-data-mono text-data-mono">140</span>
+</td>
+<td class="px-4 py-4 text-center">
+<span class="text-tertiary font-bold">8.5</span>
+</td>
+<td class="px-6 py-4 text-body-sm text-on-surface-variant italic">Focus on bracing. Keep chest high.</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-high transition-colors group">
+<td class="px-6 py-4 flex items-center gap-4">
+<div class="w-12 h-12 rounded-lg bg-surface-container-lowest border border-outline-variant overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all" data-alt="Technical illustration of an athlete performing a barbell bench press on a flat bench. The style is minimalist and high-tech, using dark tones with bright electric blue accents indicating mechanical tension. Clean digital render for a professional training application's exercise library thumbnails." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCxHUnFmCDLrStkoznOX7jCKuVr01ijBcOE2zwFFrdIaEza3Uxq3UvUVctpzE9tBhMmjtedyOElRPCeQJkxbsThn-bgYo1jW5jUW2ksLSOwO6yUtHjghe74y0Hi7TmZanXwDBzI70sJ39cOpowSoMvuGl7HwIb-pd597V1k03NGw_-4c7lLFMuGlY98f7BstpHdqSkvHdxdtSwRpwBnuZV53mQtMHJwovhG32LX1KckonisVKx6cGE">
+</div>
+<div>
+<div class="font-body-md text-body-md font-bold text-on-surface">Bench Press</div>
+<div class="text-xs text-on-surface-variant">Flat Bench, Barbell</div>
+</div>
+</td>
+<td class="px-4 py-4 text-center font-data-mono text-data-mono">3</td>
+<td class="px-4 py-4 text-center font-data-mono text-data-mono">10</td>
+<td class="px-4 py-4 text-center">
+<span class="bg-surface-container-highest px-3 py-1 rounded border border-outline-variant font-data-mono text-data-mono">100</span>
+</td>
+<td class="px-4 py-4 text-center">
+<span class="text-secondary font-bold">8.0</span>
+</td>
+<td class="px-6 py-4 text-body-sm text-on-surface-variant italic">Control the descent. Touch mid-chest.</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-high transition-colors group">
+<td class="px-6 py-4 flex items-center gap-4">
+<div class="w-12 h-12 rounded-lg bg-surface-container-lowest border border-outline-variant overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all" data-alt="Minimalist technical drawing of a conventional barbell deadlift from a side profile. Dramatic lighting highlighting the posterior chain. The visual is rendered in a dark, professional fitness software style with sharp lines and high contrast, using a palette of dark charcoal and vibrant cyan." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDn71wFY0or55S02IWqJPwpASyrF2mnPPdJcYO6-kSiqbRasqKWNVzYYyJDXOVNdC1AQT9pWK4SZkQocQs698Uc5vXhQzKc-zRgSMOKnJZ4LKJR9ah8_DmiwiNqrJgIL71gvNV4IxnP683BORQl8VsPfONvow0lWbuzWd-dZJVhiByY_-9XLSHMNKu59DKJu4XujTVDqaARzeTsTOyiBF20mtV3SAXl7Yc3yNX-ojv1-Axm8-O646M">
+</div>
+<div class="">
+<div class="font-body-md text-body-md font-bold text-on-surface">Deadlift</div>
+<div class="text-xs text-on-surface-variant">Conventional, Barbell</div>
+</div>
+</td>
+<td class="px-4 py-4 text-center font-data-mono text-data-mono">1</td>
+<td class="px-4 py-4 text-center font-data-mono text-data-mono">5</td>
+<td class="px-4 py-4 text-center">
+<span class="bg-surface-container-highest px-3 py-1 rounded border border-outline-variant font-data-mono text-data-mono">180</span>
+</td>
+<td class="px-4 py-4 text-center">
+<span class="text-primary font-bold">9.0</span>
+</td>
+<td class="px-6 py-4 text-body-sm text-on-surface-variant italic">Heavy set. Ensure slack is pulled.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Volume Visualization Card -->
+<div class="glass-card p-6 rounded-xl relative overflow-hidden h-48 flex items-center justify-between">
+
+<div class="relative z-10">
+<h4 class="font-headline-md text-headline-md text-primary mb-2">Volume Progression</h4>
+<p class="text-on-surface-variant max-w-sm">Weekly calculated intensity based on average RPE and total tonnage across all sets.</p>
+</div>
+<div class="relative z-10 flex gap-4">
+<div class="flex flex-col items-center">
+<span class="font-data-mono text-data-mono text-tertiary">Current</span>
+<span class="text-3xl font-bold">12,400<span class="text-sm font-normal text-outline">kg</span></span>
+</div>
+<div class="w-[1px] h-12 bg-outline-variant mx-2"></div>
+<div class="flex flex-col items-center">
+<span class="font-data-mono text-data-mono text-outline">Target</span>
+<span class="text-3xl font-bold">13,500<span class="text-sm font-normal text-outline">kg</span></span>
+</div>
+</div>
+</div>
+</div>
+<!-- Sidebar Content -->
+<aside class="xl:col-span-3 space-y-6">
+<!-- Summary Card -->
+<div class="glass-card p-6 rounded-xl flex flex-col gap-6">
+<h3 class="font-label-md text-label-md uppercase tracking-widest text-outline">Session Summary</h3>
+<div class="space-y-4">
+<div class="flex items-center justify-between p-4 bg-surface-container-low rounded-lg border border-outline-variant">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">fitness_center</span>
+<span class="font-body-sm text-body-sm text-on-surface">Estimated Volume</span>
+</div>
+<span class="font-bold text-on-surface">8,450 kg</span>
+</div>
+<div class="flex items-center justify-between p-4 bg-surface-container-low rounded-lg border border-outline-variant">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-secondary">schedule</span>
+<span class="font-body-sm text-body-sm text-on-surface">Duration</span>
+</div>
+<span class="font-bold text-on-surface">75 mins</span>
+</div>
+<div class="flex items-center justify-between p-4 bg-surface-container-low rounded-lg border border-outline-variant">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-tertiary">bolt</span>
+<span class="font-body-sm text-body-sm text-on-surface">Avg. Intensity</span>
+</div>
+<span class="font-bold text-on-surface">8.2 RPE</span>
+</div>
+</div>
+<div class="pt-4 border-t border-outline-variant">
+<div class="flex items-center justify-between mb-2">
+<span class="font-label-md text-label-md text-outline">Macro Distribution</span>
+<span class="text-xs font-bold text-primary">High Carb Day</span>
+</div>
+<div class="h-2 w-full bg-surface-container-highest rounded-full flex overflow-hidden">
+<div class="h-full bg-primary" style="width: 40%"></div>
+<div class="h-full bg-secondary" style="width: 30%"></div>
+<div class="h-full bg-tertiary" style="width: 30%"></div>
+</div>
+</div>
+</div>
+<!-- Athlete Notes Card -->
+<div class="glass-card p-6 rounded-xl">
+<div class="flex items-center justify-between mb-4">
+<h3 class="font-label-md text-label-md uppercase tracking-widest text-outline">Coach's Memo</h3>
+<button class="text-primary hover:underline text-xs">Edit</button>
+</div>
+<div class="bg-surface-container-low p-4 rounded-lg border-l-4 border-primary italic text-on-surface-variant text-body-sm leading-relaxed">
+                            "Luca, focus on explosive concentric phases for the Squats today. We are peaking for the 1RM attempt in 3 weeks. If the Deadlifts feel RPE 7 or lower, add 5kg for the final set."
+                        </div>
+</div>
+</aside>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Shell) -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-around items-center px-4 py-2 bg-surface-container border-t border-outline-variant shadow-lg lg:hidden">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high p-2 transition-colors" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-md text-label-md-mobile">Home</span>
+</a>
+<!-- Active Tab: Training (Programs) -->
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-2xl p-2 transition-transform active:scale-90" href="#">
+<span class="material-symbols-outlined">fitness_center</span>
+<span class="font-label-md text-label-md-mobile">Training</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high p-2 transition-colors" href="#">
+<span class="material-symbols-outlined">add_circle</span>
+<span class="font-label-md text-label-md-mobile">Add</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high p-2 transition-colors" href="#">
+<span class="material-symbols-outlined">restaurant</span>
+<span class="font-label-md text-label-md-mobile">Nutrition</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high p-2 transition-colors" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-md text-label-md-mobile">Profile</span>
+</a>
+</nav>
+<script class="">
+        // Micro-interaction for table rows
+        document.querySelectorAll('tr').forEach(row => {
+            row.addEventListener('mousedown', () => {
+                row.classList.add('scale-[0.99]', 'transition-transform');
+            });
+            row.addEventListener('mouseup', () => {
+                row.classList.remove('scale-[0.99]');
+            });
+        });
+
+        // Simple Fade-in effect for the main container
+        document.addEventListener('DOMContentLoaded', () => {
+            const mainContent = document.querySelector('main');
+            mainContent.style.opacity = '0';
+            mainContent.style.transform = 'translateY(10px)';
+            mainContent.style.transition = 'opacity 0.6s ease-out, transform 0.6s ease-out';
+            
+            setTimeout(() => {
+                mainContent.style.opacity = '1';
+                mainContent.style.transform = 'translateY(0)';
+            }, 50);
+        });
+    </script>
+</body></html>

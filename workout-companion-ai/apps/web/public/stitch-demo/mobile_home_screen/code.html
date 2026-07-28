@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>PT Coach Pro | Client Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "outline-variant": "#434655",
+                    "on-secondary-container": "#c4abff",
+                    "primary": "#b6c4ff",
+                    "on-primary-fixed-variant": "#003ab1",
+                    "on-primary": "#00277e",
+                    "tertiary-fixed-dim": "#4cd7f6",
+                    "inverse-surface": "#dfe2ec",
+                    "surface-container-low": "#181c23",
+                    "on-primary-fixed": "#00164f",
+                    "secondary": "#d0bcff",
+                    "inverse-primary": "#014fe6",
+                    "on-surface": "#dfe2ec",
+                    "on-secondary-fixed-variant": "#5516be",
+                    "on-surface-variant": "#c3c5d8",
+                    "surface-container-highest": "#31353d",
+                    "outline": "#8d90a1",
+                    "primary-fixed-dim": "#b6c4ff",
+                    "surface-container-lowest": "#0a0e15",
+                    "background": "#0f141a",
+                    "on-tertiary-fixed": "#001f26",
+                    "primary-fixed": "#dce1ff",
+                    "surface-bright": "#353941",
+                    "on-primary-container": "#e4e7ff",
+                    "on-error-container": "#ffdad6",
+                    "on-error": "#690005",
+                    "surface-container": "#1c2027",
+                    "on-tertiary": "#003640",
+                    "primary-container": "#1e5af0",
+                    "error-container": "#93000a",
+                    "on-secondary-fixed": "#23005c",
+                    "surface": "#0f141a",
+                    "surface-variant": "#31353d",
+                    "secondary-container": "#571bc1",
+                    "on-background": "#dfe2ec",
+                    "tertiary": "#4cd7f6",
+                    "tertiary-container": "#007387",
+                    "error": "#ffb4ab",
+                    "tertiary-fixed": "#acedff",
+                    "inverse-on-surface": "#2d3038",
+                    "on-tertiary-fixed-variant": "#004e5c",
+                    "on-secondary": "#3c0091",
+                    "secondary-fixed-dim": "#d0bcff",
+                    "surface-container-high": "#262a32",
+                    "surface-dim": "#0f141a",
+                    "surface-tint": "#b6c4ff",
+                    "on-tertiary-container": "#c1f1ff",
+                    "secondary-fixed": "#e9ddff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "margin-mobile": "16px",
+                    "max-width": "1440px",
+                    "gutter": "16px",
+                    "unit": "4px",
+                    "margin-desktop": "32px"
+            },
+            "fontFamily": {
+                    "headline-md": ["Inter"],
+                    "body-md": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "data-mono": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "label-md": ["Inter"],
+                    "headline-lg-mobile": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "data-mono": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0e14;
+            color: #dfe2ec;
+            -webkit-font-smoothing: antialiased;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .card-outline {
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen pb-24">
+<!-- Top AppBar (from JSON - Mobile Context) -->
+<header class="flex justify-between items-center px-4 h-16 w-full fixed top-0 z-50 bg-surface/80 backdrop-blur-md">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center overflow-hidden border border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="A close-up high-resolution portrait of a fit young male athlete with short dark hair and a friendly expression. The lighting is dramatic with cool blue rim lights against a dark, technical gym background. The overall aesthetic is professional, clean, and modern, fitting an elite sports performance app." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBKnEdlYJYOzaNy4uF03E3Xm4bpIUB7gvbW-s32Y1pyrHYmDcyaA8wwrMgwux59QuUX-5apLC_AX-mkt-BPNa2SyyTPcl8HiBuJ5ydzjEQ-6LI44Uu-_17nWLpmZeDqXuOzEh1fVDoq1WuVFL3u8jBXq84mNVXWei34YLTVFJcdYBTX7V0Cy0ikSrtJWSJEAnLWqD4B2D7osBrFxQBXlKHQ9n9ksgNt1tPHqHq-Fw661FqYglIOwz0"/>
+</div>
+<div>
+<h1 class="font-headline-md-mobile text-headline-md-mobile text-primary font-black">Hi Luca! 👋</h1>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative cursor-pointer hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant">notifications</span>
+<span class="absolute -top-1 -right-1 bg-error text-on-error text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">3</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary">mail</span>
+</div>
+</header>
+<main class="pt-20 px-4 space-y-6">
+<!-- Weekday Selector -->
+<section class="mt-4">
+<div class="flex gap-2 overflow-x-auto py-2 custom-scrollbar">
+<button class="flex-shrink-0 w-14 h-20 flex flex-col items-center justify-center rounded-2xl bg-surface-container card-outline">
+<span class="font-label-md text-label-md text-on-surface-variant">Mon</span>
+<span class="font-headline-md text-headline-md mt-1">13</span>
+</button>
+<button class="flex-shrink-0 w-14 h-20 flex flex-col items-center justify-center rounded-2xl bg-surface-container card-outline">
+<span class="font-label-md text-label-md text-on-surface-variant">Tue</span>
+<span class="font-headline-md text-headline-md mt-1">14</span>
+</button>
+<button class="flex-shrink-0 w-14 h-20 flex flex-col items-center justify-center rounded-2xl bg-surface-container card-outline">
+<span class="font-label-md text-label-md text-on-surface-variant">Wed</span>
+<span class="font-headline-md text-headline-md mt-1">15</span>
+</button>
+<button class="flex-shrink-0 w-14 h-20 flex flex-col items-center justify-center rounded-2xl bg-surface-container card-outline">
+<span class="font-label-md text-label-md text-on-surface-variant">Thu</span>
+<span class="font-headline-md text-headline-md mt-1">16</span>
+</button>
+<button class="flex-shrink-0 w-14 h-20 flex flex-col items-center justify-center rounded-2xl bg-primary-container text-on-primary-container shadow-lg shadow-primary-container/20">
+<span class="font-label-md text-label-md">Fri</span>
+<span class="font-headline-md text-headline-md mt-1">17</span>
+</button>
+<button class="flex-shrink-0 w-14 h-20 flex flex-col items-center justify-center rounded-2xl bg-surface-container card-outline opacity-50">
+<span class="font-label-md text-label-md text-on-surface-variant">Sat</span>
+<span class="font-headline-md text-headline-md mt-1">18</span>
+</button>
+<button class="flex-shrink-0 w-14 h-20 flex flex-col items-center justify-center rounded-2xl bg-surface-container card-outline opacity-50">
+<span class="font-label-md text-label-md text-on-surface-variant">Sun</span>
+<span class="font-headline-md text-headline-md mt-1">19</span>
+</button>
+</div>
+</section>
+<!-- Today's Workout Card -->
+<section class="relative overflow-hidden rounded-xl bg-surface-container card-outline p-5 shadow-2xl">
+<div class="absolute top-0 right-0 w-32 h-32 opacity-10 blur-2xl bg-primary pointer-events-none"></div>
+<div class="flex justify-between items-start mb-4">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Today's Workout</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Push Lower • 65 min</p>
+</div>
+<span class="material-symbols-outlined text-primary" data-weight="fill">fitness_center</span>
+</div>
+<div class="flex items-center gap-4 mb-6">
+<div class="flex -space-x-2">
+<div class="w-8 h-8 rounded-full bg-surface-container-highest border-2 border-surface-container flex items-center justify-center text-[10px] font-bold">SQ</div>
+<div class="w-8 h-8 rounded-full bg-surface-container-highest border-2 border-surface-container flex items-center justify-center text-[10px] font-bold">LP</div>
+<div class="w-8 h-8 rounded-full bg-surface-container-highest border-2 border-surface-container flex items-center justify-center text-[10px] font-bold">LE</div>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">6 Movements today</p>
+</div>
+<button class="w-full py-3 bg-primary-container text-on-primary-container rounded-lg font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform">
+                Go to Workout
+                <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+</button>
+</section>
+<!-- Nutrition Summary Card -->
+<section class="rounded-xl bg-surface-container card-outline p-5">
+<div class="flex justify-between items-center mb-6">
+<h2 class="font-headline-md text-headline-md text-on-surface">Nutrition Summary</h2>
+<span class="font-label-md text-label-md text-primary">Details</span>
+</div>
+<div class="grid grid-cols-1 gap-6">
+<!-- Calories Circular Ring Alternative for Mobile -->
+<div class="flex items-center gap-6 bg-surface-container-low p-4 rounded-xl">
+<div class="relative w-16 h-16 flex items-center justify-center">
+<svg class="w-full h-full transform -rotate-90">
+<circle class="text-surface-container-highest" cx="32" cy="32" fill="transparent" r="28" stroke="currentColor" stroke-width="4"></circle>
+<circle class="text-tertiary" cx="32" cy="32" fill="transparent" r="28" stroke="currentColor" stroke-dasharray="175.9" stroke-dashoffset="44" stroke-width="4"></circle>
+</svg>
+<div class="absolute inset-0 flex flex-col items-center justify-center">
+<span class="text-[12px] font-bold">75%</span>
+</div>
+</div>
+<div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Daily Calories</p>
+<p class="font-headline-md text-headline-md">1,850 <span class="text-body-sm font-normal text-outline">/ 2,400 kcal</span></p>
+</div>
+</div>
+<!-- Macro Progress Bars -->
+<div class="space-y-4">
+<!-- Protein -->
+<div class="space-y-2">
+<div class="flex justify-between items-center">
+<span class="font-label-md text-label-md uppercase tracking-wider">Protein</span>
+<span class="font-label-md text-label-md">145g <span class="text-outline">/ 180g</span></span>
+</div>
+<div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[80%] rounded-full"></div>
+</div>
+</div>
+<!-- Carbs -->
+<div class="space-y-2">
+<div class="flex justify-between items-center">
+<span class="font-label-md text-label-md uppercase tracking-wider">Carbs</span>
+<span class="font-label-md text-label-md">210g <span class="text-outline">/ 250g</span></span>
+</div>
+<div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-secondary w-[84%] rounded-full"></div>
+</div>
+</div>
+<!-- Fats -->
+<div class="space-y-2">
+<div class="flex justify-between items-center">
+<span class="font-label-md text-label-md uppercase tracking-wider">Fats</span>
+<span class="font-label-md text-label-md">45g <span class="text-outline">/ 65g</span></span>
+</div>
+<div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-tertiary w-[69%] rounded-full"></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Stats Bento Section -->
+<section class="grid grid-cols-2 gap-4">
+<div class="bg-surface-container card-outline p-4 rounded-xl">
+<span class="material-symbols-outlined text-secondary text-[20px]" style="font-variation-settings: 'FILL' 1;">favorite</span>
+<p class="font-label-md text-label-md text-on-surface-variant mt-2">Avg Heart Rate</p>
+<p class="font-headline-md text-headline-md mt-1">68 <span class="text-body-sm font-normal text-outline">bpm</span></p>
+</div>
+<div class="bg-surface-container card-outline p-4 rounded-xl">
+<span class="material-symbols-outlined text-tertiary text-[20px]" style="font-variation-settings: 'FILL' 1;">footprint</span>
+<p class="font-label-md text-label-md text-on-surface-variant mt-2">Steps Today</p>
+<p class="font-headline-md text-headline-md mt-1">8.4k</p>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Bar (from JSON) -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-around items-center px-4 py-2 lg:hidden bg-surface-container border-t border-outline-variant shadow-lg rounded-t-xl">
+<!-- Home (Active) -->
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-2xl p-2 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="font-label-md text-[10px] mt-1">Home</span>
+</a>
+<!-- Training -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant active:scale-90 transition-transform hover:bg-surface-container-high p-2 rounded-2xl" href="#">
+<span class="material-symbols-outlined">fitness_center</span>
+<span class="font-label-md text-[10px] mt-1">Training</span>
+</a>
+<!-- Add -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant active:scale-90 transition-transform hover:bg-surface-container-high p-2 rounded-2xl" href="#">
+<span class="material-symbols-outlined text-primary scale-125">add_circle</span>
+<span class="font-label-md text-[10px] mt-1">Add</span>
+</a>
+<!-- Nutrition -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant active:scale-90 transition-transform hover:bg-surface-container-high p-2 rounded-2xl" href="#">
+<span class="material-symbols-outlined">restaurant</span>
+<span class="font-label-md text-[10px] mt-1">Nutrition</span>
+</a>
+<!-- Profile -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant active:scale-90 transition-transform hover:bg-surface-container-high p-2 rounded-2xl" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-md text-[10px] mt-1">Profile</span>
+</a>
+</nav>
+<script>
+        // Simple micro-interaction for cards
+        document.querySelectorAll('.active\\:scale-95').forEach(button => {
+            button.addEventListener('mousedown', () => {
+                button.style.transform = 'scale(0.97)';
+            });
+            button.addEventListener('mouseup', () => {
+                button.style.transform = 'scale(1)';
+            });
+            button.addEventListener('mouseleave', () => {
+                button.style.transform = 'scale(1)';
+            });
+        });
+    </script>
+</body></html>

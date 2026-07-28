@@ -1,0 +1,417 @@
+<!DOCTYPE html><html lang="en" class="dark"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=block" rel="stylesheet"><script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script><script id="tailwind-config">try{
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "outline-variant": "#434655",
+                      "on-secondary-container": "#c4abff",
+                      "primary": "#b6c4ff",
+                      "on-primary-fixed-variant": "#003ab1",
+                      "on-primary": "#00277e",
+                      "tertiary-fixed-dim": "#4cd7f6",
+                      "inverse-surface": "#dfe2ec",
+                      "surface-container-low": "#181c23",
+                      "on-primary-fixed": "#00164f",
+                      "secondary": "#d0bcff",
+                      "inverse-primary": "#014fe6",
+                      "on-surface": "#dfe2ec",
+                      "on-secondary-fixed-variant": "#5516be",
+                      "on-surface-variant": "#c3c5d8",
+                      "surface-container-highest": "#31353d",
+                      "outline": "#8d90a1",
+                      "primary-fixed-dim": "#b6c4ff",
+                      "surface-container-lowest": "#0a0e15",
+                      "background": "#0f141a",
+                      "on-tertiary-fixed": "#001f26",
+                      "primary-fixed": "#dce1ff",
+                      "surface-bright": "#353941",
+                      "on-primary-container": "#e4e7ff",
+                      "on-error-container": "#ffdad6",
+                      "on-error": "#690005",
+                      "surface-container": "#1c2027",
+                      "on-tertiary": "#003640",
+                      "primary-container": "#1e5af0",
+                      "error-container": "#93000a",
+                      "on-secondary-fixed": "#23005c",
+                      "surface": "#0f141a",
+                      "surface-variant": "#31353d",
+                      "secondary-container": "#571bc1",
+                      "on-background": "#dfe2ec",
+                      "tertiary": "#4cd7f6",
+                      "tertiary-container": "#007387",
+                      "error": "#ffb4ab",
+                      "tertiary-fixed": "#acedff",
+                      "inverse-on-surface": "#2d3038",
+                      "on-tertiary-fixed-variant": "#004e5c",
+                      "on-secondary": "#3c0091",
+                      "secondary-fixed-dim": "#d0bcff",
+                      "surface-container-high": "#262a32",
+                      "surface-dim": "#0f141a",
+                      "surface-tint": "#b6c4ff",
+                      "on-tertiary-container": "#c1f1ff",
+                      "secondary-fixed": "#e9ddff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "margin-mobile": "16px",
+                      "max-width": "1440px",
+                      "gutter": "16px",
+                      "unit": "4px",
+                      "margin-desktop": "32px"
+              },
+              "fontFamily": {
+                      "headline-md": ["Inter"],
+                      "body-md": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "display-lg": ["Inter"],
+                      "data-mono": ["Inter"],
+                      "body-sm": ["Inter"],
+                      "headline-lg": ["Inter"],
+                      "label-md": ["Inter"],
+                      "headline-lg-mobile": ["Inter"]
+              },
+              "fontSize": {
+                      "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                      "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                      "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "data-mono": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                      "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                      "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                      "headline-lg-mobile": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+              }
+            },
+          },
+        }
+    }catch(_e){}</script><meta charset="utf-8"></head><body class="overflow-x-hidden">
+<!-- SideNavBar (Desktop Shell) -->
+<aside class="hidden lg:flex flex-col fixed left-0 top-0 h-full w-64 bg-surface-container-low border-r border-outline-variant z-40">
+<div class="p-6">
+<h1 class="font-headline-md text-headline-md font-bold text-primary">Workout Companion</h1>
+<p class="font-label-md text-label-md text-on-surface-variant opacity-70">Elite Coaching</p>
+</div>
+<nav class="flex-1 px-4 space-y-1 custom-scrollbar overflow-y-auto">
+<a href="#" class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 rounded-lg group">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<!-- Active State: Clients -->
+<a href="#" class="flex items-center gap-3 px-4 py-3 bg-primary-container text-on-primary-container font-bold rounded-lg group active:scale-95 transition-transform">
+<span class="material-symbols-outlined">group</span>
+<span class="font-label-md text-label-md">Clients</span>
+</a>
+<a href="#" class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 rounded-lg group">
+<span class="material-symbols-outlined">fitness_center</span>
+<span class="font-label-md text-label-md">Programs</span>
+</a>
+<a href="#" class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 rounded-lg group">
+<span class="material-symbols-outlined">restaurant</span>
+<span class="font-label-md text-label-md">Nutrition</span>
+</a>
+<a href="#" class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 rounded-lg group">
+<span class="material-symbols-outlined">forum</span>
+<span class="font-label-md text-label-md">Messages</span>
+</a>
+<a href="#" class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 rounded-lg group">
+<span class="material-symbols-outlined">folder_open</span>
+<span class="font-label-md text-label-md">Library</span>
+</a>
+<a href="#" class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 rounded-lg group">
+<span class="material-symbols-outlined">payments</span>
+<span class="font-label-md text-label-md">Payments</span>
+</a>
+<a href="#" class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 rounded-lg group">
+<span class="material-symbols-outlined">insights</span>
+<span class="font-label-md text-label-md">Analytics</span>
+</a>
+</nav>
+<div class="p-4 border-t border-outline-variant space-y-1">
+<a href="#" class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 rounded-lg">
+<span class="material-symbols-outlined">account_circle</span>
+<span class="font-label-md text-label-md">Profile</span>
+</a>
+<a href="#" class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 rounded-lg">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+</div>
+</aside>
+<!-- TopAppBar -->
+<header class="flex justify-between items-center px-4 h-16 w-full lg:pl-72 fixed top-0 bg-surface z-30 border-b border-outline-variant lg:border-none">
+<div class="flex items-center gap-3">
+<div class="lg:hidden">
+<span class="material-symbols-outlined text-primary">menu</span>
+</div>
+<div class="hidden lg:flex flex-col">
+<h2 class="font-headline-md text-headline-md font-bold text-on-surface">Client: Alex Rivera</h2>
+</div>
+<div class="lg:hidden">
+<h2 class="font-headline-md-mobile text-headline-md-mobile font-black text-primary">Workout Companion</h2>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="hidden md:flex items-center bg-surface-container-highest px-3 py-1.5 rounded-full border border-outline-variant">
+<span class="material-symbols-outlined text-on-surface-variant text-sm">search</span>
+<input type="text" placeholder="Search clients..." class="bg-transparent border-none focus:ring-0 text-sm text-on-surface w-48">
+</div>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary">notifications</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary">mail</span>
+<img class="w-8 h-8 rounded-full border border-primary" data-alt="A professional studio portrait of a high-performance athletic coach with short dark hair, wearing a sleek black technical polo shirt. The lighting is dramatic and moody with a cool blue rim light, set against a dark, minimalist industrial gym background. The overall aesthetic is clean, corporate, and authoritative, matching the dark mode fitness dashboard." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAKj61MBigWpLoaCdnDnDzGDhEi2ejegS0_yvWVIHdUZTWpOzZv6THh6obQUuWr66uVjFVmO6pHCQWtixAbqPvQfauoT3NNfe4rej-pdIYyrkUwwlqpBTOnuFLFDyaMftazqxol2Qc7G2mPmvR8CKVU-10RYEfzPuCEOeRGVrlgcvWNh4vK_sjLc3QBGHkbAKJ4bbrsvZ4IHZBzjCP8-haRnxjk-1GbVKN7bfPo16iZvj6j8saCvwQ">
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="pt-20 pb-24 lg:pl-64 lg:pt-6 min-h-screen">
+<div class="px-4 lg:px-8 max-w-max-width mx-auto space-y-6">
+<!-- Biofeedback Header Stats -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+<div class="bento-card p-4 technical-border flex flex-col justify-between">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest">Readiness Score</span>
+<div class="flex items-end justify-between mt-2">
+<span class="text-4xl font-bold text-primary">88<span class="text-lg font-normal text-on-surface-variant">/100</span></span>
+<span class="flex items-center text-xs font-bold text-tertiary bg-tertiary/10 px-2 py-0.5 rounded-full">
+<span class="material-symbols-outlined text-xs mr-1">trending_up</span> +4%
+                        </span>
+</div>
+</div>
+<div class="bento-card p-4 technical-border flex flex-col justify-between">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest">Avg Sleep</span>
+<div class="flex items-end justify-between mt-2">
+<span class="text-4xl font-bold text-secondary">7h 42m</span>
+<span class="text-xs text-on-surface-variant italic">Consistent</span>
+</div>
+</div>
+<div class="bento-card p-4 technical-border flex flex-col justify-between">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest">HRV (Current)</span>
+<div class="flex items-end justify-between mt-2">
+<span class="text-4xl font-bold text-tertiary">72<span class="text-lg font-normal text-on-surface-variant">ms</span></span>
+<span class="flex items-center text-xs font-bold text-error bg-error/10 px-2 py-0.5 rounded-full">
+<span class="material-symbols-outlined text-xs mr-1">trending_down</span> -2%
+                        </span>
+</div>
+</div>
+<div class="bento-card p-4 technical-border flex flex-col justify-between">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest">Recovery State</span>
+<div class="flex items-end justify-between mt-2">
+<span class="text-2xl font-bold text-[#4ade80]">OPTIMAL</span>
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">bolt</span>
+</div>
+</div>
+</div>
+<!-- Bento Grid Metrics-->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- Sleep Quality (Cyan) -->
+<div class="bento-card p-5 technical-border">
+<div class="flex justify-between items-center mb-4">
+<h3 class="font-headline-md text-headline-md text-tertiary flex items-center gap-2">
+<span class="material-symbols-outlined">bedtime</span> Sleep Quality
+                        </h3>
+<span class="text-xs text-on-surface-variant">Past 7 Days</span>
+</div>
+<div class="h-32 w-full flex items-end gap-1 relative overflow-hidden pt-4">
+<!-- Mock Chart Representation -->
+<div class="flex-1 bg-tertiary/20 rounded-t h-[60%] transition-all hover:bg-tertiary/40"></div>
+<div class="flex-1 bg-tertiary/20 rounded-t h-[80%] transition-all hover:bg-tertiary/40"></div>
+<div class="flex-1 bg-tertiary/20 rounded-t h-[45%] transition-all hover:bg-tertiary/40"></div>
+<div class="flex-1 bg-tertiary/20 rounded-t h-[90%] transition-all hover:bg-tertiary/40"></div>
+<div class="flex-1 bg-tertiary/20 rounded-t h-[75%] transition-all hover:bg-tertiary/40"></div>
+<div class="flex-1 bg-tertiary/20 rounded-t h-[85%] transition-all hover:bg-tertiary/40"></div>
+<div class="flex-1 bg-tertiary/40 rounded-t h-[95%] border-t-2 border-tertiary"></div>
+</div>
+</div>
+<!-- Stress Level (Orange/Primary) -->
+<div class="bento-card p-5 technical-border">
+<div class="flex justify-between items-center mb-4">
+<h3 class="font-headline-md text-headline-md text-[#fb923c] flex items-center gap-2">
+<span class="material-symbols-outlined">psychology</span> Stress Level
+                        </h3>
+<span class="text-xs text-on-surface-variant">Past 7 Days</span>
+</div>
+<div class="h-32 w-full flex items-end gap-1 relative overflow-hidden pt-4">
+<div class="flex-1 bg-[#fb923c]/20 rounded-t h-[30%]"></div>
+<div class="flex-1 bg-[#fb923c]/20 rounded-t h-[40%]"></div>
+<div class="flex-1 bg-[#fb923c]/20 rounded-t h-[20%]"></div>
+<div class="flex-1 bg-[#fb923c]/20 rounded-t h-[60%]"></div>
+<div class="flex-1 bg-[#fb923c]/20 rounded-t h-[45%]"></div>
+<div class="flex-1 bg-[#fb923c]/20 rounded-t h-[35%]"></div>
+<div class="flex-1 bg-[#fb923c]/40 rounded-t h-[25%] border-t-2 border-[#fb923c]"></div>
+</div>
+</div>
+<!-- Energy (Green) -->
+<div class="bento-card p-5 technical-border">
+<div class="flex justify-between items-center mb-4">
+<h3 class="font-headline-md text-headline-md text-[#4ade80] flex items-center gap-2">
+<span class="material-symbols-outlined">bolt</span> Energy
+                        </h3>
+<span class="text-xs text-on-surface-variant">Past 7 Days</span>
+</div>
+<div class="h-32 w-full flex items-end gap-1 relative overflow-hidden pt-4">
+<div class="flex-1 bg-[#4ade80]/20 rounded-t h-[85%]"></div>
+<div class="flex-1 bg-[#4ade80]/20 rounded-t h-[70%]"></div>
+<div class="flex-1 bg-[#4ade80]/20 rounded-t h-[90%]"></div>
+<div class="flex-1 bg-[#4ade80]/20 rounded-t h-[80%]"></div>
+<div class="flex-1 bg-[#4ade80]/20 rounded-t h-[95%]"></div>
+<div class="flex-1 bg-[#4ade80]/20 rounded-t h-[85%]"></div>
+<div class="flex-1 bg-[#4ade80]/40 rounded-t h-[90%] border-t-2 border-[#4ade80]"></div>
+</div>
+</div>
+<!-- -->
+<div class="bento-card p-5 technical-border">
+<div class="flex justify-between items-center mb-4">
+<h3 class="font-headline-md text-headline-md text-secondary flex items-center gap-2">
+<span class="material-symbols-outlined">fitness_center</span> Muscle Soreness
+                        </h3>
+<span class="text-xs text-on-surface-variant">Past 7 Days</span>
+</div>
+<div class="h-32 w-full flex items-end gap-1 relative overflow-hidden pt-4">
+<div class="flex-1 bg-secondary/20 rounded-t h-[20%]"></div>
+<div class="flex-1 bg-secondary/20 rounded-t h-[50%]"></div>
+<div class="flex-1 bg-secondary/20 rounded-t h-[90%]"></div>
+<div class="flex-1 bg-secondary/20 rounded-t h-[60%]"></div>
+<div class="flex-1 bg-secondary/20 rounded-t h-[40%]"></div>
+<div class="flex-1 bg-secondary/20 rounded-t h-[30%]"></div>
+<div class="flex-1 bg-secondary/40 rounded-t h-[15%] border-t-2 border-secondary"></div>
+</div>
+</div>
+<!-- Joint Pain (Red) -->
+<div class="bento-card p-5 technical-border">
+<div class="flex justify-between items-center mb-4">
+<h3 class="font-headline-md text-headline-md text-error flex items-center gap-2">
+<span class="material-symbols-outlined">accessibility</span> Joint Pain
+                        </h3>
+<span class="text-xs text-on-surface-variant">Past 7 Days</span>
+</div>
+<div class="h-32 w-full flex items-end gap-1 relative overflow-hidden pt-4">
+<div class="flex-1 bg-error/20 rounded-t h-[10%]"></div>
+<div class="flex-1 bg-error/20 rounded-t h-[10%]"></div>
+<div class="flex-1 bg-error/20 rounded-t h-[10%]"></div>
+<div class="flex-1 bg-error/20 rounded-t h-[30%]"></div>
+<div class="flex-1 bg-error/20 rounded-t h-[15%]"></div>
+<div class="flex-1 bg-error/20 rounded-t h-[10%]"></div>
+<div class="flex-1 bg-error/40 rounded-t h-[10%] border-t-2 border-error"></div>
+</div>
+</div>
+<!-- Recovery Status (Primary Blue) -->
+<div class="bento-card p-5 technical-border">
+<div class="flex justify-between items-center mb-4">
+<h3 class="font-headline-md text-headline-md text-primary flex items-center gap-2">
+<span class="material-symbols-outlined">rebase_edit</span> Recovery Status
+                        </h3>
+<span class="text-xs text-on-surface-variant">Past 7 Days</span>
+</div>
+<div class="h-32 w-full flex items-end gap-1 relative overflow-hidden pt-4">
+<div class="flex-1 bg-primary/20 rounded-t h-[80%]"></div>
+<div class="flex-1 bg-primary/20 rounded-t h-[75%]"></div>
+<div class="flex-1 bg-primary/20 rounded-t h-[60%]"></div>
+<div class="flex-1 bg-primary/20 rounded-t h-[85%]"></div>
+<div class="flex-1 bg-primary/20 rounded-t h-[90%]"></div>
+<div class="flex-1 bg-primary/20 rounded-t h-[88%]"></div>
+<div class="flex-1 bg-primary/40 rounded-t h-[92%] border-t-2 border-primary"></div>
+</div>
+</div>
+</div>
+<!-- Recent Biofeedback Logs Table -->
+<div class="bento-card technical-border overflow-hidden">
+<div class="p-5 border-b border-outline-variant flex justify-between items-center">
+<h3 class="font-headline-md text-headline-md text-on-surface">Recent Biofeedback Logs</h3>
+<button class="bg-primary text-on-primary px-4 py-2 rounded-lg font-label-md text-label-md hover:opacity-90 active:scale-95 transition-all">View All History</button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead>
+<tr class="bg-surface-container-highest/50">
+<th class="px-6 py-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Date &amp; Time</th>
+<th class="px-6 py-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Readiness</th>
+<th class="px-6 py-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Stress</th>
+<th class="px-6 py-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Soreness</th>
+<th class="px-6 py-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Notes</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<tr class="hover:bg-surface-container-high transition-colors">
+<td class="px-6 py-4 font-data-mono text-data-mono">Oct 24, 07:15 AM</td>
+<td class="px-6 py-4"><span class="bg-tertiary/10 text-tertiary px-2 py-1 rounded text-xs font-bold">88/100</span></td>
+<td class="px-6 py-4 text-[#fb923c]">Low</td>
+<td class="px-6 py-4 text-on-surface-variant">Minimal</td>
+<td class="px-6 py-4 text-sm max-w-xs truncate">Feeling well-rested after 8 hours. No joint pain reported today.</td>
+</tr>
+<tr class="hover:bg-surface-container-high transition-colors">
+<td class="px-6 py-4 font-data-mono text-data-mono">Oct 23, 08:30 AM</td>
+<td class="px-6 py-4"><span class="bg-primary/10 text-primary px-2 py-1 rounded text-xs font-bold">74/100</span></td>
+<td class="px-6 py-4 text-[#fb923c]">Moderate</td>
+<td class="px-6 py-4 text-on-surface-variant">DOMS (Legs)</td>
+<td class="px-6 py-4 text-sm max-w-xs truncate">Heavy squat session yesterday. Quads are very tight.</td>
+</tr>
+<tr class="hover:bg-surface-container-high transition-colors">
+<td class="px-6 py-4 font-data-mono text-data-mono">Oct 22, 06:45 AM</td>
+<td class="px-6 py-4"><span class="bg-tertiary/10 text-tertiary px-2 py-1 rounded text-xs font-bold">92/100</span></td>
+<td class="px-6 py-4 text-[#fb923c]">Very Low</td>
+<td class="px-6 py-4 text-on-surface-variant">None</td>
+<td class="px-6 py-4 text-sm max-w-xs truncate">PR'd on sleep score. Energy levels are peaking. Ready for Max Effort.</td>
+</tr>
+<tr class="hover:bg-surface-container-high transition-colors">
+<td class="px-6 py-4 font-data-mono text-data-mono">Oct 21, 07:00 AM</td>
+<td class="px-6 py-4"><span class="bg-error/10 text-error px-2 py-1 rounded text-xs font-bold">58/100</span></td>
+<td class="px-6 py-4 text-[#fb923c]">High</td>
+<td class="px-6 py-4 text-on-surface-variant">Moderate</td>
+<td class="px-6 py-4 text-sm max-w-xs truncate">Stressful workday yesterday. Poor sleep quality (4h 30m).</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Shell) -->
+<footer class="fixed bottom-0 w-full z-50 flex justify-around items-center px-4 py-2 bg-surface-container border-t border-outline-variant shadow-lg lg:hidden">
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-md text-label-md-mobile">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">fitness_center</span>
+<span class="font-label-md text-label-md-mobile">Training</span>
+</a>
+<div class="flex flex-col items-center justify-center -mt-8">
+<div class="bg-primary p-3 rounded-full shadow-lg active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-on-primary">add</span>
+</div>
+</div>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">restaurant</span>
+<span class="font-label-md text-label-md-mobile">Nutrition</span>
+</a>
+<!-- Active Tab: Profile (Closest match to current view context on mobile) -->
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-2xl p-2 px-4 transition-all" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-md text-label-md-mobile">Profile</span>
+</a>
+</footer>
+<script class="">
+        // Micro-interactions for chart bars
+        document.querySelectorAll('.flex-1.bg-tertiary\\/20, .flex-1.bg-primary\\/20, .flex-1.bg-secondary\\/20, .flex-1.bg-\\[\\#fb923c\\]\\/20, .flex-1.bg-\\[\\#4ade80\\]\\/20, .flex-1.bg-error\\/20').forEach(bar => {
+            bar.addEventListener('mouseenter', () => {
+                bar.classList.add('opacity-80', 'scale-y-105');
+                bar.style.transition = 'all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+            });
+            bar.addEventListener('mouseleave', () => {
+                bar.classList.remove('opacity-80', 'scale-y-105');
+            });
+        });
+
+        // Simple Tonal Pulse for Recovery status
+        const recoveryBadge = document.querySelector('.text-2xl.font-bold.text-\\[\\#4ade80\\]');
+        if(recoveryBadge) {
+            setInterval(() => {
+                recoveryBadge.style.opacity = '0.7';
+                setTimeout(() => recoveryBadge.style.opacity = '1', 1000);
+            }, 2000);
+        }
+    </script>
+</body></html>

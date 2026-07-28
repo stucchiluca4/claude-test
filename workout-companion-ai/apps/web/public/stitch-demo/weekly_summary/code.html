@@ -1,0 +1,357 @@
+<!DOCTYPE html><html lang="it" class="dark"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=block" rel="stylesheet"><script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script><script id="tailwind-config">try{
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline-variant": "#434655",
+                        "on-secondary-container": "#c4abff",
+                        "primary": "#b6c4ff",
+                        "on-primary-fixed-variant": "#003ab1",
+                        "on-primary": "#00277e",
+                        "tertiary-fixed-dim": "#4cd7f6",
+                        "inverse-surface": "#dfe2ec",
+                        "surface-container-low": "#181c23",
+                        "on-primary-fixed": "#00164f",
+                        "secondary": "#d0bcff",
+                        "inverse-primary": "#014fe6",
+                        "on-surface": "#dfe2ec",
+                        "on-secondary-fixed-variant": "#5516be",
+                        "on-surface-variant": "#c3c5d8",
+                        "surface-container-highest": "#31353d",
+                        "outline": "#8d90a1",
+                        "primary-fixed-dim": "#b6c4ff",
+                        "surface-container-lowest": "#0a0e15",
+                        "background": "#0f141a",
+                        "on-tertiary-fixed": "#001f26",
+                        "primary-fixed": "#dce1ff",
+                        "surface-bright": "#353941",
+                        "on-primary-container": "#e4e7ff",
+                        "on-error-container": "#ffdad6",
+                        "on-error": "#690005",
+                        "surface-container": "#1c2027",
+                        "on-tertiary": "#003640",
+                        "primary-container": "#1e5af0",
+                        "error-container": "#93000a",
+                        "on-secondary-fixed": "#23005c",
+                        "surface": "#0f141a",
+                        "surface-variant": "#31353d",
+                        "secondary-container": "#571bc1",
+                        "on-background": "#dfe2ec",
+                        "tertiary": "#4cd7f6",
+                        "tertiary-container": "#007387",
+                        "error": "#ffb4ab",
+                        "tertiary-fixed": "#acedff",
+                        "inverse-on-surface": "#2d3038",
+                        "on-tertiary-fixed-variant": "#004e5c",
+                        "on-secondary": "#3c0091",
+                        "secondary-fixed-dim": "#d0bcff",
+                        "surface-container-high": "#262a32",
+                        "surface-dim": "#0f141a",
+                        "surface-tint": "#b6c4ff",
+                        "on-tertiary-container": "#c1f1ff",
+                        "secondary-fixed": "#e9ddff"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-md-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "label-md-mobile": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+                    }
+                }
+            }
+        }
+    }catch(_e){}</script><meta charset="utf-8"></head><body class="flex flex-col min-h-screen">
+<!-- Top App Bar -->
+<header class="flex justify-between items-center px-4 h-16 w-full fixed top-0 bg-surface z-40 border-b border-outline-variant lg:pl-72">
+<div class="flex items-center gap-3">
+<button class="lg:hidden text-on-surface">
+<span class="material-symbols-outlined" data-original-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-headline-md-mobile text-headline-md-mobile font-black text-primary">Workout Companion</h1>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer" data-original-icon="notifications">notifications</span>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="Professional fitness coach profile headshot with a confident expression, sharp athletic features, wearing technical black sportswear. The background is a high-end, dimly lit gym with soft blue atmospheric lighting and industrial textures, maintaining a premium and authoritative corporate modern aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBhi_Kj-LATdIUQc-JkPujHFgw3_OkvMzXhzxkC3dHa1mMMwgp9_9gjE7ekNrZG6RmWphQAEW8_H-hxGLVHfw3gYUCBPhhkxzX7us74PHCpd_e_tjO0vgDzwBdpc28M-3E238ps0ZraLWBUoJ2VewzGZ8fMWLGWef8ZqyLgS8qBxsjS1a_JLMm6D4USgrr-zi0xgP1IF4dTodOHxFZShENH60_GsWT_JgLUBwIA_jZTWxNEAiFNnQs">
+</div>
+</div>
+</header>
+<!-- Side Navigation (Desktop) -->
+<aside class="hidden lg:flex flex-col fixed left-0 top-0 h-full bg-surface-container-low w-64 border-r border-outline-variant z-50">
+<div class="p-6">
+<div class="font-headline-md text-headline-md font-bold text-primary mb-1">Workout Companion</div>
+<div class="text-label-md font-label-md text-on-surface-variant uppercase tracking-widest">Elite Coaching</div>
+</div>
+<nav class="flex-1 px-4 space-y-1">
+<!-- Mock active state logic: this is a dashboard/summary sub-page -->
+<a class="flex items-center gap-3 px-4 py-3 bg-primary-container text-on-primary-container font-bold rounded-lg transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface rounded-lg transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-label-md text-label-md">Clients</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface rounded-lg transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">fitness_center</span>
+<span class="font-label-md text-label-md">Programs</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface rounded-lg transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">restaurant</span>
+<span class="font-label-md text-label-md">Nutrition</span>
+</a>
+</nav>
+<div class="p-4 border-t border-outline-variant">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-lg" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 pt-20 pb-24 px-4 lg:pl-72 lg:pr-8 max-w-6xl mx-auto w-full">
+<!-- Header Info -->
+<div class="mb-6">
+<h2 class="text-2xl font-bold text-on-surface">Riepilogo Settimanale</h2>
+<p class="text-on-surface-variant text-sm">Settimana 12: 15 Mag - 21 Mag</p>
+</div>
+<!-- Panoramica Settimana Section -->
+<section class="mb-8">
+<div class="flex items-center justify-between mb-4">
+<h3 class="font-label-md text-label-md text-primary uppercase tracking-widest">Panoramica settimana</h3>
+<span class="text-xs text-on-surface-variant">Media 7 giorni</span>
+</div>
+<div class="metric-grid">
+<!-- Metric 1: Sleep -->
+<div class="glass-card rounded-xl p-3 flex flex-col items-center justify-center text-center">
+<span class="material-symbols-outlined text-tertiary mb-1">bedtime</span>
+<span class="text-[10px] text-on-surface-variant uppercase font-bold">Sleep</span>
+<span class="text-sm font-bold text-on-surface">7.5h</span>
+</div>
+<!-- Metric 2: Stress -->
+<div class="glass-card rounded-xl p-3 flex flex-col items-center justify-center text-center">
+<span class="material-symbols-outlined text-error mb-1">psychology</span>
+<span class="text-[10px] text-on-surface-variant uppercase font-bold">Stress</span>
+<span class="text-sm font-bold text-on-surface">Low</span>
+</div>
+<!-- Metric 3: Kcal -->
+<div class="glass-card rounded-xl p-3 flex flex-col items-center justify-center text-center">
+<span class="material-symbols-outlined text-primary mb-1">local_fire_department</span>
+<span class="text-[10px] text-on-surface-variant uppercase font-bold">Kcal</span>
+<span class="text-sm font-bold text-on-surface">2.4k</span>
+</div>
+<!-- Metric 4: Steps -->
+<div class="glass-card rounded-xl p-3 flex flex-col items-center justify-center text-center">
+<span class="material-symbols-outlined text-secondary mb-1">steps</span>
+<span class="text-[10px] text-on-surface-variant uppercase font-bold">Steps</span>
+<span class="text-sm font-bold text-on-surface">10k</span>
+</div>
+<!-- Metric 5: Water -->
+<div class="glass-card rounded-xl p-3 flex flex-col items-center justify-center text-center">
+<span class="material-symbols-outlined text-tertiary mb-1">water_drop</span>
+<span class="text-[10px] text-on-surface-variant uppercase font-bold">Water</span>
+<span class="text-sm font-bold text-on-surface">2.5L</span>
+</div>
+<!-- Metric 6: HRV -->
+<div class="glass-card rounded-xl p-3 flex flex-col items-center justify-center text-center">
+<span class="material-symbols-outlined text-primary-fixed-dim mb-1">monitor_heart</span>
+<span class="text-[10px] text-on-surface-variant uppercase font-bold">HRV</span>
+<span class="text-sm font-bold text-on-surface">65ms</span>
+</div>
+<!-- Metric 7:-->
+<div class="glass-card rounded-xl p-3 flex flex-col items-center justify-center text-center">
+<span class="material-symbols-outlined text-on-secondary-container mb-1">battery_charging_80</span>
+<span class="text-[10px] text-on-surface-variant uppercase font-bold">Recovery</span>
+<span class="text-sm font-bold text-on-surface">82%</span>
+</div>
+<!-- Metric 8: Weight -->
+<div class="glass-card rounded-xl p-3 flex flex-col items-center justify-center text-center">
+<span class="material-symbols-outlined text-on-surface mb-1">scale</span>
+<span class="text-[10px] text-on-surface-variant uppercase font-bold">Weight</span>
+<span class="text-sm font-bold text-on-surface">78.2</span>
+</div>
+</div>
+</section>
+<!-- Dettaglio Andamento Section -->
+<section class="mb-8">
+<h3 class="font-label-md text-label-md text-primary uppercase tracking-widest mb-4">Dettaglio andamento</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Weight Trend Card -->
+<div class="glass-card rounded-xl p-4">
+<div class="flex justify-between items-start mb-4">
+<div>
+<p class="text-xs text-on-surface-variant">Peso Corporeo (kg)</p>
+<p class="text-lg font-bold text-on-surface">-0.4 <span class="text-tertiary text-xs">▼</span></p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant text-sm">show_chart</span>
+</div>
+<div class="dot-chart-container">
+<div class="flex flex-col items-center gap-1">
+<div class="chart-dot" style="bottom: 40px; --line-height: 40px;"></div>
+<span class="text-[8px] text-on-surface-variant">L</span>
+</div>
+<div class="flex flex-col items-center gap-1">
+<div class="chart-dot" style="bottom: 35px; --line-height: 35px;"></div>
+<span class="text-[8px] text-on-surface-variant">M</span>
+</div>
+<div class="flex flex-col items-center gap-1">
+<div class="chart-dot" style="bottom: 38px; --line-height: 38px;"></div>
+<span class="text-[8px] text-on-surface-variant">M</span>
+</div>
+<div class="flex flex-col items-center gap-1">
+<div class="chart-dot" style="bottom: 32px; --line-height: 32px;"></div>
+<span class="text-[8px] text-on-surface-variant">G</span>
+</div>
+<div class="flex flex-col items-center gap-1">
+<div class="chart-dot" style="bottom: 28px; --line-height: 28px;"></div>
+<span class="text-[8px] text-on-surface-variant">V</span>
+</div>
+<div class="flex flex-col items-center gap-1">
+<div class="chart-dot" style="bottom: 25px; --line-height: 25px;"></div>
+<span class="text-[8px] text-on-surface-variant">S</span>
+</div>
+<div class="flex flex-col items-center gap-1">
+<div class="chart-dot bg-tertiary" style="bottom: 20px; --line-height: 20px;"></div>
+<span class="text-[8px] text-on-surface-variant font-bold">D</span>
+</div>
+</div>
+</div>
+<!-- Training Volume Card -->
+<div class="glass-card rounded-xl p-4">
+<div class="flex justify-between items-start mb-4">
+<div>
+<p class="text-xs text-on-surface-variant">Volume Allenamento</p>
+<p class="text-lg font-bold text-on-surface">+12% <span class="text-primary text-xs">▲</span></p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant text-sm">fitness_center</span>
+</div>
+<div class="dot-chart-container">
+<div class="flex flex-col items-center gap-1">
+<div class="chart-dot" style="bottom: 10px; --line-height: 10px;"></div>
+<span class="text-[8px] text-on-surface-variant">L</span>
+</div>
+<div class="flex flex-col items-center gap-1">
+<div class="chart-dot" style="bottom: 45px; --line-height: 45px;"></div>
+<span class="text-[8px] text-on-surface-variant">M</span>
+</div>
+<div class="flex flex-col items-center gap-1">
+<div class="chart-dot" style="bottom: 5px; --line-height: 5px;"></div>
+<span class="text-[8px] text-on-surface-variant">M</span>
+</div>
+<div class="flex flex-col items-center gap-1">
+<div class="chart-dot" style="bottom: 50px; --line-height: 50px;"></div>
+<span class="text-[8px] text-on-surface-variant">G</span>
+</div>
+<div class="flex flex-col items-center gap-1">
+<div class="chart-dot" style="bottom: 10px; --line-height: 10px;"></div>
+<span class="text-[8px] text-on-surface-variant">V</span>
+</div>
+<div class="flex flex-col items-center gap-1">
+<div class="chart-dot" style="bottom: 60px; --line-height: 60px;"></div>
+<span class="text-[8px] text-on-surface-variant">S</span>
+</div>
+<div class="flex flex-col items-center gap-1">
+<div class="chart-dot bg-tertiary" style="bottom: 15px; --line-height: 15px;"></div>
+<span class="text-[8px] text-on-surface-variant font-bold">D</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Check Fotografico Section -->
+<section class="mb-8">
+<h3 class="font-label-md text-label-md text-primary uppercase tracking-widest mb-4">Check fotografico</h3>
+<div class="grid grid-cols-2 gap-4">
+<!-- Frontal -->
+<div class="aspect-[3/4] glass-card rounded-xl border-dashed border-2 border-outline-variant flex flex-col items-center justify-center cursor-pointer hover:bg-surface-container-high transition-all">
+<span class="material-symbols-outlined text-on-surface-variant text-3xl mb-2">add_a_photo</span>
+<span class="text-xs font-bold text-on-surface-variant uppercase">Frontale</span>
+</div>
+<!-- Lateral R -->
+<div class="aspect-[3/4] glass-card rounded-xl overflow-hidden relative group cursor-pointer">
+<img class="w-full h-full object-cover opacity-60" data-alt="Close-up artistic photography of a fitness athlete's lateral muscular definition, high-contrast chiaroscuro lighting, deep shadows and sharp highlights, blue and charcoal tones, ultra-detailed skin texture, modern technical photography style for a high-performance sports application." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDRiKR0vrXL_Syt3qKMMNyxXZ9fx1xk66ABFes4Dw-BzIthuKUMtKXLp78l5hqflj7n3Pcbiepu6xGy0MTMLrkvXCZZSZwivZTgxzJsHXz2GGC9GWjhaT8uMspNIda0_qf0gX2d9yPiRGhVFdBLvzLIH6yzvcb6VLJ3AqEOdP342dsmdfHBjg3v1LjO3vKZ_5WFNmrZVtTxJMaGpHrLf_xWDDi7FdOqZjeNN5EzWsC4TtrzrZ2LK3I">
+<div class="absolute inset-0 flex flex-col items-center justify-center bg-black/40">
+<span class="material-symbols-outlined text-white text-3xl mb-2">check_circle</span>
+<span class="text-xs font-bold text-white uppercase">Laterale DX</span>
+</div>
+</div>
+<!-- Posterior -->
+<div class="aspect-[3/4] glass-card rounded-xl border-dashed border-2 border-outline-variant flex flex-col items-center justify-center cursor-pointer hover:bg-surface-container-high transition-all">
+<span class="material-symbols-outlined text-on-surface-variant text-3xl mb-2">add_a_photo</span>
+<span class="text-xs font-bold text-on-surface-variant uppercase">Posteriore</span>
+</div>
+<!-- Lateral L -->
+<div class="aspect-[3/4] glass-card rounded-xl border-dashed border-2 border-outline-variant flex flex-col items-center justify-center cursor-pointer hover:bg-surface-container-high transition-all">
+<span class="material-symbols-outlined text-on-surface-variant text-3xl mb-2">add_a_photo</span>
+<span class="text-xs font-bold text-on-surface-variant uppercase">Laterale SX</span>
+</div>
+</div>
+</section>
+<!-- CTA Button -->
+<div class="mt-12 mb-8">
+<button class="w-full py-4 bg-primary-container text-on-primary-container font-bold rounded-xl shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">send</span>
+                Invia riepilogo settimanale
+            </button>
+<p class="text-center text-xs text-on-surface-variant mt-4 px-8">
+                Inviando questo modulo, il tuo coach riceverà tutti i dati e le foto per il feedback settimanale.
+            </p>
+</div>
+</main>
+<!-- Bottom Navigation Bar (Mobile) -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-around items-center px-4 py-2 lg:hidden bg-surface-container border-t border-outline-variant shadow-lg rounded-t-xl">
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-md text-[10px] mt-1">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">fitness_center</span>
+<span class="font-label-md text-[10px] mt-1">Training</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-2xl p-2 -mt-6 shadow-xl" href="#">
+<span class="material-symbols-outlined">add</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">restaurant</span>
+<span class="font-label-md text-[10px] mt-1">Nutrition</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-md text-[10px] mt-1">Profile</span>
+</a>
+</nav>
+<script class="">
+        // Micro-interactions for photo boxes
+        document.querySelectorAll('.aspect-\\[3\\/4\\]').forEach(card => {
+            card.addEventListener('click', () => {
+                card.classList.add('scale-95');
+                setTimeout(() => card.classList.remove('scale-95'), 100);
+            });
+        });
+
+        // Simple Fade-in effect for cards
+        const observerOptions = {
+            threshold: 0.1
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('opacity-100', 'translate-y-0');
+                    entry.target.classList.remove('opacity-0', 'translate-y-4');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('section').forEach(el => {
+            el.classList.add('transition-all', 'duration-700', 'opacity-0', 'translate-y-4');
+            observer.observe(el);
+        });
+    </script>
+
+</body></html>
