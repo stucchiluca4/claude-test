@@ -1,176 +1,247 @@
 import Link from 'next/link';
 import {
-  Bell,
+  Activity,
+  Apple,
+  CheckCircle2,
   ChevronRight,
   Dumbbell,
+  Home,
   MessageCircle,
-  MoreHorizontal,
+  Moon,
+  Scale,
+  Target,
+  Timer,
   TrendingUp,
+  Utensils,
 } from 'lucide-react';
 
-const workoutExercises = [
-  ['Barbell Squat', '4x8'],
-  ['Romanian Deadlift', '3x10'],
-  ['Squat Lunges', '3x10'],
-  ['Barbell Squat', '4x8'],
-  ['Romanian Deadlift', '3x10'],
+const workouts = [
+  { day: 'LUN', name: 'Upper Strength', detail: 'Panca, row, military press', done: true },
+  { day: 'MAR', name: 'Lower Hypertrophy', detail: 'Squat, RDL, leg press', done: true },
+  { day: 'GIO', name: 'Pull Volume', detail: 'Dorso, posterior chain, bicipiti', done: false },
+  { day: 'SAB', name: 'Full Body Pump', detail: 'Richiamo metabolico 55 min', done: false },
+];
+
+const meals = [
+  { name: 'Colazione', time: '08:00', kcal: 520, foods: 'Yogurt greco, avena, frutti rossi' },
+  { name: 'Pranzo', time: '13:00', kcal: 760, foods: 'Riso basmati, pollo, verdure, olio EVO' },
+  { name: 'Pre workout', time: '17:00', kcal: 310, foods: 'Banana, whey, gallette' },
+  { name: 'Cena', time: '20:30', kcal: 850, foods: 'Salmone, patate, insalata' },
 ];
 
 const messages = [
-  ['Trainer Alex', "Great job on yesterday's session!"],
-  ['Nutritionist Mia', 'Updated meal plan is ready.'],
+  { from: 'Coach Luca', text: 'Oggi tieni RPE 8 sulla panca. Se senti spalle stanche, scala 2,5 kg.' },
+  { from: 'Tu', text: 'Ok coach, carico anche il video del top set.' },
 ];
-
-const resources = ['Recovery Techniques for Legs', 'Hydration Strategy', 'Protein timing guide'];
 
 export default function AthleteDemoPage() {
   return (
-    <main className="min-h-screen bg-[#f4f7fb] text-[#0f172a]">
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white">
-        <div className="mx-auto flex h-16 max-w-[1120px] items-center justify-between px-5">
-          <Link href="/" className="text-xl font-black">APEX Performance</Link>
-          <nav className="hidden h-full items-center gap-8 md:flex">
-            {['Dashboard', 'Training Plans', 'Progress', 'Messages'].map((item, index) => (
-              <a
-                key={item}
-                className={index === 0 ? 'flex h-full items-center border-b-4 border-blue-600 px-1 font-semibold text-blue-700' : 'flex h-full items-center px-1 font-semibold text-slate-900'}
-              >
-                {item}
-              </a>
-            ))}
-          </nav>
-          <div className="flex items-center gap-4">
-            <span className="relative">
-              <Bell size={21} />
-              <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-red-500" />
+    <main className="min-h-screen bg-[#0b0e14] text-[#dfe2ec]">
+      <header className="border-b border-white/10 bg-[#151920]">
+        <div className="mx-auto flex max-w-[1180px] items-center justify-between px-5 py-4">
+          <Link href="/" className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-deep text-white">
+              <Dumbbell size={20} />
             </span>
-            <div className="h-9 w-9 rounded-full bg-[url('https://images.unsplash.com/photo-1605296867304-46d5465a13f1?auto=format&fit=crop&w=120&q=80')] bg-cover bg-center" />
+            <span>
+              <span className="block text-sm font-black uppercase tracking-[0.16em] text-celeste">
+                Workout Companion
+              </span>
+              <span className="block text-xs uppercase tracking-[0.2em] text-text-secondary">
+                Demo atleta web
+              </span>
+            </span>
+          </Link>
+          <div className="flex gap-2">
+            <Link
+              href="/demo"
+              className="rounded-lg border border-white/10 px-4 py-2 text-sm text-text-secondary transition hover:bg-white/5 hover:text-white"
+            >
+              Demo coach
+            </Link>
+            <Link
+              href="/registrati"
+              className="rounded-lg bg-accent-deep px-4 py-2 text-sm font-bold text-white transition hover:brightness-110"
+            >
+              Attiva prova
+            </Link>
           </div>
         </div>
       </header>
 
-      <section className="relative overflow-hidden bg-slate-900">
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1534367610401-9f5ed68180aa?auto=format&fit=crop&w=1600&q=80')] bg-cover bg-center opacity-55" />
-        <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-900/75 to-transparent" />
-        <div className="relative mx-auto max-w-[1120px] px-5 py-10 text-white md:py-12">
-          <h1 className="max-w-xl text-4xl font-black leading-tight">
-            Welcome back, Sarah!<br />
-            Let&apos;s crush today&apos;s session.
-          </h1>
-          <p className="mt-4 text-lg text-white/90">Current Plan: Phase 2 - Strength & Power | Week 4 of 8</p>
-        </div>
-      </section>
-
-      <section className="mx-auto grid max-w-[1120px] gap-6 px-5 py-8 lg:grid-cols-[1fr_340px]">
-        <div className="space-y-7">
-          <section>
-            <h2 className="mb-3 text-2xl font-black">Today&apos;s Workout</h2>
-            <div className="rounded-lg bg-[#10213d] p-7 text-white shadow-lg">
-              <div className="grid gap-6 md:grid-cols-[1fr_0.9fr]">
-                <div>
-                  <h3 className="text-4xl font-black">Lower Body Blast</h3>
-                  <p className="mt-4 text-base"><b>Duration:</b> 60 mins</p>
-                  <p className="text-base"><b>Focus:</b> Squats, Deadlifts, Lunges</p>
-                </div>
-                <ul className="space-y-1 text-base">
-                  {workoutExercises.map(([name, reps], index) => (
-                    <li key={index} className="flex justify-between gap-6">
-                      <span>• {name}</span>
-                      <span>{reps}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <button className="mt-7 w-full rounded-full bg-[#18d77b] py-3 text-lg font-black text-slate-950">
-                Start Workout
-              </button>
+      <section className="mx-auto grid max-w-[1180px] gap-5 px-5 py-6 lg:grid-cols-[390px_1fr]">
+        <aside className="rounded-[28px] border border-white/10 bg-[#10151d] p-3 shadow-2xl shadow-black/40">
+          <div className="overflow-hidden rounded-[22px] border border-white/10 bg-[#070d1a]">
+            <div className="border-b border-white/10 bg-[#151920] px-5 py-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-text-secondary">Oggi</p>
+              <h1 className="mt-1 text-2xl font-black text-white">Ciao, Marco</h1>
+              <p className="mt-1 text-sm text-text-secondary">Giovedi 28 luglio</p>
             </div>
-          </section>
 
-          <section>
-            <h2 className="mb-3 text-2xl font-black">Progress Tracker</h2>
-            <div className="grid gap-5 md:grid-cols-2">
-              <ProgressCard title="Weight Goal" tag="Goal: 185 lbs" value="186 lbs" kind="line" />
-              <ProgressCard title="Bench Press Max" tag="Trends" value="250 lbs" kind="bars" />
-            </div>
-          </section>
-        </div>
-
-        <aside className="space-y-5">
-          <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-black">Message Center</h2>
-              <MoreHorizontal size={22} />
-            </div>
-            <p className="mt-2 text-slate-500">Recent messages</p>
-            <div className="mt-4 divide-y divide-slate-200">
-              {messages.map(([name, text]) => (
-                <div key={name} className="flex gap-3 py-4">
-                  <div className="relative h-11 w-11 rounded-full bg-slate-300">
-                    <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
-                  </div>
+            <div className="space-y-3 p-4">
+              <PhoneCard title="Prontezza di oggi" icon={Activity}>
+                <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-black">{name}</p>
-                    <p className="text-sm">{text}</p>
+                    <p className="text-3xl font-black text-white">86%</p>
+                    <p className="text-sm text-text-secondary">Buona: puoi spingere, resta tecnico.</p>
                   </div>
-                  <span className="ml-auto text-xs text-slate-500">now</span>
+                  <div className="h-20 w-20 rounded-full border-[10px] border-celeste/80 border-r-white/10" />
                 </div>
-              ))}
-            </div>
-            <button className="mt-4 w-full rounded-full bg-[#18d77b] py-3 text-lg font-black text-slate-950">
-              Send Message
-            </button>
-          </section>
+              </PhoneCard>
 
-          <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="text-2xl font-black">Daily Tips & Resources</h2>
-            <p className="mt-2 text-slate-500">Recommended by your coach</p>
-            <div className="mt-4 divide-y divide-slate-200">
-              {resources.map((resource) => (
-                <div key={resource} className="flex items-center justify-between py-4">
-                  <div>
-                    <p className="font-black">{resource}</p>
-                    <p className="text-sm text-slate-500">Open resource</p>
-                  </div>
-                  <ChevronRight />
+              <PhoneCard title="Allenamento" icon={Dumbbell}>
+                <p className="text-xl font-black text-white">Pull Volume</p>
+                <p className="mt-1 text-sm text-text-secondary">Dorso + posterior chain, 65 min</p>
+                <button className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-accent-deep py-3 text-sm font-black text-white">
+                  <Timer size={16} /> Inizia allenamento
+                </button>
+              </PhoneCard>
+
+              <PhoneCard title="Nutrizione di oggi" icon={Utensils}>
+                <div className="flex items-end gap-2">
+                  <p className="text-3xl font-black text-white">2440</p>
+                  <p className="pb-1 text-sm text-text-secondary">kcal</p>
                 </div>
-              ))}
+                <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
+                  <Macro label="Proteine" value="180g" />
+                  <Macro label="Carbo" value="250g" />
+                  <Macro label="Grassi" value="70g" />
+                </div>
+              </PhoneCard>
+
+              <PhoneCard title="Check-in" icon={CheckCircle2}>
+                <p className="text-sm text-success">Completato oggi</p>
+                <p className="mt-1 text-sm text-text-secondary">Peso, sonno, stress e note inviati al coach.</p>
+              </PhoneCard>
             </div>
-          </section>
+          </div>
         </aside>
+
+        <section className="space-y-5">
+          <div className="rounded-xl border border-white/10 bg-[#151920] p-5">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-text-secondary">
+              Esperienza cliente
+            </p>
+            <h2 className="mt-2 text-3xl font-black text-white">La stessa app atleta, mostrata su web per la demo</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">
+              Questa pagina non sostituisce l'app mobile reale: serve solo per far vedere subito al cliente
+              finale cosa riceve quando lavora con il coach.
+            </p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-4">
+            <Kpi icon={Scale} label="Peso" value="76,1 kg" detail="-0,4 kg settimana" />
+            <Kpi icon={Moon} label="Sonno" value="7h 30m" detail="Qualita 8/10" />
+            <Kpi icon={Target} label="Aderenza" value="94%" detail="Workout + food" />
+            <Kpi icon={TrendingUp} label="Progressi" value="+12%" detail="Volume 4 sett." />
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Panel title="Programma settimanale" icon={Dumbbell}>
+              <div className="space-y-3">
+                {workouts.map((workout) => (
+                  <div key={workout.day} className="flex items-center gap-3 rounded-lg border border-white/10 bg-background/60 p-3">
+                    <span className="rounded-md border border-white/10 px-2 py-1 text-xs font-black text-celeste">
+                      {workout.day}
+                    </span>
+                    <div className="flex-1">
+                      <p className="font-bold text-white">{workout.name}</p>
+                      <p className="text-xs text-text-secondary">{workout.detail}</p>
+                    </div>
+                    {workout.done ? <CheckCircle2 className="text-success" size={18} /> : <ChevronRight className="text-text-secondary" size={18} />}
+                  </div>
+                ))}
+              </div>
+            </Panel>
+
+            <Panel title="Piano alimentare" icon={Apple}>
+              <div className="space-y-3">
+                {meals.map((meal) => (
+                  <div key={meal.name} className="rounded-lg border border-white/10 bg-background/60 p-3">
+                    <div className="flex items-center justify-between">
+                      <p className="font-bold text-white">{meal.name} · {meal.time}</p>
+                      <p className="text-sm font-black text-celeste">{meal.kcal} kcal</p>
+                    </div>
+                    <p className="mt-1 text-xs text-text-secondary">{meal.foods}</p>
+                  </div>
+                ))}
+              </div>
+            </Panel>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-[1fr_0.8fr]">
+            <Panel title="Chat coach" icon={MessageCircle}>
+              <div className="space-y-3">
+                {messages.map((message) => (
+                  <div
+                    key={message.text}
+                    className={message.from === 'Tu' ? 'ml-auto max-w-md rounded-xl bg-accent-deep p-3 text-sm text-white' : 'max-w-md rounded-xl bg-background p-3 text-sm text-text-primary'}
+                  >
+                    <p className="text-xs font-bold text-celeste">{message.from}</p>
+                    <p className="mt-1">{message.text}</p>
+                  </div>
+                ))}
+              </div>
+            </Panel>
+
+            <Panel title="Navigazione atleta" icon={Home}>
+              <div className="grid grid-cols-2 gap-2">
+                {['Home', 'Allenamento', 'Nutrizione', 'Progressi', 'Chat', 'Profilo'].map((item) => (
+                  <div key={item} className="rounded-lg border border-white/10 bg-background/60 p-3 text-sm font-bold text-white">
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </Panel>
+          </div>
+        </section>
       </section>
     </main>
   );
 }
 
-function ProgressCard({ title, tag, value, kind }: { title: string; tag: string; value: string; kind: 'line' | 'bars' }) {
+function PhoneCard({ title, icon: Icon, children }: { title: string; icon: typeof Activity; children: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xl font-black">{title}</h3>
-        <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-100 px-2 py-1 text-sm text-slate-900">
-          <TrendingUp size={15} className="text-emerald-600" />
-          {tag}
-        </span>
+    <div className="rounded-2xl border border-white/10 bg-[#151920] p-4">
+      <div className="mb-3 flex items-center gap-2 text-sm font-bold text-white">
+        <Icon className="text-celeste" size={17} />
+        {title}
       </div>
-      {kind === 'line' ? (
-        <div className="mt-6 h-36 rounded bg-gradient-to-b from-emerald-100 to-white p-4">
-          <svg viewBox="0 0 260 110" className="h-full w-full">
-            <path d="M5 20 L65 48 L120 60 L175 86 L245 100" fill="none" stroke="#10213d" strokeWidth="4" />
-            <path d="M5 88 H245" stroke="#20d686" strokeDasharray="8 8" />
-            {[65, 120, 175, 245].map((x, i) => (
-              <circle key={x} cx={x} cy={[48, 60, 86, 100][i]} r="5" fill="#bff7df" stroke="#10213d" strokeWidth="3" />
-            ))}
-          </svg>
-        </div>
-      ) : (
-        <div className="mt-6 flex h-36 items-end gap-3 border-b border-slate-200 px-3">
-          {[48, 56, 64, 80, 60, 74, 90].map((height, index) => (
-            <div key={index} className={index === 3 || index === 6 ? 'flex-1 rounded-t bg-[#18d77b]' : 'flex-1 rounded-t bg-[#10213d]'} style={{ height: `${height}%` }} />
-          ))}
-        </div>
-      )}
-      <p className="mt-3 text-sm font-bold text-slate-600">Current: {value}</p>
+      {children}
     </div>
+  );
+}
+
+function Macro({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-white/10 bg-background p-2">
+      <p className="font-black text-white">{value}</p>
+      <p className="mt-1 text-[11px] text-text-secondary">{label}</p>
+    </div>
+  );
+}
+
+function Kpi({ icon: Icon, label, value, detail }: { icon: typeof Activity; label: string; value: string; detail: string }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-[#151920] p-4">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-bold uppercase tracking-[0.12em] text-text-secondary">{label}</p>
+        <Icon className="text-celeste" size={18} />
+      </div>
+      <p className="mt-3 text-2xl font-black text-white">{value}</p>
+      <p className="mt-1 text-xs text-text-secondary">{detail}</p>
+    </div>
+  );
+}
+
+function Panel({ title, icon: Icon, children }: { title: string; icon: typeof Activity; children: React.ReactNode }) {
+  return (
+    <section className="rounded-xl border border-white/10 bg-[#151920] p-5">
+      <div className="mb-4 flex items-center gap-2">
+        <Icon className="text-celeste" size={20} />
+        <h3 className="font-bold text-white">{title}</h3>
+      </div>
+      {children}
+    </section>
   );
 }

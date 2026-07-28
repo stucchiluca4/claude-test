@@ -134,7 +134,21 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     .single();
 
   if (demoMode) {
-    return <CoachStitchDashboard coachName={profile?.first_name ?? 'Alex Carter'} />;
+    return (
+      <DashboardControlRoom
+        coachName={profile?.first_name ?? 'Coach'}
+        demoMode
+        clients={DEMO_CLIENTS}
+        programs={DEMO_PROGRAMS}
+        checkins={DEMO_CHECKINS}
+        unreadMessages={12}
+        checkins30d={38}
+        workouts7d={126}
+        retention={96}
+        weeklyWorkouts={[82, 89, 94, 101, 108, 117, 121, 126]}
+        note="Demo pronta per call commerciale: mostra dashboard, programmi, nutrizione, biofeedback e app atleta."
+      />
+    );
   }
 
   const [
@@ -275,113 +289,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       invitedClients={invitedClients.length}
       atRiskClients={atRisk.length}
     />
-  );
-}
-
-function CoachStitchDashboard({ coachName }: { coachName: string }) {
-  const clients = [
-    ['Sarah Jenkins', 'Ieri', 'On track', 'bg-emerald-500'],
-    ['Michael Chen', '2 giorni fa', 'Needs check-in', 'bg-yellow-400'],
-    ['Emily Davis', 'Oggi', 'On track', 'bg-emerald-500'],
-    ['David Wilson', '5 giorni fa', 'At risk', 'bg-red-500'],
-  ];
-
-  return (
-    <div className="-m-6 min-h-screen bg-[#f5f7fb] p-6 text-[#111827]">
-      <div className="mb-8 flex flex-col gap-4 border-b border-slate-200 bg-white px-1 pb-5 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-blue-600">TrainerFlow</p>
-          <h1 className="mt-2 text-3xl font-black">Welcome back, {coachName}</h1>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input
-              className="h-11 w-72 rounded-lg border border-slate-300 bg-white pl-10 pr-4 text-sm outline-none focus:border-blue-500"
-              placeholder="Search"
-            />
-          </div>
-          <Link href="/atleta-demo" className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white">
-            Demo atleta
-          </Link>
-        </div>
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-[1.2fr_1fr]">
-        <section>
-          <h2 className="mb-4 text-2xl font-black">Client Overview</h2>
-          <div className="overflow-hidden rounded-lg border border-slate-300 bg-white shadow-sm">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50 text-slate-700">
-                <tr>
-                  <th className="px-5 py-4 font-bold">Client</th>
-                  <th className="px-5 py-4 font-bold">Last Workout</th>
-                  <th className="px-5 py-4 font-bold">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {clients.map(([name, workout, status, dot]) => (
-                  <tr key={name} className="border-b border-slate-200 last:border-0">
-                    <td className="px-5 py-4 font-medium">{name}</td>
-                    <td className="px-5 py-4">{workout}</td>
-                    <td className="px-5 py-4">
-                      <span className="inline-flex items-center gap-2">
-                        <span className={`h-3 w-3 rounded-full ${dot}`} />
-                        {status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <div className="h-[310px]" />
-          </div>
-        </section>
-
-        <section>
-          <h2 className="mb-4 text-2xl font-black">Statistics</h2>
-          <div className="grid gap-5 md:grid-cols-2">
-            <StitchStat title="Total Sessions This Month" value="154" change="+8% from last month" chart="line" />
-            <StitchStat title="Revenue Growth" value="$4,200" change="+12% from last month" chart="line" />
-            <StitchStat title="New Plan Sales" value="22" change="+12% from last month" chart="bars" />
-            <div className="rounded-lg border border-slate-300 bg-white p-5 shadow-sm">
-              <p className="font-bold">Average Client Adherence</p>
-              <div className="mt-8 flex flex-col items-center">
-                <div className="grid h-40 w-40 place-items-center rounded-full border-[14px] border-blue-500 border-t-slate-200">
-                  <div className="text-center">
-                    <p className="text-4xl font-black">85%</p>
-                    <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">Stable</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-      </div>
-    </div>
-  );
-}
-
-function StitchStat({ title, value, change, chart }: { title: string; value: string; change: string; chart: 'line' | 'bars' }) {
-  return (
-    <div className="rounded-lg border border-slate-300 bg-white p-5 shadow-sm">
-      <p className="font-bold">{title}</p>
-      <p className="mt-4 text-4xl font-black">{value}</p>
-      <p className="mt-2 text-sm text-emerald-600">{change}</p>
-      {chart === 'line' ? (
-        <div className="mt-8 flex h-24 items-end gap-1">
-          {[25, 45, 38, 62, 58, 78].map((height, index) => (
-            <div key={index} className="flex-1 rounded-t bg-blue-500/20" style={{ height: `${height}%` }} />
-          ))}
-        </div>
-      ) : (
-        <div className="mt-8 flex h-24 items-end gap-3">
-          {[26, 46, 58, 50, 72, 38, 34, 52].map((height, index) => (
-            <div key={index} className={index === 4 ? 'w-5 rounded-t bg-blue-500' : 'w-5 rounded-t bg-blue-200'} style={{ height: `${height}%` }} />
-          ))}
-        </div>
-      )}
-    </div>
   );
 }
 
