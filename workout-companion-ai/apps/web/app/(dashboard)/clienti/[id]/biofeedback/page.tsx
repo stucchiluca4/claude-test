@@ -10,8 +10,53 @@ function toNum(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-export default async function BiofeedbackPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function BiofeedbackPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ demo?: string }>;
+}) {
   const { id } = await params;
+  const { demo } = await searchParams;
+
+  if (demo === '1') {
+    const client = id.includes('giulia') ? 'Giulia Rinaldi' : id.includes('andrea') ? 'Andrea Costa' : 'Marco Bellini';
+    const entries: BiofeedbackEntry[] = Array.from({ length: 21 }, (_, i) => {
+      const date = new Date('2026-07-08T00:00:00Z');
+      date.setDate(date.getDate() + i);
+      return {
+        id: `demo-bio-${i}`,
+        log_date: date.toISOString().slice(0, 10),
+        sleep_quality: 6 + (i % 4),
+        sleep_hours: 6.5 + (i % 3) * 0.5,
+        stress_level: 6 - (i % 3),
+        energy_level: 6 + (i % 4),
+        muscle_soreness: 5 + (i % 4),
+        joint_stress: 2 + (i % 3),
+        recovery: 6 + (i % 4),
+        carbs_g: 230 + i * 2,
+        protein_g: 175,
+        fat_g: 70,
+        kcal_consumed: 2380 + i * 8,
+        hydration_l: 2.4 + (i % 4) * 0.2,
+        steps: 8200 + i * 110,
+        weight_kg: 76.9 - i * 0.04,
+        notes: i === 18 ? 'Gambe affaticate, sonno medio.' : null,
+      };
+    });
+
+    return (
+      <div>
+        <PageHeader
+          title={`Monitoraggio & Biofeedback - ${client}`}
+          subtitle="Sonno, stress, energia, alimentazione e attivita registrati quotidianamente - demo."
+        />
+        <BiofeedbackDashboard entries={entries} kcalTarget={2440} />
+      </div>
+    );
+  }
+
   const supabase = await createClient();
 
   const { data: cc } = await supabase

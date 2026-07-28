@@ -84,7 +84,7 @@ export function Sidebar({ userName }: { userName: string }) {
 
       <div className="px-4 py-4 border-t border-white/10 space-y-1">
         <Link
-          href="/impostazioni"
+          href={demoNavMode ? '/impostazioni?demo=1' : '/impostazioni'}
           className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm text-text-secondary hover:bg-white/[.04] hover:text-text-primary transition"
         >
           <Settings size={18} />

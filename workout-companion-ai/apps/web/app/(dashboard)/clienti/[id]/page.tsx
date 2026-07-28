@@ -6,8 +6,20 @@ import { fullName, formatDate, formatKg } from '@/lib/utils';
 import { WeightChart } from '@/components/weight-chart';
 import { AiCoachWidget } from '@/components/ai-coach-widget';
 
-export default async function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ClientDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ demo?: string }>;
+}) {
   const { id } = await params;
+  const { demo } = await searchParams;
+
+  if (demo === '1') {
+    return <DemoClientDetail id={id} />;
+  }
+
   const supabase = await createClient();
 
   const { data: cc } = await supabase
@@ -209,6 +221,98 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
                   ))}
                 </ul>
               )}
+            </div>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+const DEMO_CLIENTS: Record<string, { name: string; goal: string; sex: string; height: number; weight: number }> = {
+  'demo-marco': { name: 'Marco Bellini', goal: 'Ipertrofia lean bulk', sex: 'Uomo', height: 178, weight: 76.1 },
+  'demo-giulia': { name: 'Giulia Rinaldi', goal: 'Ricomp + glute focus', sex: 'Donna', height: 166, weight: 61.8 },
+  'demo-andrea': { name: 'Andrea Costa', goal: 'Forza su squat', sex: 'Uomo', height: 181, weight: 82.4 },
+  'demo-sofia': { name: 'Sofia Marino', goal: 'Dimagrimento sostenibile', sex: 'Donna', height: 170, weight: 68.2 },
+};
+
+function DemoClientDetail({ id }: { id: string }) {
+  const client = DEMO_CLIENTS[id] ?? DEMO_CLIENTS['demo-marco'];
+  const weightSeries = [
+    { date: '01/07', peso: client.weight + 1.2 },
+    { date: '08/07', peso: client.weight + 0.8 },
+    { date: '15/07', peso: client.weight + 0.3 },
+    { date: '22/07', peso: client.weight },
+  ];
+
+  return (
+    <div>
+      <PageHeader
+        title={client.name}
+        subtitle={`Cliente demo - ${client.goal}`}
+        actions={
+          <>
+            <Link href="/allenamenti/demo-hypertrophy?demo=1" className={buttonSecondary}>+ Programma</Link>
+            <Link href="/nutrizione/demo-lean-bulk?demo=1" className={buttonSecondary}>+ Piano alimentare</Link>
+            <Link href={`/clienti/${id}/valutazione?demo=1`} className={buttonSecondary}>Valutazione corporea</Link>
+            <Link href={`/clienti/${id}/biofeedback?demo=1`} className={buttonSecondary}>Biofeedback</Link>
+          </>
+        }
+      />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Card>
+          <h3 className="font-semibold mb-4">Anagrafica</h3>
+          <dl className="space-y-2.5 text-sm">
+            <div className="flex justify-between"><dt className="text-text-secondary">Sesso</dt><dd>{client.sex}</dd></div>
+            <div className="flex justify-between"><dt className="text-text-secondary">Età</dt><dd>32 anni</dd></div>
+            <div className="flex justify-between"><dt className="text-text-secondary">Altezza</dt><dd>{client.height} cm</dd></div>
+            <div className="flex justify-between"><dt className="text-text-secondary">Peso attuale</dt><dd>{formatKg(client.weight)}</dd></div>
+          </dl>
+          <h3 className="font-semibold mt-6 mb-4">Anamnesi</h3>
+          <dl className="space-y-2.5 text-sm">
+            <div className="flex justify-between gap-4"><dt className="text-text-secondary">Obiettivo</dt><dd className="text-right">{client.goal}</dd></div>
+            <div className="flex justify-between gap-4"><dt className="text-text-secondary">Esperienza</dt><dd>Intermedio</dd></div>
+            <div className="flex justify-between gap-4"><dt className="text-text-secondary">Giorni/settimana</dt><dd>4</dd></div>
+            <div className="flex justify-between gap-4"><dt className="text-text-secondary">Limitazioni</dt><dd>Nessuna rilevante</dd></div>
+          </dl>
+        </Card>
+        <Card className="lg:col-span-2">
+          <h3 className="font-semibold mb-4">Andamento peso corporeo</h3>
+          <WeightChart data={weightSeries} />
+          <h3 className="font-semibold mt-8 mb-4">Ultimi check-in</h3>
+          <ul className="space-y-2">
+            {[
+              ['demo-check-2', '22/07/2026', client.weight, 'reviewed'],
+              ['demo-check-1', '15/07/2026', client.weight + 0.3, 'submitted'],
+              ['demo-check-0', '08/07/2026', client.weight + 0.8, 'reviewed'],
+            ].map(([checkId, week, weight, status]) => (
+              <li key={checkId as string} className="flex items-center justify-between text-sm">
+                <span>Settimana del {week} - {formatKg(weight as number)}</span>
+                <span className="flex items-center gap-3">
+                  <Badge color={status === 'reviewed' ? 'success' : 'warning'}>
+                    {status === 'reviewed' ? 'Rivisto' : 'Da rivedere'}
+                  </Badge>
+                  <Link href={`/checkin/${checkId}?demo=1`} className="text-accent hover:underline">Apri</Link>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+        <Card className="lg:col-span-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div>
+              <h3 className="font-semibold mb-4">Programmi di allenamento</h3>
+              <ul className="space-y-2 text-sm">
+                <li className="flex justify-between"><span>Hypertrophy Engine W5</span><Link href="/allenamenti/demo-hypertrophy?demo=1" className="text-accent">Apri</Link></li>
+                <li className="flex justify-between"><span>Strength Reset</span><Link href="/allenamenti/demo-strength?demo=1" className="text-accent">Apri</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="font-semibold mb-4">Piani alimentari</h3>
+              <ul className="space-y-2 text-sm">
+                <li className="flex justify-between"><span>Lean Bulk 2740 kcal</span><Link href="/nutrizione/demo-lean-bulk?demo=1" className="text-accent">Apri</Link></li>
+                <li className="flex justify-between"><span>Ricomp 2100 kcal ON/OFF</span><Link href="/nutrizione/demo-recomp?demo=1" className="text-accent">Apri</Link></li>
+              </ul>
             </div>
           </div>
         </Card>

@@ -1,9 +1,23 @@
 import { notFound } from 'next/navigation';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { Badge, Card, PageHeader } from '@/components/ui';
 import { MacroEditor } from './macro-editor';
 
-export default async function NutritionPlanPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function NutritionPlanPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ demo?: string }>;
+}) {
   const { id } = await params;
+  const { demo } = await searchParams;
+
+  if (demo === '1') {
+    return <DemoNutritionDetail id={id} />;
+  }
+
   const supabase = await createClient();
 
   const { data: plan } = await supabase
@@ -49,5 +63,82 @@ export default async function NutritionPlanPage({ params }: { params: Promise<{ 
 
   return (
     <MacroEditor initialPlan={plan as any} lastWeightKg={lastWeight} lastAssessment={lastAssessment} />
+  );
+}
+
+const DEMO_NUTRITION: Record<string, { name: string; client: string; kcal: number; protein: number; carbs: number; fat: number }> = {
+  'demo-lean-bulk': { name: 'Lean Bulk 2740 kcal', client: 'Marco Bellini', kcal: 2740, protein: 180, carbs: 330, fat: 80 },
+  'demo-recomp': { name: 'Ricomp 2100 kcal ON/OFF', client: 'Giulia Rinaldi', kcal: 2100, protein: 145, carbs: 220, fat: 70 },
+  'demo-cut': { name: 'Cut sostenibile 1900 kcal', client: 'Andrea Costa', kcal: 1900, protein: 170, carbs: 165, fat: 65 },
+};
+
+function DemoNutritionDetail({ id }: { id: string }) {
+  const plan = DEMO_NUTRITION[id] ?? DEMO_NUTRITION['demo-lean-bulk'];
+  const meals = [
+    ['Colazione', '08:00', 'Yogurt greco, avena, frutti rossi', 520],
+    ['Pranzo', '13:00', 'Riso basmati, pollo, verdure, olio EVO', 760],
+    ['Pre workout', '17:00', 'Banana, whey, gallette', 310],
+    ['Cena', '20:30', 'Salmone, patate, insalata', 850],
+  ];
+
+  return (
+    <div>
+      <PageHeader
+        title={plan.name}
+        subtitle={`${plan.client} - rotazione giorni ON/OFF e macro target`}
+        actions={<Badge color="accent">Demo</Badge>}
+      />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Card>
+          <h3 className="font-semibold mb-4">Target giornaliero</h3>
+          <div className="text-4xl font-black text-white">{plan.kcal} kcal</div>
+          <div className="mt-5 space-y-3">
+            <Macro label="Proteine" value={plan.protein} color="bg-accent" />
+            <Macro label="Carboidrati" value={plan.carbs} color="bg-warning" />
+            <Macro label="Grassi" value={plan.fat} color="bg-success" />
+          </div>
+        </Card>
+        <Card className="lg:col-span-2">
+          <h3 className="font-semibold mb-4">Pasti di oggi</h3>
+          <div className="space-y-3">
+            {meals.map(([name, time, foods, kcal]) => (
+              <div key={name as string} className="rounded-xl border border-border bg-background/60 p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <h4 className="font-bold text-white">{name} - {time}</h4>
+                    <p className="mt-1 text-sm text-text-secondary">{foods}</p>
+                  </div>
+                  <span className="font-black text-accent">{kcal} kcal</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+        <Card className="lg:col-span-3">
+          <h3 className="font-semibold mb-3">Regole adattamento</h3>
+          <p className="text-sm text-text-secondary">
+            Se peso medio scende oltre 0,8% a settimana, aumenta carboidrati di 25g nei giorni ON.
+            Se aderenza sotto 80%, semplifica il piano mantenendo proteine costanti.
+          </p>
+          <Link href="/nutrizione?demo=1" className="mt-4 inline-block text-sm text-accent hover:underline">
+            Torna ai piani alimentari
+          </Link>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function Macro({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <div>
+      <div className="flex justify-between text-sm">
+        <span className="text-text-secondary">{label}</span>
+        <span className="font-bold">{value}g</span>
+      </div>
+      <div className="mt-1 h-2 overflow-hidden rounded-full bg-border">
+        <div className={`h-full rounded-full ${color}`} style={{ width: `${Math.min(100, value / 3)}%` }} />
+      </div>
+    </div>
   );
 }
