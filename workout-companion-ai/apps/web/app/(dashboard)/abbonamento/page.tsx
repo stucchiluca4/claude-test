@@ -12,7 +12,24 @@ const PLAN_LABELS: Record<string, string> = {
   gym: 'Gym/Team',
 };
 
-export default async function BillingPage() {
+export default async function BillingPage({ searchParams }: { searchParams: Promise<{ demo?: string }> }) {
+  const { demo } = await searchParams;
+  return <BillingContent demo={demo === '1'} />;
+}
+
+async function BillingContent({ demo = false }: { demo?: boolean }) {
+  if (demo) {
+    const sub = {
+      plan_key: 'coach_elite',
+      status: 'trialing',
+      trial_ends_at: '2026-08-11',
+      current_period_end: '2026-08-28',
+      cancel_at_period_end: false,
+    };
+
+    return <BillingView sub={sub} />;
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -24,6 +41,10 @@ export default async function BillingPage() {
     .eq('profile_id', user!.id)
     .maybeSingle();
 
+  return <BillingView sub={sub} />;
+}
+
+function BillingView({ sub }: { sub: any }) {
   return (
     <div>
       <PageHeader

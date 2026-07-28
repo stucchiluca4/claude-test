@@ -11,7 +11,19 @@ const STATUS_LABEL: Record<string, { label: string; color: 'success' | 'warning'
   ended: { label: 'Concluso', color: 'danger' },
 };
 
-export default async function ClientsPage() {
+const DEMO_CLIENTS = [
+  { id: 'demo-marco', status: 'active', invite_email: null, started_at: '2026-05-04', client: { first_name: 'Marco', last_name: 'Bellini', avatar_url: null } },
+  { id: 'demo-giulia', status: 'active', invite_email: null, started_at: '2026-04-15', client: { first_name: 'Giulia', last_name: 'Rinaldi', avatar_url: null } },
+  { id: 'demo-andrea', status: 'paused', invite_email: null, started_at: '2026-03-20', client: { first_name: 'Andrea', last_name: 'Costa', avatar_url: null } },
+  { id: 'demo-sofia', status: 'invited', invite_email: 'sofia.demo@example.com', started_at: null, client: null },
+];
+
+export default async function ClientsPage({ searchParams }: { searchParams: Promise<{ demo?: string }> }) {
+  const { demo } = await searchParams;
+  if (demo === '1') {
+    return <ClientsTable clients={DEMO_CLIENTS} demo />;
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -25,15 +37,19 @@ export default async function ClientsPage() {
     .eq('coach_id', user!.id)
     .order('created_at', { ascending: false });
 
+  return <ClientsTable clients={clients ?? []} />;
+}
+
+function ClientsTable({ clients, demo = false }: { clients: any[]; demo?: boolean }) {
   return (
     <div>
       <PageHeader
         title="Clienti"
-        subtitle="Gestisci i tuoi atleti: profili, programmi e progressi."
-        actions={<InviteClientForm />}
+        subtitle={demo ? 'Stessa sezione clienti, compilata con dati demo.' : 'Gestisci i tuoi atleti: profili, programmi e progressi.'}
+        actions={demo ? <Badge color="accent">Demo</Badge> : <InviteClientForm />}
       />
 
-      {(clients ?? []).length === 0 ? (
+      {clients.length === 0 ? (
         <EmptyState
           emoji="👥"
           title="Nessun cliente ancora"
@@ -51,7 +67,7 @@ export default async function ClientsPage() {
               </tr>
             </thead>
             <tbody>
-              {clients!.map((c) => {
+              {clients.map((c) => {
                 const st = STATUS_LABEL[c.status] ?? STATUS_LABEL.ended;
                 return (
                   <tr key={c.id} className="border-b border-border last:border-0 hover:bg-card-hover">
@@ -63,7 +79,7 @@ export default async function ClientsPage() {
                     </td>
                     <td className="px-5 py-3.5 text-text-secondary">{formatDate(c.started_at)}</td>
                     <td className="px-5 py-3.5 text-right">
-                      <Link href={`/clienti/${c.id}`} className="text-accent hover:underline">
+                      <Link href={demo ? `/clienti/${c.id}?demo=1` : `/clienti/${c.id}`} className="text-accent hover:underline">
                         Apri scheda →
                       </Link>
                     </td>

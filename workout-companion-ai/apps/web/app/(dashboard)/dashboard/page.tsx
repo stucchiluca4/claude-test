@@ -64,7 +64,7 @@ const QUICK_ACTIONS: ActionItem[] = [
   { href: '/messaggi', label: 'Invia update', detail: 'Chat cliente e follow-up', icon: MessageSquare },
   { href: '/checkin', label: 'Valuta check', detail: 'Foto, misure, feedback', icon: ClipboardCheck },
   { href: '/clienti', label: 'Nuovo cliente', detail: 'Invito e intake iniziale', icon: Plus },
-  { href: '/demo', label: 'Demo vendita', detail: 'Mockup premium Stitch', icon: ShieldCheck },
+  { href: '/dashboard?demo=1', label: 'Demo prodotto', detail: 'Stessa app con dati demo', icon: ShieldCheck },
 ];
 
 const DEMO_CLIENTS: ClientRow[] = [
@@ -351,7 +351,7 @@ function DashboardControlRoom({
           </h1>
           <p className="mt-1 text-sm text-text-secondary">
             {demoMode
-              ? 'Questa e la dashboard reale in modalita demo. I menu aprono la vetrina veloce con le schermate complete.'
+              ? 'Questa e la stessa app in modalita demo: menu identico, dati gia compilati e nessuna attesa dal database.'
               : 'Priorita operative, performance clienti e prossime azioni in un unico quadro.'}
           </p>
         </div>
@@ -547,7 +547,7 @@ function DashboardControlRoom({
               <h2 className="font-bold text-white">Demo commerciale pronta</h2>
               <p className="mt-1 text-sm text-text-secondary">{note}</p>
               <Link href="/demo" className="mt-3 inline-flex items-center gap-1 text-sm font-bold text-celeste">
-                Apri tutte le schermate Stitch <ArrowUpRight size={15} />
+                Resta nella demo prodotto <ArrowUpRight size={15} />
               </Link>
             </div>
           </div>

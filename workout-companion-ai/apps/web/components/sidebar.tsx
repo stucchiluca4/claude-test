@@ -12,7 +12,6 @@ import {
   MessageSquare,
   CreditCard,
   Tag,
-  Sparkles,
   Settings,
   LogOut,
 } from 'lucide-react';
@@ -20,15 +19,14 @@ import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 
 const NAV = [
-  { href: '/dashboard', demoHref: '/dashboard?demo=1', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/clienti', demoHref: '/demo?screen=client_intake_form', label: 'Clienti', icon: Users },
-  { href: '/allenamenti', demoHref: '/demo?screen=workout_program_detail', label: 'Allenamenti & Programmi', icon: Dumbbell },
-  { href: '/nutrizione', demoHref: '/demo?screen=nutrition_plan', label: 'Piani Alimentari', icon: Utensils },
-  { href: '/checkin', demoHref: '/demo?screen=weekly_summary', label: 'Check & Progressi', icon: ClipboardCheck },
-  { href: '/messaggi', demoHref: '/demo?screen=workout_session_active_feedback', label: 'Messaggi', icon: MessageSquare },
-  { href: '/demo', demoHref: '/demo', label: 'Demo Pro', icon: Sparkles },
-  { href: '/listino', demoHref: '/demo?screen=coaching_plans_pricing', label: 'Listino', icon: Tag },
-  { href: '/abbonamento', demoHref: '/demo?screen=coaching_plans_pricing', label: 'Pagamenti', icon: CreditCard },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/clienti', label: 'Clienti', icon: Users },
+  { href: '/allenamenti', label: 'Allenamenti & Programmi', icon: Dumbbell },
+  { href: '/nutrizione', label: 'Piani Alimentari', icon: Utensils },
+  { href: '/checkin', label: 'Check & Progressi', icon: ClipboardCheck },
+  { href: '/messaggi', label: 'Messaggi', icon: MessageSquare },
+  { href: '/listino', label: 'Listino', icon: Tag },
+  { href: '/abbonamento', label: 'Pagamenti', icon: CreditCard },
 ];
 
 export function Sidebar({ userName }: { userName: string }) {
@@ -65,7 +63,7 @@ export function Sidebar({ userName }: { userName: string }) {
       <nav className="flex-1 px-4 py-6 space-y-1">
         {NAV.map((item) => {
           const active = pathname.startsWith(item.href);
-          const href = demoNavMode ? item.demoHref : item.href;
+          const href = demoNavMode ? `${item.href}?demo=1` : item.href;
           return (
             <Link
               key={item.href}

@@ -5,7 +5,18 @@ import { PROGRAM_GOALS } from '@wc/shared';
 import { fullName } from '@/lib/utils';
 import { NewProgramForm } from './new-program-form';
 
-export default async function ProgramsPage() {
+const DEMO_PROGRAMS = [
+  { id: 'demo-hypertrophy', name: 'Hypertrophy Engine W5', goal: 'hypertrophy', status: 'active', duration_weeks: 8, coach_client: { client: { first_name: 'Marco', last_name: 'Bellini' } } },
+  { id: 'demo-glute', name: 'Glute Focus 12W', goal: 'body_recomp', status: 'active', duration_weeks: 12, coach_client: { client: { first_name: 'Giulia', last_name: 'Rinaldi' } } },
+  { id: 'demo-strength', name: 'Strength Reset', goal: 'strength', status: 'draft', duration_weeks: 6, coach_client: { client: { first_name: 'Andrea', last_name: 'Costa' } } },
+];
+
+export default async function ProgramsPage({ searchParams }: { searchParams: Promise<{ demo?: string }> }) {
+  const { demo } = await searchParams;
+  if (demo === '1') {
+    return <ProgramsGrid programs={DEMO_PROGRAMS} clientOptions={[]} demo />;
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -31,15 +42,19 @@ export default async function ProgramsPage() {
     label: c.client ? fullName(c.client as any) : 'Cliente invitato',
   }));
 
+  return <ProgramsGrid programs={programs ?? []} clientOptions={clientOptions} />;
+}
+
+function ProgramsGrid({ programs, clientOptions, demo = false }: { programs: any[]; clientOptions: { id: string; label: string }[]; demo?: boolean }) {
   return (
     <div>
       <PageHeader
         title="Allenamenti & Programmi"
-        subtitle="Crea schede multi-settimana con periodizzazione e assegnale ai clienti."
-        actions={<NewProgramForm clients={clientOptions} />}
+        subtitle={demo ? 'Stessa sezione programmi, compilata con esempi avanzati.' : 'Crea schede multi-settimana con periodizzazione e assegnale ai clienti.'}
+        actions={demo ? <Badge color="accent">Demo</Badge> : <NewProgramForm clients={clientOptions} />}
       />
 
-      {(programs ?? []).length === 0 ? (
+      {programs.length === 0 ? (
         <EmptyState
           emoji="🏋️"
           title="Nessun programma ancora"
@@ -47,8 +62,8 @@ export default async function ProgramsPage() {
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {programs!.map((p) => (
-            <Link key={p.id} href={`/allenamenti/${p.id}`}>
+          {programs.map((p) => (
+            <Link key={p.id} href={demo ? `/allenamenti/${p.id}?demo=1` : `/allenamenti/${p.id}`}>
               <Card className="hover:bg-card-hover transition cursor-pointer h-full">
                 <div className="flex items-start justify-between">
                   <h3 className="font-semibold">{p.name}</h3>

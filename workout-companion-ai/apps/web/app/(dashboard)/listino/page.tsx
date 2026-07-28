@@ -2,7 +2,62 @@ import { createClient } from '@/lib/supabase/server';
 import { PageHeader } from '@/components/ui';
 import { OffersManager, type Offer } from './offers-manager';
 
-export default async function ListinoPage() {
+const DEMO_OFFERS: Offer[] = [
+  {
+    id: 'demo-basic',
+    coach_id: 'demo',
+    name: 'Online Coaching Start',
+    description: 'Programma mensile, check settimanale e chat asincrona. Ideale per iniziare.',
+    duration_months: 1,
+    check_frequency: 'settimanale',
+    price_cents: 14900,
+    currency: 'EUR',
+    is_published: true,
+    sort_order: 1,
+    created_at: '2026-07-01T00:00:00Z',
+  },
+  {
+    id: 'demo-pro',
+    coach_id: 'demo',
+    name: 'Performance Pro',
+    description: 'Allenamento, nutrizione, biofeedback e report avanzato ogni settimana.',
+    duration_months: 3,
+    check_frequency: 'settimanale',
+    price_cents: 39900,
+    currency: 'EUR',
+    is_published: true,
+    sort_order: 2,
+    created_at: '2026-07-01T00:00:00Z',
+  },
+  {
+    id: 'demo-elite',
+    coach_id: 'demo',
+    name: 'Elite Transformation',
+    description: 'Percorso premium con priorita chat, review video e adattamenti rapidi.',
+    duration_months: 6,
+    check_frequency: 'bisettimanale',
+    price_cents: 79900,
+    currency: 'EUR',
+    is_published: false,
+    sort_order: 3,
+    created_at: '2026-07-01T00:00:00Z',
+  },
+];
+
+export default async function ListinoPage({ searchParams }: { searchParams: Promise<{ demo?: string }> }) {
+  const { demo } = await searchParams;
+  if (demo === '1') {
+    return (
+      <div>
+        <PageHeader
+          title="Listino Coaching Online"
+          subtitle="Stessa sezione listino, compilata con offerte demo."
+        />
+        <OffersManager offers={DEMO_OFFERS} />
+      </div>
+    );
+  }
+
   const supabase = await createClient();
   const {
     data: { user },

@@ -3,7 +3,18 @@ import { createClient } from '@/lib/supabase/server';
 import { PageHeader, Card, Badge, EmptyState } from '@/components/ui';
 import { fullName, formatDate, formatKg } from '@/lib/utils';
 
-export default async function CheckinsPage() {
+const DEMO_CHECKINS = [
+  { id: 'demo-check-1', week_start: '2026-07-20', status: 'submitted', weight_kg: 82.4, submitted_at: '2026-07-27T08:12:00Z', coach_client: { client: { first_name: 'Andrea', last_name: 'Costa' } } },
+  { id: 'demo-check-2', week_start: '2026-07-20', status: 'reviewed', weight_kg: 76.1, submitted_at: '2026-07-26T21:40:00Z', coach_client: { client: { first_name: 'Marco', last_name: 'Bellini' } } },
+  { id: 'demo-check-3', week_start: '2026-07-20', status: 'submitted', weight_kg: 61.8, submitted_at: '2026-07-26T18:05:00Z', coach_client: { client: { first_name: 'Giulia', last_name: 'Rinaldi' } } },
+];
+
+export default async function CheckinsPage({ searchParams }: { searchParams: Promise<{ demo?: string }> }) {
+  const { demo } = await searchParams;
+  if (demo === '1') {
+    return <CheckinsTable checkins={DEMO_CHECKINS} demo />;
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -19,14 +30,19 @@ export default async function CheckinsPage() {
     .order('week_start', { ascending: false })
     .limit(50);
 
+  return <CheckinsTable checkins={checkins ?? []} />;
+}
+
+function CheckinsTable({ checkins, demo = false }: { checkins: any[]; demo?: boolean }) {
   return (
     <div>
       <PageHeader
         title="Check & Progressi"
-        subtitle="I check-in settimanali dei tuoi clienti, da rivedere e commentare."
+        subtitle={demo ? 'Stessa sezione check-in, compilata con progressi demo.' : 'I check-in settimanali dei tuoi clienti, da rivedere e commentare.'}
+        actions={demo ? <Badge color="accent">Demo</Badge> : undefined}
       />
 
-      {(checkins ?? []).length === 0 ? (
+      {checkins.length === 0 ? (
         <EmptyState
           emoji="📸"
           title="Nessun check-in ricevuto"
@@ -45,7 +61,7 @@ export default async function CheckinsPage() {
               </tr>
             </thead>
             <tbody>
-              {checkins!.map((ci) => (
+              {checkins.map((ci) => (
                 <tr key={ci.id} className="border-b border-border last:border-0 hover:bg-card-hover">
                   <td className="px-5 py-3.5">
                     {fullName((ci.coach_client as any)?.client ?? null)}
@@ -70,7 +86,7 @@ export default async function CheckinsPage() {
                     </Badge>
                   </td>
                   <td className="px-5 py-3.5 text-right">
-                    <Link href={`/checkin/${ci.id}`} className="text-accent hover:underline">
+                    <Link href={demo ? `/checkin/${ci.id}?demo=1` : `/checkin/${ci.id}`} className="text-accent hover:underline">
                       Apri →
                     </Link>
                   </td>
