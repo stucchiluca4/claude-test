@@ -3,12 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 type CookieToSet = { name: string; value: string; options: CookieOptions };
 
-/**
- * Middleware: gira prima di ogni pagina.
- * 1. Mantiene aggiornata la sessione di login (cookie).
- * 2. Se non sei loggato e provi ad aprire l'area riservata → ti manda al login.
- */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -38,17 +33,24 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/login') ||
     request.nextUrl.pathname.startsWith('/registrati');
 
-  // /auth/* (es. conferma email) deve restare raggiungibile senza sessione
   const isAuthFlow = request.nextUrl.pathname.startsWith('/auth');
+  const isPublicDemo = request.nextUrl.pathname.startsWith('/demo');
+  const isStitchAsset = request.nextUrl.pathname.startsWith('/stitch-demo');
 
-  // Link di conferma che atterra sulla home con ?code=... → completa l'accesso
   if (request.nextUrl.pathname === '/' && request.nextUrl.searchParams.has('code')) {
     const confirmUrl = new URL('/auth/confirm', request.url);
     confirmUrl.searchParams.set('code', request.nextUrl.searchParams.get('code')!);
     return NextResponse.redirect(confirmUrl);
   }
 
-  if (!user && !isAuthPage && !isAuthFlow && request.nextUrl.pathname !== '/') {
+  if (
+    !user &&
+    !isAuthPage &&
+    !isAuthFlow &&
+    !isPublicDemo &&
+    !isStitchAsset &&
+    request.nextUrl.pathname !== '/'
+  ) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
@@ -60,6 +62,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Applica il middleware a tutto tranne file statici e API di Stripe (webhook firmato)
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|api/stripe/webhook|.*\\.(?:svg|png|jpg|ico)$).*)'],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|api/stripe/webhook|.*\\.(?:svg|png|jpg|ico)$).*)',
+  ],
 };
