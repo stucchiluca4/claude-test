@@ -344,13 +344,15 @@ function DashboardControlRoom({
       <div className="flex flex-col gap-4 rounded-xl border border-white/10 bg-[#151920] p-5 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-text-secondary">
-            Elite coaching control room
+            {demoMode ? 'Preview app integrata' : 'Elite coaching control room'}
           </p>
           <h1 className="mt-2 text-3xl font-black text-white">
             Bentornato, {coachName}
           </h1>
           <p className="mt-1 text-sm text-text-secondary">
-            Priorita operative, performance clienti e prossime azioni in un unico quadro.
+            {demoMode
+              ? 'Questa e la dashboard reale in modalita demo. I menu aprono la vetrina veloce con le schermate complete.'
+              : 'Priorita operative, performance clienti e prossime azioni in un unico quadro.'}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

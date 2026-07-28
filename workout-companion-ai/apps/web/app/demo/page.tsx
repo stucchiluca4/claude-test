@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   Activity,
@@ -108,6 +108,13 @@ const DEMO_STATS = [
 export default function DemoPage() {
   const [activeId, setActiveId] = useState<(typeof SCREENS)[number]['id']>('coach_dashboard');
 
+  useEffect(() => {
+    const screen = new URLSearchParams(window.location.search).get('screen');
+    if (screen && SCREENS.some((item) => item.id === screen)) {
+      setActiveId(screen as (typeof SCREENS)[number]['id']);
+    }
+  }, []);
+
   const activeScreen = useMemo(
     () => SCREENS.find((screen) => screen.id === activeId) ?? SCREENS[0],
     [activeId]
@@ -193,7 +200,10 @@ export default function DemoPage() {
                 <button
                   key={screen.id}
                   type="button"
-                  onClick={() => setActiveId(screen.id)}
+                  onClick={() => {
+                    setActiveId(screen.id);
+                    window.history.replaceState(null, '', `/demo?screen=${screen.id}`);
+                  }}
                   className={`flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm transition ${
                     active
                       ? 'bg-[#1e5af0] font-bold text-white'
