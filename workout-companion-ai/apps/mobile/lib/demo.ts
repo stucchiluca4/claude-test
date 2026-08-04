@@ -2,7 +2,7 @@
  * MODALITÀ DEMO: permette di esplorare l'app atleta senza login né database,
  * con dati di esempio in memoria. Serve solo per provare le funzionalità.
  */
-import type { Exercise, PersonalRecord, ProgramWorkout, SetLog, WorkoutExercise } from '@wc/shared';
+import type { Exercise, Food, NutritionDay, PersonalRecord, ProgramWorkout, SetLog, WorkoutExercise } from '@wc/shared';
 
 let demo = false;
 export const DEMO_UID = 'demo-athlete';
@@ -161,4 +161,117 @@ export function demoPRs(): PersonalRecord[] {
 export function demoStrengthPoints(): { label: string; value: number; display: string }[] {
   const vals = [96, 98, 100, 101, 103, 105];
   return vals.map((v, i) => ({ label: `S${i + 1}`, value: v, display: String(v) }));
+}
+
+interface DemoMealFood {
+  id: string;
+  quantity_g: number;
+  sort_order: number;
+  food: Food;
+}
+
+interface DemoMeal {
+  id: string;
+  name: string;
+  meal_time: string | null;
+  sort_order: number;
+  meal_foods: DemoMealFood[];
+}
+
+function demoFood(id: string, name: string, kcal: number, p: number, c: number, f: number): Food {
+  return {
+    id,
+    name,
+    brand: null,
+    kcal_per_100g: kcal,
+    protein_per_100g: p,
+    carbs_per_100g: c,
+    fat_per_100g: f,
+    fiber_per_100g: null,
+  };
+}
+
+/** Giorno nutrizionale finto con pasti dettagliati (tab Nutrizione).
+ *  Stessi target della card in home: 2400 kcal, P180/C250/F70. */
+export function demoNutrition(): { day: NutritionDay; meals: DemoMeal[] } {
+  const day: NutritionDay = {
+    id: 'demo-nd',
+    nutrition_plan_id: 'demo',
+    week_number: 1,
+    day_of_week: 1,
+    day_type: 'training',
+    kcal: 2400,
+    protein_g: 180,
+    carbs_g: 250,
+    fat_g: 70,
+  };
+
+  const foods = {
+    yogurt: demoFood('f-yogurt', 'Yogurt greco 0%', 57, 10, 4, 0.2),
+    avena: demoFood('f-avena', "Fiocchi d'avena", 372, 13, 59, 7),
+    mirtilli: demoFood('f-mirtilli', 'Mirtilli', 57, 0.7, 14, 0.3),
+    pane: demoFood('f-pane', 'Pane integrale', 247, 13, 41, 3.5),
+    bresaola: demoFood('f-bresaola', 'Bresaola', 151, 32, 0.4, 2.6),
+    riso: demoFood('f-riso', 'Riso basmati', 349, 8.9, 77, 1.2),
+    pollo: demoFood('f-pollo', 'Petto di pollo', 110, 23, 0, 1.2),
+    zucchine: demoFood('f-zucchine', 'Zucchine', 17, 1.2, 3.1, 0.3),
+    olio: demoFood('f-olio', "Olio extravergine d'oliva", 884, 0, 0, 100),
+    banana: demoFood('f-banana', 'Banana', 89, 1.1, 23, 0.3),
+    whey: demoFood('f-whey', 'Whey proteine', 380, 78, 6, 6),
+    gallette: demoFood('f-gallette', 'Gallette di riso', 387, 8, 81, 2.8),
+    salmone: demoFood('f-salmone', 'Salmone', 208, 20, 0, 13),
+    patate: demoFood('f-patate', 'Patate', 77, 2, 17, 0.1),
+    insalata: demoFood('f-insalata', 'Insalata mista', 20, 1.4, 2.9, 0.2),
+  };
+
+  const meal = (
+    id: string,
+    name: string,
+    time: string,
+    order: number,
+    rows: [Food, number][]
+  ): DemoMeal => ({
+    id,
+    name,
+    meal_time: time,
+    sort_order: order,
+    meal_foods: rows.map(([food, qty], i) => ({
+      id: `${id}-mf${i}`,
+      quantity_g: qty,
+      sort_order: i,
+      food,
+    })),
+  });
+
+  return {
+    day,
+    meals: [
+      meal('demo-m1', 'Colazione', '07:30:00', 0, [
+        [foods.yogurt, 250],
+        [foods.avena, 80],
+        [foods.mirtilli, 125],
+      ]),
+      meal('demo-m2', 'Spuntino', '10:30:00', 1, [
+        [foods.pane, 60],
+        [foods.bresaola, 60],
+      ]),
+      meal('demo-m3', 'Pranzo', '13:00:00', 2, [
+        [foods.riso, 110],
+        [foods.pollo, 180],
+        [foods.zucchine, 200],
+        [foods.olio, 10],
+      ]),
+      meal('demo-m4', 'Pre workout', '17:00:00', 3, [
+        [foods.banana, 120],
+        [foods.whey, 30],
+        [foods.gallette, 20],
+      ]),
+      meal('demo-m5', 'Cena', '20:30:00', 4, [
+        [foods.salmone, 180],
+        [foods.patate, 250],
+        [foods.insalata, 100],
+        [foods.olio, 8],
+      ]),
+    ],
+  };
 }

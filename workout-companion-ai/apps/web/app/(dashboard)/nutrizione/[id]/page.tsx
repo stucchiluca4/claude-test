@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { Badge, Card, PageHeader } from '@/components/ui';
 import { MacroEditor } from './macro-editor';
@@ -74,12 +75,14 @@ const DEMO_NUTRITION: Record<string, { name: string; client: string; kcal: numbe
 
 function DemoNutritionDetail({ id }: { id: string }) {
   const plan = DEMO_NUTRITION[id] ?? DEMO_NUTRITION['demo-lean-bulk'];
-  const meals = [
+  const meals: [string, string, string, number][] = [
     ['Colazione', '08:00', 'Yogurt greco, avena, frutti rossi', 520],
     ['Pranzo', '13:00', 'Riso basmati, pollo, verdure, olio EVO', 760],
     ['Pre workout', '17:00', 'Banana, whey, gallette', 310],
     ['Cena', '20:30', 'Salmone, patate, insalata', 850],
   ];
+  // Quota kcal reale di ogni macro (4/4/9 kcal per grammo)
+  const macroKcal = plan.protein * 4 + plan.carbs * 4 + plan.fat * 9;
 
   return (
     <div>
@@ -89,38 +92,55 @@ function DemoNutritionDetail({ id }: { id: string }) {
         actions={<Badge color="accent">Demo</Badge>}
       />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Card>
+        <Card className="rise rise-1">
           <h3 className="font-semibold mb-4">Target giornaliero</h3>
-          <div className="text-4xl font-black text-white">{plan.kcal} kcal</div>
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-4xl font-black text-white tabular-nums">
+              {plan.kcal.toLocaleString('it-IT')}
+            </span>
+            <span className="text-sm text-text-secondary">kcal</span>
+          </div>
           <div className="mt-5 space-y-3">
-            <Macro label="Proteine" value={plan.protein} color="bg-accent" />
-            <Macro label="Carboidrati" value={plan.carbs} color="bg-warning" />
-            <Macro label="Grassi" value={plan.fat} color="bg-success" />
+            <Macro label="Proteine" value={plan.protein} kcalShare={(plan.protein * 4) / macroKcal} color="bg-accent" />
+            <Macro label="Carboidrati" value={plan.carbs} kcalShare={(plan.carbs * 4) / macroKcal} color="bg-avio" />
+            <Macro label="Grassi" value={plan.fat} kcalShare={(plan.fat * 9) / macroKcal} color="bg-celeste" />
           </div>
         </Card>
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2 rise rise-2">
           <h3 className="font-semibold mb-4">Pasti di oggi</h3>
           <div className="space-y-3">
             {meals.map(([name, time, foods, kcal]) => (
-              <div key={name as string} className="rounded-xl border border-border bg-background/60 p-4">
+              <div
+                key={name}
+                className="rounded-xl border border-border bg-background/60 p-4 transition-colors hover:border-celeste/25"
+              >
                 <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <h4 className="font-bold text-white">{name} - {time}</h4>
-                    <p className="mt-1 text-sm text-text-secondary">{foods}</p>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2.5">
+                      <h4 className="font-bold text-white">{name}</h4>
+                      <span className="rounded-md border border-border px-1.5 py-0.5 text-xs text-text-secondary tabular-nums">
+                        {time}
+                      </span>
+                    </div>
+                    <p className="mt-1.5 text-sm text-text-secondary">{foods}</p>
                   </div>
-                  <span className="font-black text-accent">{kcal} kcal</span>
+                  <span className="font-black text-accent tabular-nums shrink-0">{kcal} kcal</span>
                 </div>
               </div>
             ))}
           </div>
         </Card>
-        <Card className="lg:col-span-3">
+        <Card className="lg:col-span-3 rise rise-3">
           <h3 className="font-semibold mb-3">Regole adattamento</h3>
           <p className="text-sm text-text-secondary">
             Se peso medio scende oltre 0,8% a settimana, aumenta carboidrati di 25g nei giorni ON.
             Se aderenza sotto 80%, semplifica il piano mantenendo proteine costanti.
           </p>
-          <Link href="/nutrizione?demo=1" className="mt-4 inline-block text-sm text-accent hover:underline">
+          <Link
+            href="/nutrizione?demo=1"
+            className="mt-4 inline-flex items-center gap-1.5 text-sm text-accent hover:underline"
+          >
+            <ArrowLeft size={14} />
             Torna ai piani alimentari
           </Link>
         </Card>
@@ -129,15 +149,32 @@ function DemoNutritionDetail({ id }: { id: string }) {
   );
 }
 
-function Macro({ label, value, color }: { label: string; value: number; color: string }) {
+function Macro({
+  label,
+  value,
+  kcalShare,
+  color,
+}: {
+  label: string;
+  value: number;
+  /** Quota 0-1 delle kcal giornaliere coperta dal macro. */
+  kcalShare: number;
+  color: string;
+}) {
+  const pct = Math.round(Math.min(Math.max(kcalShare, 0), 1) * 100);
   return (
     <div>
-      <div className="flex justify-between text-sm">
-        <span className="text-text-secondary">{label}</span>
-        <span className="font-bold">{value}g</span>
+      <div className="flex justify-between items-center text-sm">
+        <span className="flex items-center gap-1.5 text-text-secondary">
+          <span className={`h-1.5 w-1.5 rounded-full ${color}`} />
+          {label}
+        </span>
+        <span className="font-bold tabular-nums">
+          {value}g <span className="font-normal text-text-secondary">· {pct}%</span>
+        </span>
       </div>
       <div className="mt-1 h-2 overflow-hidden rounded-full bg-border">
-        <div className={`h-full rounded-full ${color}`} style={{ width: `${Math.min(100, value / 3)}%` }} />
+        <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
       </div>
     </div>
   );

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Plus } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { buttonPrimary, inputClass } from '@/components/ui';
 
@@ -71,8 +72,11 @@ export function NewPlanForm({ clients }: { clients: { id: string; label: string 
 
   return (
     <div className="relative">
-      <button className={buttonPrimary} onClick={() => setOpen(!open)}>
-        + Nuovo piano
+      <button
+        className={buttonPrimary + ' inline-flex items-center gap-1.5'}
+        onClick={() => setOpen(!open)}
+      >
+        <Plus size={16} /> Nuovo piano
       </button>
 
       {open && (

@@ -382,8 +382,8 @@ export default function HomeScreen() {
                   </View>
                   <View style={styles.pillRow}>
                     <StatPill label="Proteine" value={`${data.nutritionDay.protein_g}g`} color={colors.accent} />
-                    <StatPill label="Carbo" value={`${data.nutritionDay.carbs_g}g`} color={colors.warning} />
-                    <StatPill label="Grassi" value={`${data.nutritionDay.fat_g}g`} color={colors.success} />
+                    <StatPill label="Carbo" value={`${data.nutritionDay.carbs_g}g`} color={colors.avio} />
+                    <StatPill label="Grassi" value={`${data.nutritionDay.fat_g}g`} color={colors.celeste} />
                   </View>
                 </>
               ) : (

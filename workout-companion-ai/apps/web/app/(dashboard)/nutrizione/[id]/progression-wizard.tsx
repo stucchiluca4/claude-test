@@ -9,7 +9,7 @@ import {
   macrosToKcal,
   type ProgressionMode,
 } from '@wc/shared';
-import { TrendingUp, TrendingDown, Scale } from 'lucide-react';
+import { TrendingUp, TrendingDown, Scale, Check } from 'lucide-react';
 
 interface DayRow {
   id: string;
@@ -196,11 +196,11 @@ export function ProgressionWizard({
               <m.icon
                 size={16}
                 className={
-                  m.key === 'bulk' ? 'text-success' : m.key === 'cut' ? 'text-danger' : 'text-warning'
+                  m.key === 'bulk' ? 'text-accent' : m.key === 'cut' ? 'text-celeste' : 'text-avio'
                 }
               />
               {m.label}
-              {mode === m.key && <span className="ml-auto text-accent">✓</span>}
+              {mode === m.key && <Check size={16} className="ml-auto text-accent" />}
             </div>
             <p className="text-xs text-text-secondary">{m.desc}</p>
           </button>
@@ -220,8 +220,8 @@ export function ProgressionWizard({
           <div className="flex gap-2 mb-4">
             {(
               [
-                ['percent', '% Percentuale'],
-                ['grams', '⚖ Grammi'],
+                ['percent', 'Percentuale (%)'],
+                ['grams', 'Grammi (g)'],
               ] as const
             ).map(([k, label]) => (
               <button
@@ -357,7 +357,7 @@ export function ProgressionWizard({
           </div>
           <p className="text-xs mt-2 text-text-secondary">
             Variazione totale a fine progressione:{' '}
-            <b className={totalDeltaPct >= 0 ? 'text-success' : 'text-danger'}>
+            <b className={`tabular-nums ${totalDeltaPct >= 0 ? 'text-accent' : 'text-celeste'}`}>
               {totalDeltaPct > 0 ? '+' : ''}
               {totalDeltaPct}% kcal
             </b>
@@ -366,9 +366,15 @@ export function ProgressionWizard({
           <button
             onClick={apply}
             disabled={applying || week1.length === 0}
-            className={buttonPrimary + ' w-full mt-4'}
+            className={buttonPrimary + ' w-full mt-4 inline-flex items-center justify-center gap-1.5'}
           >
-            {applying ? 'Applicazione…' : '✓ Salva e applica al piano'}
+            {applying ? (
+              'Applicazione…'
+            ) : (
+              <>
+                <Check size={16} /> Salva e applica al piano
+              </>
+            )}
           </button>
           {message && (
             <p className={`text-sm mt-2 ${message.startsWith('✓') ? 'text-success' : 'text-danger'}`}>
@@ -376,7 +382,7 @@ export function ProgressionWizard({
             </p>
           )}
           <p className="text-xs text-text-secondary mt-3">
-            💡 Ogni settimana replica la rotazione ON/OFF della Settimana 1, scalata secondo la
+            Ogni settimana replica la rotazione ON/OFF della Settimana 1, scalata secondo la
             progressione. Potrai comunque ritoccare ogni singolo giorno dalla tabella.
           </p>
         </div>

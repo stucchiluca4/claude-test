@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { Check, Save } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { Card, Badge, buttonPrimary, buttonSecondary, inputClass } from '@/components/ui';
 import {
@@ -164,28 +165,28 @@ export function MacroEditor({
 
   return (
     <div>
-      <div className="flex items-start justify-between mb-6">
+      <div className="flex items-start justify-between mb-6 rise">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-3">
+          <h1 className="text-2xl font-extrabold tracking-tight text-white flex items-center gap-3">
             {plan.name}
             <Badge color={plan.status === 'active' ? 'success' : 'default'}>
               {plan.status === 'active' ? 'Attivo' : 'Bozza'}
             </Badge>
           </h1>
-          <p className="text-text-secondary text-sm mt-1">
+          <p className="text-text-secondary text-sm mt-1 font-light">
             {client ? `${client.first_name ?? ''} ${client.last_name ?? ''}` : ''} ·{' '}
             {plan.duration_weeks} settimane {saving && '· salvataggio…'}
           </p>
         </div>
         {plan.status !== 'active' && (
-          <button onClick={activatePlan} className={buttonPrimary}>
-            ✓ Attiva piano
+          <button onClick={activatePlan} className={buttonPrimary + ' inline-flex items-center gap-1.5'}>
+            <Check size={16} /> Attiva piano
           </button>
         )}
       </div>
 
       {/* ------- Pannello Calcolo DEE (BMR/TDEE) ------- */}
-      <Card className="mb-4">
+      <Card className="mb-4 rise rise-1">
         <h3 className="font-semibold mb-4">Calcolo DEE (BMR + fattore attività)</h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
           <div>
@@ -262,8 +263,8 @@ export function MacroEditor({
                 +
               </button>
               <span className="text-text-secondary">kcal/die</span>
-              <button onClick={saveTdee} className={buttonPrimary + ' !py-1.5'}>
-                💾 Salva
+              <button onClick={saveTdee} className={buttonPrimary + ' !py-1.5 inline-flex items-center gap-1.5'}>
+                <Save size={14} /> Salva
               </button>
             </span>
           </div>
@@ -272,7 +273,7 @@ export function MacroEditor({
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Tabella macro settimanale */}
-        <Card className="lg:col-span-2 p-0 overflow-hidden">
+        <Card className="lg:col-span-2 p-0 overflow-hidden rise rise-2">
           <div className="flex items-center gap-2 px-4 pt-4">
             <span className="text-sm text-text-secondary">Settimana</span>
             {availableWeeks.map((w) => (
@@ -301,7 +302,7 @@ export function MacroEditor({
             </thead>
             <tbody>
               {weekDays.map((d) => (
-                <tr key={d.id} className="border-b border-border last:border-0">
+                <tr key={d.id} className="border-b border-border last:border-0 transition-colors hover:bg-card-hover/40">
                   <td className="px-4 py-2.5 font-medium">{DAYS_OF_WEEK[d.day_of_week - 1]}</td>
                   <td className="px-4 py-2.5">
                     <button
@@ -376,7 +377,7 @@ export function MacroEditor({
         </Card>
 
         {/* Riepilogo piano */}
-        <Card>
+        <Card className="rise rise-3">
           <h3 className="font-semibold mb-4">Riepilogo piano</h3>
           <dl className="space-y-2.5 text-sm">
             {(
