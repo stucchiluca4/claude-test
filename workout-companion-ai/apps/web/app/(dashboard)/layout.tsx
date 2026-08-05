@@ -1,13 +1,30 @@
+import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { Sidebar } from '@/components/sidebar';
 import { fullName } from '@/lib/utils';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  // Vetrina pubblica: il proxy marca le richieste con `?demo=1`, che mostrano
+  // dati d'esempio e non devono passare dal login (i layout non ricevono
+  // searchParams, quindi l'informazione arriva come intestazione).
+  const isDemo = (await headers()).get('x-demo-mode') === '1';
+
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  if (!user && isDemo) {
+    return (
+      <div className="flex min-h-screen">
+        <Sidebar userName="Coach Demo" />
+        <main className="flex-1 min-w-0 px-5 py-6 pb-28 lg:px-10 lg:py-8 lg:pb-10 max-w-[1280px]">
+          {children}
+        </main>
+      </div>
+    );
+  }
 
   if (!user) redirect('/login');
 

@@ -1,0 +1,19 @@
+# Il deploy costruisce solo apps/web: tutto il resto del monorepo serve
+# unicamente a risolvere il pacchetto condiviso @wc/shared.
+node_modules
+**/node_modules
+.next
+**/.next
+.expo
+**/.expo
+.vercel/output
+
+# L'app mobile non viene servita dal web: escludiamo gli asset pesanti,
+# ma il suo package.json resta perché fa parte dei workspaces npm.
+apps/mobile/app
+apps/mobile/components
+apps/mobile/lib
+apps/mobile/assets
+
+docs
+supabase/seed

@@ -146,13 +146,13 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('first_name')
-    .eq('id', user!.id)
-    .single();
+  // La vetrina pubblica gira senza sessione: il profilo si legge solo se c'è
+  // davvero un utente, altrimenti la demo mostra i suoi dati d'esempio.
+  const { data: profile } = user
+    ? await supabase.from('profiles').select('first_name').eq('id', user.id).single()
+    : { data: null };
 
-  if (demoMode) {
+  if (demoMode || !user) {
     return (
       <DashboardControlRoom
         coachName={profile?.first_name ?? 'Coach'}

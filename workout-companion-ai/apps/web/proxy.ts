@@ -4,7 +4,17 @@ import { NextResponse, type NextRequest } from 'next/server';
 type CookieToSet = { name: string; value: string; options: CookieOptions };
 
 export async function proxy(request: NextRequest) {
-  let response = NextResponse.next({ request });
+  /**
+   * Vetrina pubblica: ogni rotta con `?demo=1` mostra dati d'esempio e va
+   * lasciata passare senza sessione. Senza sessione la RLS di Supabase non
+   * restituisce nulla, quindi non può trapelare alcun dato reale.
+   */
+  const isDemoQuery = request.nextUrl.searchParams.get('demo') === '1';
+  const requestHeaders = new Headers(request.headers);
+  if (isDemoQuery) requestHeaders.set('x-demo-mode', '1');
+  const forward = { request: { headers: requestHeaders } };
+
+  let response = NextResponse.next(forward);
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,7 +26,7 @@ export async function proxy(request: NextRequest) {
         },
         setAll(cookiesToSet: CookieToSet[]) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          response = NextResponse.next({ request });
+          response = NextResponse.next(forward);
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options)
           );
@@ -51,6 +61,7 @@ export async function proxy(request: NextRequest) {
     !isPublicDemo &&
     !isAthleteDemo &&
     !isStitchAsset &&
+    !isDemoQuery &&
     request.nextUrl.pathname !== '/'
   ) {
     return NextResponse.redirect(new URL('/login', request.url));
