@@ -34,8 +34,11 @@ export default function RootLayout() {
   }, [session, segments, router]);
 
   if (session === undefined && !isDemo()) {
+    // Primo fotogramma dell'app: fondo di ferro e barra di stato chiara,
+    // così l'avvio non sfarfalla in bianco prima di mostrare l'accesso.
     return (
       <View style={[sharedStyles.screen, sharedStyles.center]}>
+        <StatusBar style="light" />
         <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
@@ -47,8 +50,10 @@ export default function RootLayout() {
       <Stack
         screenOptions={{
           headerShown: false,
+          // Il fondo di ogni schermata è il ferro: nessuna cucitura tra le transizioni.
           contentStyle: { backgroundColor: colors.background },
           animation: 'fade',
+          animationDuration: 220,
         }}
       />
     </View>

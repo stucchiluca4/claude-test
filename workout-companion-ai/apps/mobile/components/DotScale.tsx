@@ -1,5 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, spacing } from '../lib/theme';
+import { StyleSheet, Text, View } from 'react-native';
+import { colors, radius, spacing, tabular } from '../lib/theme';
+import { Press } from './Press';
 
 interface Props {
   label: string;
@@ -9,6 +10,8 @@ interface Props {
   emoji?: string;
   /** Descrittori per le fasce 1-3 / 4-6 / 7-10, mostrati accanto al valore. */
   bands?: readonly [string, string, string];
+  /** Colore del riempimento: usa il segnale che corrisponde al significato. */
+  tint?: string;
 }
 
 function bandLabel(value: number, bands: readonly [string, string, string]): string {
@@ -17,31 +20,36 @@ function bandLabel(value: number, bands: readonly [string, string, string]): str
   return bands[2];
 }
 
-/** Scala 1-10 con dieci pallini tappabili (niente librerie esterne). */
-export function DotScale({ label, value, onChange, emoji, bands }: Props) {
+/**
+ * Scala 1-10 a segmenti: bersagli larghi e alti, pensati per essere colpiti
+ * con il pollice senza guardare (nessuna libreria esterna).
+ */
+export function DotScale({ label, value, onChange, emoji, bands, tint = colors.accent }: Props) {
   return (
-    <View style={styles.scaleBox}>
-      <View style={styles.scaleHeader}>
-        <Text style={styles.scaleLabel}>
-          {emoji ? `${emoji} ` : ''}
+    <View style={styles.wrap}>
+      <View style={styles.header}>
+        <Text style={styles.label} numberOfLines={1}>
+          {emoji ? `${emoji}  ` : ''}
           {label}
         </Text>
-        <Text style={styles.scaleValue}>
-          {value != null
-            ? `${value}/10${bands ? ` · ${bandLabel(value, bands)}` : ''}`
-            : '—'}
+        <Text style={[styles.value, tabular, value != null && { color: tint }]}>
+          {value != null ? `${value}${bands ? ` · ${bandLabel(value, bands)}` : '/10'}` : '—'}
         </Text>
       </View>
-      <View style={styles.dotsRow}>
+      <View style={styles.track}>
         {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => {
           const active = value != null && n <= value;
           return (
-            <Pressable
+            <Press
               key={n}
               onPress={() => onChange(n)}
-              style={[styles.dot, active && styles.dotActive]}
-              hitSlop={10}
-            />
+              haptic="light"
+              scaleTo={0.9}
+              style={[styles.segment, active && { backgroundColor: tint }]}
+              accessibilityLabel={`${label}: ${n} su 10`}
+            >
+              <View />
+            </Press>
           );
         })}
       </View>
@@ -50,41 +58,34 @@ export function DotScale({ label, value, onChange, emoji, bands }: Props) {
 }
 
 const styles = StyleSheet.create({
-  scaleBox: {
+  wrap: {
     gap: spacing.sm,
   },
-  scaleHeader: {
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     gap: spacing.sm,
   },
-  scaleLabel: {
+  label: {
     color: colors.textPrimary,
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
     flexShrink: 1,
   },
-  scaleValue: {
-    color: colors.accent,
+  value: {
+    color: colors.textSecondary,
     fontSize: 14,
     fontWeight: '800',
-    fontVariant: ['tabular-nums'],
   },
-  dotsRow: {
+  track: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: 4,
   },
-  dot: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  dotActive: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent,
+  segment: {
+    flex: 1,
+    height: 38,
+    borderRadius: radius.xs,
+    backgroundColor: colors.raised,
   },
 });

@@ -1,21 +1,12 @@
 import { useCallback, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Alert, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { DAYS_OF_WEEK, readinessFromBiofeedback } from '@wc/shared';
-import type { CoachClient, NutritionDay, ProgramWorkout } from '@wc/shared';
+import type { CoachClient, NutritionDay, ProgramWorkout, Readiness } from '@wc/shared';
 import { supabase } from '../../lib/supabase';
-import { colors, radius, spacing, sharedStyles } from '../../lib/theme';
+import { colors, concentric, radius, shadow, spacing, sharedStyles, tabular, type } from '../../lib/theme';
 import {
   localDateString,
   mondayOfCurrentWeek,
@@ -35,9 +26,13 @@ import {
   upsertDailyBiofeedback,
   type DailyBiofeedback,
 } from '../../lib/queries';
+import { ActivityRing } from '../../components/ActivityRing';
 import { Card } from '../../components/Card';
+import { MetricBlock } from '../../components/MetricBlock';
+import { Press } from '../../components/Press';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { StatPill } from '../../components/StatPill';
+import { EmptyState, LoadingState } from '../../components/States';
 import { demoBiofeedback, demoWorkout, isDemo } from '../../lib/demo';
 
 interface HomeData {
@@ -49,6 +44,40 @@ interface HomeData {
   latestWeight: number | null;
   checkinDue: boolean;
   todayBiofeedback: DailyBiofeedback | null;
+}
+
+/** Colore segnale della prontezza: menta alta, ambra media, rosa bassa. */
+const READINESS_TONE: Record<Readiness, string> = {
+  go_hard: colors.mint,
+  normal: colors.mint,
+  easy: colors.amber,
+  rest: colors.rose,
+};
+
+/** Icona dentro l'anello: il colore non viaggia mai da solo. */
+const READINESS_ICON: Record<Readiness, keyof typeof Ionicons.glyphMap> = {
+  go_hard: 'flash',
+  normal: 'thumbs-up',
+  easy: 'leaf',
+  rest: 'bed',
+};
+
+/**
+ * Punteggio 1-10 della prontezza: la stessa media che il motore condiviso usa
+ * per scegliere il livello (recupero e sonno diretti, dolori e stress invertiti).
+ * Serve solo a riempire l'anello e a mostrare il numero: la lettura resta quella
+ * di `readinessFromBiofeedback`.
+ */
+function readinessScore(b: DailyBiofeedback | null): number | null {
+  if (!b) return null;
+  const values = [
+    b.recovery,
+    b.sleep_quality,
+    b.muscle_soreness != null ? 11 - b.muscle_soreness : null,
+    b.stress_level != null ? 11 - b.stress_level : null,
+  ].filter((v): v is number => v != null && Number.isFinite(v));
+  if (values.length === 0) return null;
+  return values.reduce((a, v) => a + v, 0) / values.length;
 }
 
 export default function HomeScreen() {
@@ -245,19 +274,18 @@ export default function HomeScreen() {
   }
 
   if (!data) {
-    return (
-      <SafeAreaView style={sharedStyles.screen} edges={['top']}>
-        <View style={sharedStyles.center}>
-          <ActivityIndicator size="large" color={colors.accent} />
-          <Text style={sharedStyles.muted}>Carico la tua giornata…</Text>
-        </View>
-      </SafeAreaView>
-    );
+    return <LoadingState message="Carico la tua giornata…" />;
   }
 
   const today = new Date();
   const dateLabel = `${DAYS_OF_WEEK[todayDayOfWeek() - 1]} ${today.getDate()}/${today.getMonth() + 1}`;
   const readiness = readinessFromBiofeedback(data.todayBiofeedback);
+  const score = readinessScore(data.todayBiofeedback);
+  const readinessTone = readiness ? READINESS_TONE[readiness.level] : colors.mint;
+
+  // Il FARO della schermata: la card dell'allenamento, e nient'altro.
+  const workoutTone = data.todayWorkout ? (data.todayWorkoutDone ? colors.mint : colors.accent) : null;
+  const workoutDuration = data.todayWorkout?.estimated_duration_min;
 
   return (
     <SafeAreaView style={sharedStyles.screen} edges={['top']}>
@@ -265,121 +293,133 @@ export default function HomeScreen() {
         contentContainerStyle={sharedStyles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
       >
-        <View>
-          <Text style={sharedStyles.screenTitle}>
+        {/* Saluto compatto: il palcoscenico è dell'allenamento, non del nome. */}
+        <View style={styles.header}>
+          <Text style={styles.greeting}>
             Ciao{data.firstName ? `, ${data.firstName}` : ''}!
           </Text>
-          <Text style={sharedStyles.muted}>{dateLabel}</Text>
+          <Text style={type.label}>{dateLabel}</Text>
         </View>
 
         {!data.coachClient ? (
-          <Card title="Benvenuto">
-            <Text style={sharedStyles.body}>
-              Non sei ancora collegato a un coach. Quando il tuo coach ti aggiungerà, qui troverai
-              allenamenti, piano nutrizionale e check-in settimanali.
-            </Text>
-          </Card>
+          <EmptyState
+            emoji="🤝"
+            title="Nessun coach collegato"
+            message="Quando il tuo coach ti aggiungerà, qui troverai allenamenti, piano nutrizionale e check-in settimanali."
+          />
         ) : (
           <>
-            {readiness ? (
+            {/* IL BLOCCO DOMINANTE: cosa si fa oggi e il bottone per iniziarlo. */}
+            <Card
+              title="Allenamento di oggi"
+              beacon={workoutTone ?? undefined}
+              style={workoutTone ? shadow.beacon(workoutTone) : undefined}
+            >
+              {data.todayWorkout ? (
+                <>
+                  <Text style={styles.workoutName}>{data.todayWorkout.name}</Text>
+                  {data.todayWorkout.goal || workoutDuration ? (
+                    <View style={styles.chipRow}>
+                      {data.todayWorkout.goal ? (
+                        <View style={styles.chip}>
+                          <Ionicons name="flag-outline" size={15} color={colors.textSecondary} />
+                          <Text style={styles.chipText}>{data.todayWorkout.goal}</Text>
+                        </View>
+                      ) : null}
+                      {workoutDuration ? (
+                        <View style={styles.chip}>
+                          <Ionicons name="time-outline" size={15} color={colors.textSecondary} />
+                          <Text style={[styles.chipText, tabular]}>~{workoutDuration} min</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  ) : null}
+                  {data.todayWorkout.coach_notes ? (
+                    <View style={styles.noteBlock}>
+                      <Ionicons name="chatbubble-ellipses-outline" size={18} color={colors.textSecondary} />
+                      <View style={styles.noteBody}>
+                        <Text style={type.label}>Note del coach</Text>
+                        <Text style={styles.noteText}>{data.todayWorkout.coach_notes}</Text>
+                      </View>
+                    </View>
+                  ) : null}
+                  {data.todayWorkoutDone ? (
+                    <View style={styles.statusRow}>
+                      <Ionicons name="checkmark-circle" size={22} color={colors.mint} />
+                      <Text style={styles.doneText}>Completato — ottimo lavoro!</Text>
+                    </View>
+                  ) : (
+                    <PrimaryButton
+                      label="INIZIA ALLENAMENTO"
+                      onPress={() => router.push(`/workout/${data.todayWorkout?.id}`)}
+                      style={styles.fullWidth}
+                    />
+                  )}
+                </>
+              ) : (
+                <View style={styles.statusRow}>
+                  <Ionicons name="moon" size={22} color={colors.cyan} />
+                  <Text style={styles.body}>Nessun allenamento in programma: riposo e recupero.</Text>
+                </View>
+              )}
+            </Card>
+
+            {readiness && score != null ? (
               <Card title="Prontezza di oggi">
-                <View style={styles.readinessRow}>
-                  <Text style={styles.readinessEmoji}>{readiness.emoji}</Text>
-                  <View style={styles.readinessInfo}>
-                    <Text style={styles.readinessLabel}>{readiness.label}</Text>
-                    <Text style={sharedStyles.muted}>{readiness.advice}</Text>
+                <MetricBlock
+                  value={score.toFixed(1).replace('.', ',')}
+                  unit="/10"
+                  color={readinessTone}
+                  trailing={
+                    <ActivityRing progress={score / 10} color={readinessTone} size={88} strokeWidth={12}>
+                      <Ionicons name={READINESS_ICON[readiness.level]} size={30} color={readinessTone} />
+                    </ActivityRing>
+                  }
+                />
+                <View style={styles.noteBlock}>
+                  <View style={[styles.toneDot, { backgroundColor: readinessTone }]} />
+                  <View style={styles.noteBody}>
+                    <Text style={[styles.readinessLabel, { color: readinessTone }]}>{readiness.label}</Text>
+                    <Text style={styles.noteText}>{readiness.advice}</Text>
                   </View>
                 </View>
               </Card>
             ) : null}
 
-            <Card title="Oggi">
-              {data.todayWorkout ? (
-                <>
-                  <Text style={styles.workoutName}>{data.todayWorkout.name}</Text>
-                  <Text style={sharedStyles.muted}>
-                    {[
-                      data.todayWorkout.goal,
-                      data.todayWorkout.estimated_duration_min
-                        ? `~${data.todayWorkout.estimated_duration_min} min`
-                        : null,
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </Text>
-                  {data.todayWorkout.coach_notes ? (
-                    <Text style={sharedStyles.muted}>Note del coach: {data.todayWorkout.coach_notes}</Text>
-                  ) : null}
-                  {data.todayWorkoutDone ? (
-                    <Text style={styles.doneText}>✓ Completato — ottimo lavoro!</Text>
-                  ) : (
-                    <PrimaryButton
-                      label="INIZIA ALLENAMENTO"
-                      onPress={() => router.push(`/workout/${data.todayWorkout?.id}`)}
-                    />
-                  )}
-                </>
-              ) : (
-                <Text style={sharedStyles.body}>
-                  Oggi nessun allenamento in programma: riposo e recupero! 💤
-                </Text>
-              )}
-            </Card>
-
             <Card title="Check biofeedback di oggi">
               {data.todayBiofeedback ? (
                 <View style={styles.biofeedbackRow}>
-                  <Text style={styles.doneText}>✓ Completato</Text>
-                  <Pressable onPress={() => router.push('/biofeedback/oggi')} hitSlop={8}>
+                  <View style={styles.statusRow}>
+                    <Ionicons name="checkmark-circle" size={22} color={colors.mint} />
+                    <Text style={styles.doneText}>Completato</Text>
+                  </View>
+                  <Press
+                    onPress={() => router.push('/biofeedback/oggi')}
+                    hitSlop={8}
+                    style={styles.link}
+                    accessibilityLabel="Modifica il check di oggi"
+                  >
                     <Text style={styles.linkText}>Modifica</Text>
-                  </Pressable>
+                    <Ionicons name="chevron-forward" size={16} color={colors.accent} />
+                  </Press>
                 </View>
               ) : (
                 <PrimaryButton
-                  label="▶ Compila il check di oggi"
+                  label="COMPILA IL CHECK DI OGGI"
                   onPress={() => router.push('/biofeedback/oggi')}
+                  style={styles.fullWidth}
                 />
               )}
-            </Card>
-
-            <Card title="Aggiungi velocemente">
-              <View style={styles.quickRow}>
-                <Pressable
-                  style={[styles.quickButton, quickForm === 'peso' && styles.quickButtonActive]}
-                  onPress={() => toggleQuickForm('peso')}
-                >
-                  <Text style={styles.quickButtonText}>⚖️ Registra peso</Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.quickButton, quickForm === 'nota' && styles.quickButtonActive]}
-                  onPress={() => toggleQuickForm('nota')}
-                >
-                  <Text style={styles.quickButtonText}>📝 Aggiungi nota</Text>
-                </Pressable>
-              </View>
-              {quickForm ? (
-                <>
-                  <TextInput
-                    style={[sharedStyles.input, quickForm === 'nota' && styles.quickNote]}
-                    value={quickValue}
-                    onChangeText={setQuickValue}
-                    placeholder={quickForm === 'peso' ? 'Peso in kg (es. 72,5)' : 'Nota di oggi per il coach'}
-                    placeholderTextColor={colors.textSecondary}
-                    keyboardType={quickForm === 'peso' ? 'decimal-pad' : 'default'}
-                    multiline={quickForm === 'nota'}
-                  />
-                  <PrimaryButton label="Salva" onPress={saveQuick} loading={quickSaving} />
-                </>
-              ) : null}
             </Card>
 
             <Card title="Nutrizione di oggi">
               {data.nutritionDay ? (
                 <>
-                  <View style={styles.kcalRow}>
-                    <Text style={sharedStyles.bigNumber}>{data.nutritionDay.kcal}</Text>
-                    <Text style={styles.kcalUnit}>kcal</Text>
-                  </View>
+                  <MetricBlock
+                    value={data.nutritionDay.kcal.toLocaleString('it-IT')}
+                    unit="kcal"
+                    caption="Obiettivo del giorno"
+                  />
                   <View style={styles.pillRow}>
                     <StatPill label="Proteine" value={`${data.nutritionDay.protein_g}g`} color={colors.accent} />
                     <StatPill label="Carbo" value={`${data.nutritionDay.carbs_g}g`} color={colors.avio} />
@@ -387,25 +427,81 @@ export default function HomeScreen() {
                   </View>
                 </>
               ) : (
-                <Text style={sharedStyles.body}>
+                <Text style={styles.body}>
                   Nessun piano nutrizionale attivo per oggi. Chiedi al tuo coach!
                 </Text>
               )}
             </Card>
 
+            <Card title="Aggiungi velocemente">
+              <View style={styles.quickRow}>
+                <Press
+                  onPress={() => toggleQuickForm('peso')}
+                  haptic="light"
+                  style={[styles.quickButton, quickForm === 'peso' && styles.quickButtonActive]}
+                  accessibilityLabel="Registra peso"
+                >
+                  <Ionicons
+                    name="scale-outline"
+                    size={20}
+                    color={quickForm === 'peso' ? colors.accent : colors.textSecondary}
+                  />
+                  <Text style={styles.quickButtonText}>Registra peso</Text>
+                </Press>
+                <Press
+                  onPress={() => toggleQuickForm('nota')}
+                  haptic="light"
+                  style={[styles.quickButton, quickForm === 'nota' && styles.quickButtonActive]}
+                  accessibilityLabel="Aggiungi nota"
+                >
+                  <Ionicons
+                    name="create-outline"
+                    size={20}
+                    color={quickForm === 'nota' ? colors.accent : colors.textSecondary}
+                  />
+                  <Text style={styles.quickButtonText}>Aggiungi nota</Text>
+                </Press>
+              </View>
+              {quickForm ? (
+                <>
+                  <TextInput
+                    style={[sharedStyles.input, quickForm === 'peso' ? tabular : styles.quickNote]}
+                    value={quickValue}
+                    onChangeText={setQuickValue}
+                    placeholder={quickForm === 'peso' ? 'Peso in kg (es. 72,5)' : 'Nota di oggi per il coach'}
+                    placeholderTextColor={colors.textTertiary}
+                    keyboardType={quickForm === 'peso' ? 'decimal-pad' : 'default'}
+                    multiline={quickForm === 'nota'}
+                  />
+                  <PrimaryButton label="Salva" onPress={saveQuick} loading={quickSaving} style={styles.fullWidth} />
+                </>
+              ) : null}
+            </Card>
+
             <Card title="Check-in settimanale">
               {data.checkinDue ? (
                 <>
-                  <Text style={sharedStyles.body}>
+                  <Text style={styles.body}>
                     È il momento del check-in di questa settimana: bastano 2 minuti.
                   </Text>
-                  <PrimaryButton label="COMPILA CHECK-IN" variant="ghost" onPress={() => router.push('/checkin/nuovo')} />
+                  <PrimaryButton
+                    label="COMPILA CHECK-IN"
+                    variant="ghost"
+                    onPress={() => router.push('/checkin/nuovo')}
+                    style={styles.fullWidth}
+                  />
                 </>
               ) : (
-                <Text style={styles.doneText}>✓ Check-in inviato, il coach lo sta esaminando.</Text>
+                <View style={styles.statusRow}>
+                  <Ionicons name="checkmark-circle" size={22} color={colors.mint} />
+                  <Text style={styles.doneText}>Check-in inviato, il coach lo sta esaminando.</Text>
+                </View>
               )}
               {data.latestWeight != null ? (
-                <Text style={sharedStyles.muted}>Ultimo peso registrato: {data.latestWeight} kg</Text>
+                <View style={styles.weightRow}>
+                  <Text style={type.label}>Ultimo peso registrato</Text>
+                  <Text style={styles.weightValue}>{data.latestWeight} kg</Text>
+                </View>
               ) : null}
             </Card>
           </>
@@ -415,42 +511,101 @@ export default function HomeScreen() {
   );
 }
 
+/** Raggio interno delle superfici dentro una card (regola concentrica). */
+const innerRadius = concentric(radius.lg, spacing.lg);
+
 const styles = StyleSheet.create({
-  workoutName: {
-    color: colors.textPrimary,
-    fontSize: 22,
-    fontWeight: '800',
+  header: {
+    gap: spacing.xs,
   },
-  readinessRow: {
+  greeting: {
+    ...type.title,
+  },
+  fullWidth: {
+    alignSelf: 'stretch',
+  },
+  workoutName: {
+    ...type.display,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.lg,
+    gap: spacing.xs + 2,
+    backgroundColor: colors.raised,
+    borderRadius: radius.pill,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    flexShrink: 1,
   },
-  readinessEmoji: {
-    fontSize: 40,
+  chipText: {
+    ...type.callout,
+    color: colors.textSecondary,
+    flexShrink: 1,
   },
-  readinessInfo: {
+  noteBlock: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    backgroundColor: colors.raised,
+    borderRadius: innerRadius,
+    padding: spacing.lg,
+  },
+  noteBody: {
     flex: 1,
-    gap: 2,
+    gap: spacing.xs,
+  },
+  noteText: {
+    ...type.body,
+    color: colors.textSecondary,
+    flex: 1,
   },
   readinessLabel: {
-    color: colors.textPrimary,
-    fontSize: 17,
-    fontWeight: '800',
+    ...type.body,
+    fontWeight: '700',
+  },
+  toneDot: {
+    width: 10,
+    height: 10,
+    borderRadius: radius.pill,
+    marginTop: 8,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flexShrink: 1,
+  },
+  body: {
+    ...type.body,
+    flexShrink: 1,
   },
   doneText: {
-    color: colors.success,
-    fontSize: 15,
+    ...type.body,
     fontWeight: '700',
+    color: colors.mint,
+    flexShrink: 1,
   },
   biofeedbackRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  link: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    minHeight: 44,
+    paddingLeft: spacing.md,
   },
   linkText: {
+    ...type.callout,
     color: colors.accent,
-    fontSize: 15,
     fontWeight: '700',
   },
   quickRow: {
@@ -459,11 +614,15 @@ const styles = StyleSheet.create({
   },
   quickButton: {
     flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.background,
-    borderColor: colors.border,
+    justifyContent: 'center',
+    gap: spacing.sm,
+    minHeight: 52,
+    backgroundColor: colors.raised,
+    borderRadius: innerRadius,
     borderWidth: 1,
-    borderRadius: radius.md,
+    borderColor: 'transparent',
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.sm,
   },
@@ -471,27 +630,31 @@ const styles = StyleSheet.create({
     borderColor: colors.accent,
   },
   quickButtonText: {
-    color: colors.textPrimary,
-    fontSize: 14,
+    ...type.callout,
     fontWeight: '700',
+    flexShrink: 1,
   },
   quickNote: {
-    minHeight: 70,
+    minHeight: 92,
     textAlignVertical: 'top',
-  },
-  kcalRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: spacing.sm,
-  },
-  kcalUnit: {
-    color: colors.textSecondary,
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
   },
   pillRow: {
     flexDirection: 'row',
     gap: spacing.sm,
+  },
+  weightRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+    backgroundColor: colors.raised,
+    borderRadius: innerRadius,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+  },
+  weightValue: {
+    ...type.body,
+    ...tabular,
+    fontWeight: '700',
   },
 });

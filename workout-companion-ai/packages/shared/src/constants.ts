@@ -99,23 +99,49 @@ export const PLANS = {
 export type PlanKey = keyof typeof PLANS;
 
 /**
- * Palette "Executive Control Room" — VINCOLANTE (docs/08-DESIGN-SYSTEM.md).
- * Corporate all-blue: navy per gli sfondi, Electric Blue per accenti/CTA/trend
- * positivi, avio per i grafici, celeste per bordi e dettagli, bianco puro solo
- * per testi e numeri KPI. Rosso/ambra ammessi solo come stati funzionali.
+ * Palette "Glass Over Iron" — VINCOLANTE (DESIGN.md).
+ *
+ * Due materiali mai mescolati: il FERRO (superfici opache) porta il contenuto,
+ * il VETRO (traslucido, sfocato) porta solo i controlli. La saturazione vive
+ * nei SEGNALI, e ogni segnale ha un solo significato in tutto il prodotto:
+ * blu = azione · menta = fatto · ambra = sforzo · rosa = record ·
+ * viola = AI · ciano = corpo.
  */
 export const COLORS = {
-  background: '#070D1A',            // Blu Deep / Navy — sfondo dashboard
-  card: '#0D1626',                  // contenitori dati
-  cardGlass: 'rgba(16,20,30,0.65)', // pannelli in glassmorphism (web)
-  border: 'rgba(186,224,255,0.12)', // bordi celeste sottili
-  accent: '#38BDF8',                // Blu Primario (Electric) — CTA, stati attivi
-  accentDeep: '#1D4ED8',            // estremo scuro dei gradienti Deep→Electric
-  avio: '#2E6BE0',                  // Blu Medio — barre, elementi grafici standard
-  celeste: '#9CD9FF',               // Light Blue — indicatori secondari
-  success: '#38BDF8',               // trend positivi = Electric Blue (mai verde)
-  warning: '#F59E0B',               // solo stato funzionale di avviso
-  danger: '#EF4444',                // solo azioni distruttive / rischio
-  textPrimary: '#FFFFFF',           // bianco puro: testi e numeri chiave
-  textSecondary: '#8FA3C0',         // diciture di contorno
+  // --- Ferro: le superfici del contenuto (sempre opache) ---
+  void: '#06080D',                  // il nero-blu dietro ogni cosa
+  background: '#0C1017',            // fondo dell'app
+  card: '#151A24',                  // card di contenuto
+  surface: '#151A24',               // alias esplicito di `card`
+  raised: '#1E2531',                // campi, righe selezionabili
+  border: '#2A3241',                // divisori e bordi del livello ferro
+  line: '#2A3241',                  // alias esplicito di `border`
+
+  // --- Vetro: il livello dei controlli ---
+  glassTint: 'rgba(22,28,38,0.62)', // tinta sotto la sfocatura
+  glassBorder: 'rgba(255,255,255,0.08)',
+  glassEdge: 'rgba(255,255,255,0.30)', // luce speculare sul bordo alto
+  cardGlass: 'rgba(22,28,38,0.62)',    // compatibilità: usare glassTint
+
+  // --- Segnali: il colore porta significato, non decorazione ---
+  accent: '#0A84FF',                // Blu Segnale — azione, stato attivo
+  blue: '#0A84FF',
+  accentDeep: '#0060DF',            // pressione del blu
+  mint: '#32D74B',                  // fatto, completato, confermato
+  amber: '#FF9F0A',                 // sforzo, intensità, attenzione
+  rose: '#FF375F',                  // record personali e azioni distruttive
+  violet: '#BF5AF2',                // tutto ciò che è generato dall'AI
+  cyan: '#64D2FF',                  // recupero, sonno, dati del corpo
+  avio: '#3E8BFF',                  // blu medio per barre e grafici
+
+  // --- Alias semantici storici (mantengono compatibile il codice esistente) ---
+  celeste: '#64D2FF',
+  success: '#32D74B',
+  warning: '#FF9F0A',
+  danger: '#FF375F',
+
+  // --- Testo ---
+  textPrimary: '#FFFFFF',           // numeri e testo primario, sempre pieno
+  textSecondary: '#9BA6B8',         // testo secondario (7.8:1 sul fondo)
+  textTertiary: '#6B7688',          // etichette e disattivato, mai sotto 15px
 } as const;

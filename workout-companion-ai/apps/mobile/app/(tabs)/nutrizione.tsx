@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { macrosToKcal } from '@wc/shared';
 import type { Food, NutritionDay } from '@wc/shared';
 import { supabase } from '../../lib/supabase';
-import { colors, radius, spacing, sharedStyles } from '../../lib/theme';
+import { colors, concentric, radius, spacing, sharedStyles, tabular, type } from '../../lib/theme';
 import { showError } from '../../lib/utils';
 import { getActiveCoachClient, getTodayNutritionDay, getUserId } from '../../lib/queries';
 import { demoNutrition, isDemo } from '../../lib/demo';
+import { ActivityRing } from '../../components/ActivityRing';
 import { Card } from '../../components/Card';
 import { MacroBar } from '../../components/MacroBar';
+import { MetricBlock } from '../../components/MetricBlock';
 import { Skeleton } from '../../components/Skeleton';
 import { EmptyState } from '../../components/States';
 
@@ -106,6 +109,12 @@ export default function NutrizioneScreen() {
     : 0;
   const plannedKcal = data.meals.reduce((acc, m) => acc + mealKcal(m), 0);
   const coverage = day && day.kcal > 0 ? Math.min(plannedKcal / day.kcal, 1) : 0;
+  const hasMeals = data.meals.length > 0;
+  // Menta quando i pasti coprono l'obiettivo, ambra quando manca qualcosa.
+  const coverageTone = coverage >= 0.95 ? colors.mint : colors.amber;
+
+  const isTraining = day?.day_type === 'training';
+  const dayTone = isTraining ? colors.amber : colors.cyan;
 
   return (
     <SafeAreaView style={sharedStyles.screen} edges={['top']}>
@@ -117,14 +126,9 @@ export default function NutrizioneScreen() {
           <Text style={sharedStyles.screenTitle}>Nutrizione</Text>
           {day ? (
             <View style={styles.dayChip}>
-              <View
-                style={[
-                  styles.dayDot,
-                  { backgroundColor: day.day_type === 'training' ? colors.accent : colors.textSecondary },
-                ]}
-              />
-              <Text style={styles.dayChipText}>
-                {day.day_type === 'training' ? 'Giorno di allenamento' : 'Giorno di riposo'}
+              <Ionicons name={isTraining ? 'barbell' : 'moon'} size={16} color={dayTone} />
+              <Text style={[styles.dayChipText, { color: dayTone }]}>
+                {isTraining ? 'Giorno di allenamento' : 'Giorno di riposo'}
               </Text>
             </View>
           ) : null}
@@ -144,24 +148,30 @@ export default function NutrizioneScreen() {
           />
         ) : (
           <>
+            {/* IL BLOCCO DOMINANTE: le calorie del giorno, leggibili in tre secondi. */}
             <Card title="Obiettivo di oggi">
-              <View style={styles.kcalRow}>
-                <Text style={sharedStyles.bigNumber}>{day.kcal.toLocaleString('it-IT')}</Text>
-                <Text style={styles.kcalUnit}>kcal</Text>
-              </View>
-              {data.meals.length > 0 ? (
-                <>
-                  <View style={styles.track}>
-                    <View style={[styles.fill, { width: `${coverage * 100}%` }]} />
-                  </View>
-                  <View style={styles.plannedRow}>
-                    <Text style={sharedStyles.muted}>Pianificate nei pasti</Text>
-                    <Text style={styles.plannedValue}>
-                      {Math.round(plannedKcal).toLocaleString('it-IT')} kcal · {Math.round(coverage * 100)}%
-                    </Text>
-                  </View>
-                </>
-              ) : null}
+              <MetricBlock
+                value={day.kcal.toLocaleString('it-IT')}
+                unit="kcal"
+                caption={
+                  hasMeals
+                    ? `Nei pasti: ${Math.round(plannedKcal).toLocaleString('it-IT')} kcal`
+                    : 'Obiettivo calorico del giorno'
+                }
+                trailing={
+                  hasMeals ? (
+                    <ActivityRing progress={coverage} color={coverageTone} size={88} strokeWidth={12}>
+                      <Text style={[styles.ringValue, tabular, { color: coverageTone }]}>
+                        {Math.round(coverage * 100)}%
+                      </Text>
+                    </ActivityRing>
+                  ) : undefined
+                }
+              />
+              {hasMeals ? <Text style={styles.coverageNote}>Copertura dell'obiettivo con i pasti pianificati</Text> : null}
+            </Card>
+
+            <Card title="Macro del giorno">
               <MacroBar
                 label="Proteine"
                 grams={day.protein_g}
@@ -185,43 +195,58 @@ export default function NutrizioneScreen() {
               />
             </Card>
 
-            {data.meals.length === 0 ? (
+            {!hasMeals ? (
               <EmptyState
                 emoji="🍽️"
                 title="Pasti non ancora dettagliati"
                 message="Per oggi segui i macro qui sopra: quando il coach inserirà i pasti, li troverai elencati qui."
               />
             ) : (
-              data.meals.map((meal) => (
-                <Card key={meal.id}>
-                  <View style={styles.mealHeader}>
-                    <Text style={styles.mealName} numberOfLines={1}>
-                      {meal.name}
-                    </Text>
-                    {meal.meal_time ? (
-                      <View style={styles.timeChip}>
-                        <Text style={styles.timeChipText}>{meal.meal_time.slice(0, 5)}</Text>
+              <View style={styles.section}>
+                <Text style={type.label}>Pasti del giorno</Text>
+                {data.meals.map((meal) => (
+                  <Card key={meal.id}>
+                    <View style={styles.mealHeader}>
+                      <View style={styles.mealTitle}>
+                        <Text style={styles.mealName} numberOfLines={1}>
+                          {meal.name}
+                        </Text>
+                        {meal.meal_time ? (
+                          <View style={styles.timeChip}>
+                            <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
+                            <Text style={[styles.timeChipText, tabular]}>{meal.meal_time.slice(0, 5)}</Text>
+                          </View>
+                        ) : null}
                       </View>
-                    ) : null}
-                    <Text style={styles.mealKcal}>{Math.round(mealKcal(meal))} kcal</Text>
-                  </View>
-                  {meal.meal_foods.length === 0 ? (
-                    <Text style={sharedStyles.muted}>Nessun alimento indicato.</Text>
-                  ) : (
-                    <View>
-                      {meal.meal_foods.map((mf, i) => (
-                        <View key={mf.id} style={[styles.foodRow, i > 0 && styles.foodRowDivider]}>
-                          <Text style={styles.foodName} numberOfLines={1}>
-                            {mf.food?.name ?? 'Alimento'}
-                          </Text>
-                          <Text style={styles.foodQty}>{Math.round(mf.quantity_g)} g</Text>
-                          <Text style={styles.foodKcal}>{Math.round(foodKcal(mf))} kcal</Text>
-                        </View>
-                      ))}
+                      <Text style={[styles.mealKcal, tabular]}>
+                        {Math.round(mealKcal(meal))}
+                        <Text style={styles.mealKcalUnit}> kcal</Text>
+                      </Text>
                     </View>
-                  )}
-                </Card>
-              ))
+
+                    {meal.meal_foods.length === 0 ? (
+                      <Text style={styles.muted}>Nessun alimento indicato.</Text>
+                    ) : (
+                      <View style={styles.foods}>
+                        {meal.meal_foods.map((mf, i) => (
+                          <View key={mf.id} style={[styles.foodRow, i > 0 && styles.foodDivider]}>
+                            <View style={styles.foodMain}>
+                              <Text style={styles.foodName} numberOfLines={1}>
+                                {mf.food?.name ?? 'Alimento'}
+                              </Text>
+                              <Text style={[styles.foodQty, tabular]}>{Math.round(mf.quantity_g)} g</Text>
+                            </View>
+                            <Text style={[styles.foodKcal, tabular]}>
+                              {Math.round(foodKcal(mf))}
+                              <Text style={styles.foodKcalUnit}> kcal</Text>
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                  </Card>
+                ))}
+              </View>
             )}
           </>
         )}
@@ -235,24 +260,35 @@ function NutritionSkeleton() {
   return (
     <SafeAreaView style={sharedStyles.screen} edges={['top']}>
       <View style={sharedStyles.content}>
-        <Skeleton width={170} height={30} />
-        <Skeleton width={150} height={22} round={radius.md} />
+        <Skeleton width={190} height={34} />
+        <Skeleton width={210} height={36} round={radius.pill} />
         <Card>
           <Skeleton width={104} height={12} />
-          <Skeleton width={150} height={38} />
-          <Skeleton height={10} round={5} />
-          <Skeleton height={8} round={4} />
-          <Skeleton height={8} round={4} />
-          <Skeleton height={8} round={4} />
+          <View style={styles.skeletonMetric}>
+            <View style={styles.skeletonMetricMain}>
+              <Skeleton width={168} height={58} />
+              <Skeleton width={140} height={14} />
+            </View>
+            <Skeleton width={88} height={88} round={44} />
+          </View>
+        </Card>
+        <Card>
+          <Skeleton width={124} height={12} />
+          {[0, 1, 2].map((i) => (
+            <View key={i} style={styles.skeletonMacro}>
+              <Skeleton width="46%" height={13} />
+              <Skeleton height={8} round={4} />
+            </View>
+          ))}
         </Card>
         {[0, 1].map((i) => (
           <Card key={i}>
             <View style={styles.mealHeader}>
-              <Skeleton width={110} height={16} />
-              <Skeleton width={60} height={16} />
+              <Skeleton width={124} height={22} />
+              <Skeleton width={72} height={22} />
             </View>
-            <Skeleton height={12} />
-            <Skeleton width="72%" height={12} />
+            <Skeleton height={14} />
+            <Skeleton width="72%" height={14} />
           </Card>
         ))}
       </View>
@@ -260,123 +296,124 @@ function NutritionSkeleton() {
   );
 }
 
+/** Raggio interno delle superfici dentro una card (regola concentrica). */
+const innerRadius = concentric(radius.lg, spacing.lg);
+
 const styles = StyleSheet.create({
   header: {
-    gap: spacing.sm,
+    gap: spacing.md,
     alignItems: 'flex-start',
   },
   dayChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: 4,
-  },
-  dayDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    gap: spacing.sm,
+    backgroundColor: colors.raised,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
   dayChipText: {
+    ...type.callout,
+    fontWeight: '700',
+  },
+  ringValue: {
+    ...type.body,
+    fontWeight: '800',
+  },
+  coverageNote: {
+    ...type.callout,
     color: colors.textSecondary,
-    fontSize: 12,
-    fontWeight: '600',
   },
-  kcalRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: spacing.sm,
-  },
-  kcalUnit: {
-    color: colors.textSecondary,
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  track: {
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: colors.border,
-    overflow: 'hidden',
-  },
-  fill: {
-    height: '100%',
-    borderRadius: 5,
-    backgroundColor: colors.accent,
-  },
-  plannedRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  plannedValue: {
-    color: colors.textPrimary,
-    fontSize: 13,
-    fontWeight: '600',
-    fontVariant: ['tabular-nums'],
+  section: {
+    gap: spacing.md,
   },
   mealHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  mealTitle: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
   },
   mealName: {
-    color: colors.textPrimary,
-    fontSize: 16,
-    fontWeight: '700',
+    ...type.title,
     flexShrink: 1,
   },
   timeChip: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.sm,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.raised,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
   },
   timeChipText: {
+    ...type.callout,
     color: colors.textSecondary,
-    fontSize: 12,
-    fontWeight: '600',
-    fontVariant: ['tabular-nums'],
   },
   mealKcal: {
-    color: colors.accent,
-    fontSize: 14,
+    ...type.title,
     fontWeight: '800',
-    fontVariant: ['tabular-nums'],
-    marginLeft: 'auto',
+  },
+  mealKcalUnit: {
+    ...type.callout,
+    color: colors.textSecondary,
+    fontWeight: '600',
+  },
+  muted: {
+    ...type.body,
+    color: colors.textSecondary,
+  },
+  foods: {
+    backgroundColor: colors.raised,
+    borderRadius: innerRadius,
+    paddingHorizontal: spacing.lg,
   },
   foodRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    paddingVertical: 7,
+    paddingVertical: spacing.md,
   },
-  foodRowDivider: {
+  foodDivider: {
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
   },
-  foodName: {
-    color: colors.textPrimary,
-    fontSize: 14,
+  foodMain: {
     flex: 1,
+    gap: 2,
+  },
+  foodName: {
+    ...type.body,
   },
   foodQty: {
+    ...type.callout,
     color: colors.textSecondary,
-    fontSize: 13,
-    minWidth: 48,
-    textAlign: 'right',
-    fontVariant: ['tabular-nums'],
   },
   foodKcal: {
-    color: colors.textPrimary,
-    fontSize: 13,
+    ...type.body,
+    fontWeight: '700',
+  },
+  foodKcalUnit: {
+    ...type.callout,
+    color: colors.textSecondary,
     fontWeight: '600',
-    minWidth: 62,
-    textAlign: 'right',
-    fontVariant: ['tabular-nums'],
+  },
+  skeletonMetric: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.lg,
+  },
+  skeletonMetricMain: {
+    flex: 1,
+    gap: spacing.sm,
+  },
+  skeletonMacro: {
+    gap: spacing.sm,
   },
 });

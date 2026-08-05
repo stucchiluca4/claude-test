@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, StyleSheet, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { colors, radius, spacing } from '../lib/theme';
+import { Ionicons } from '@expo/vector-icons';
+import { Press } from './Press';
+import { colors, concentric, radius, spacing, type } from '../lib/theme';
+import { tapMedium } from '../lib/haptics';
 import { showError } from '../lib/utils';
 import {
   deleteExerciseMedia,
@@ -16,6 +19,15 @@ interface Props {
   workoutExerciseId: string;
   exerciseId: string;
 }
+
+/** Lato del riquadro: miniature e zone di aggiunta hanno la stessa misura. */
+const TILE = 72;
+
+/**
+ * Raggio interno della card dell'esercizio (26 − 16): le miniature restano
+ * concentriche con la superficie che le contiene.
+ */
+const TILE_RADIUS = concentric(radius.lg, spacing.lg);
 
 /** Galleria compatta di foto/video per un esercizio, con aggiunta ed eliminazione. */
 export function ExerciseMediaBar({ clientId, workoutLogId, workoutExerciseId, exerciseId }: Props) {
@@ -67,6 +79,8 @@ export function ExerciseMediaBar({ clientId, workoutLogId, workoutExerciseId, ex
   }
 
   function confirmDelete(item: ExerciseMediaWithUrl) {
+    // Il gesto distruttivo si annuncia con un colpo aptico prima della richiesta.
+    tapMedium();
     Alert.alert('Eliminare l’allegato?', 'L’azione non è reversibile.', [
       { text: 'Annulla', style: 'cancel' },
       {
@@ -89,26 +103,60 @@ export function ExerciseMediaBar({ clientId, workoutLogId, workoutExerciseId, ex
 
   return (
     <View style={styles.wrap}>
-      <View style={styles.thumbs}>
+      <View style={styles.tiles}>
+        {/* FERRO: gli allegati sono contenuto, quindi superficie opaca. */}
         {media.map((m) => (
-          <Pressable key={m.id} onLongPress={() => confirmDelete(m)} style={styles.thumb}>
+          <Press
+            key={m.id}
+            style={styles.thumb}
+            // Il tocco semplice non fa nulla: nessun colpo aptico a vuoto.
+            haptic="none"
+            onLongPress={() => confirmDelete(m)}
+            accessibilityLabel={
+              m.media_type === 'photo'
+                ? 'Foto allegata. Tieni premuto per eliminarla.'
+                : 'Video allegato. Tieni premuto per eliminarlo.'
+            }
+          >
             {m.media_type === 'photo' && m.url ? (
               <Image source={{ uri: m.url }} style={styles.image} />
             ) : (
               <View style={styles.videoBox}>
-                <Text style={styles.videoIcon}>▶</Text>
-                <Text style={styles.videoLabel}>Video</Text>
+                <Ionicons name="videocam" size={26} color={colors.textSecondary} />
+                <Text style={type.label}>Video</Text>
               </View>
             )}
-          </Pressable>
+          </Press>
         ))}
-        <Pressable style={[styles.addBtn, busy && styles.addBtnBusy]} disabled={busy} onPress={() => add('photo')}>
-          {busy ? <ActivityIndicator color={colors.accent} /> : <Text style={styles.addBtnText}>＋ 📷</Text>}
-        </Pressable>
-        <Pressable style={[styles.addBtn, busy && styles.addBtnBusy]} disabled={busy} onPress={() => add('video')}>
-          <Text style={styles.addBtnText}>＋ 🎥</Text>
-        </Pressable>
+
+        {/* Zone di caricamento: l'unico punto del sistema dove il bordo è tratteggiato. */}
+        <Press
+          style={[styles.addTile, busy && styles.addTileBusy]}
+          disabled={busy}
+          onPress={() => add('photo')}
+          accessibilityLabel="Aggiungi una foto"
+        >
+          {busy ? (
+            <ActivityIndicator color={colors.accent} />
+          ) : (
+            <>
+              <Ionicons name="camera-outline" size={24} color={colors.accent} />
+              <Text style={[type.label, styles.addLabel]}>Foto</Text>
+            </>
+          )}
+        </Press>
+
+        <Press
+          style={[styles.addTile, busy && styles.addTileBusy]}
+          disabled={busy}
+          onPress={() => add('video')}
+          accessibilityLabel="Aggiungi un video"
+        >
+          <Ionicons name="videocam-outline" size={24} color={colors.accent} />
+          <Text style={[type.label, styles.addLabel]}>Video</Text>
+        </Press>
       </View>
+
       {media.length > 0 ? <Text style={styles.hint}>Tieni premuto un allegato per eliminarlo.</Text> : null}
     </View>
   );
@@ -116,19 +164,20 @@ export function ExerciseMediaBar({ clientId, workoutLogId, workoutExerciseId, ex
 
 const styles = StyleSheet.create({
   wrap: {
-    gap: spacing.xs,
+    gap: spacing.md,
   },
-  thumbs: {
+  tiles: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
   },
   thumb: {
-    width: 64,
-    height: 64,
-    borderRadius: radius.md,
+    width: TILE,
+    height: TILE,
+    borderRadius: TILE_RADIUS,
     overflow: 'hidden',
-    borderWidth: 1,
+    backgroundColor: colors.raised,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
   },
   image: {
@@ -139,39 +188,31 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.background,
-    gap: 2,
+    gap: spacing.xs,
+    backgroundColor: colors.raised,
   },
-  videoIcon: {
-    color: colors.accent,
-    fontSize: 20,
-  },
-  videoLabel: {
-    color: colors.textSecondary,
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  addBtn: {
-    width: 64,
-    height: 64,
-    borderRadius: radius.md,
+  addTile: {
+    width: TILE,
+    height: TILE,
+    borderRadius: TILE_RADIUS,
     borderWidth: 1,
-    borderColor: colors.accent,
     borderStyle: 'dashed',
+    borderColor: 'rgba(10,132,255,0.45)',
+    backgroundColor: 'rgba(10,132,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(56,189,248,0.06)',
+    gap: spacing.xs,
   },
-  addBtnBusy: {
-    opacity: 0.6,
+  addTileBusy: {
+    opacity: 0.5,
   },
-  addBtnText: {
+  addLabel: {
     color: colors.accent,
-    fontSize: 15,
-    fontWeight: '700',
   },
   hint: {
-    color: colors.textSecondary,
-    fontSize: 11,
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: '500',
+    color: colors.textTertiary,
   },
 });

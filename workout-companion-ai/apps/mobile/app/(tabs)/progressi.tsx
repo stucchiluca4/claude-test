@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import {
   avgFrequencyPerWeek,
   currentStreak,
@@ -17,10 +18,12 @@ import {
   type WeekBucket,
 } from '@wc/shared';
 import { supabase } from '../../lib/supabase';
-import { colors, spacing, sharedStyles } from '../../lib/theme';
+import { colors, concentric, radius, shadow, spacing, sharedStyles, tabular, type } from '../../lib/theme';
 import { showError } from '../../lib/utils';
 import { getActiveCoachClient, getUserId } from '../../lib/queries';
+import { ActivityRing } from '../../components/ActivityRing';
 import { Card } from '../../components/Card';
+import { MetricBlock } from '../../components/MetricBlock';
 import { StatPill } from '../../components/StatPill';
 import { BarChart, type BarDatum } from '../../components/BarChart';
 import { EmptyState, LoadingState } from '../../components/States';
@@ -31,6 +34,16 @@ const RECORD_LABELS: Record<RecordType, string> = {
   max_reps: 'Reps max',
   max_volume: 'Volume serie',
   estimated_1rm: '1RM stimato',
+};
+
+/**
+ * Colore e icona dell'insight in base alla gravità: il colore non viaggia mai
+ * da solo (ambra = attenzione, menta = fatto bene, ciano = informazione).
+ */
+const INSIGHT_TONE: Record<Insight['severity'], { color: string; icon: keyof typeof Ionicons.glyphMap }> = {
+  warning: { color: colors.amber, icon: 'alert-circle' },
+  positive: { color: colors.mint, icon: 'checkmark-circle' },
+  info: { color: colors.cyan, icon: 'information-circle' },
 };
 
 interface StrengthSeries {
@@ -53,13 +66,6 @@ interface Analytics {
 
 function throwIf(error: { message: string } | null): void {
   if (error) throw new Error(error.message);
-}
-
-/** Colore del bordo/titolo insight in base alla gravità. */
-function insightColor(severity: Insight['severity']): string {
-  if (severity === 'warning') return colors.warning;
-  if (severity === 'positive') return colors.accent;
-  return colors.celeste;
 }
 
 /** Data "solo giorno" (YYYY-MM-DD) formattata in it-IT senza sfasamenti di fuso. */
@@ -294,6 +300,11 @@ export default function ProgressiScreen() {
   }
 
   const tons = Math.round(data.totalVolumeKg / 100) / 10;
+  const tonsLabel = tons.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  // L'anello dello streak si riempie sull'intera finestra osservata (8 settimane).
+  const streakProgress = Math.min(1, data.streak / Math.max(1, data.buckets.length));
+  const trendTone = data.trendPct == null ? colors.textSecondary : data.trendPct >= 0 ? colors.mint : colors.amber;
+
   const volumeBars: BarDatum[] = data.buckets.map((b) => ({
     label: b.label,
     value: Math.round(b.volumeKg),
@@ -307,69 +318,129 @@ export default function ProgressiScreen() {
         contentContainerStyle={sharedStyles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
       >
-        <Text style={sharedStyles.screenTitle}>Progressi</Text>
+        <View style={styles.header}>
+          <Text style={sharedStyles.screenTitle}>Progressi</Text>
+          <Text style={[type.label, tabular]}>Ultime {data.buckets.length} settimane</Text>
+        </View>
 
+        {/* IL BLOCCO DOMINANTE: tutto il ferro spostato, con l'anello dello streak accanto.
+            È l'unico faro della schermata (ambra = sforzo accumulato). */}
+        <Card beacon={colors.amber} style={shadow.beacon(colors.amber)}>
+          <MetricBlock
+            value={tonsLabel}
+            unit="t"
+            label="Volume totale"
+            caption="Il ferro che hai spostato finora."
+            color={colors.amber}
+            trailing={
+              <View style={styles.streak}>
+                <ActivityRing progress={streakProgress} color={colors.mint} size={96} strokeWidth={12}>
+                  <Text style={styles.streakValue}>{data.streak}</Text>
+                </ActivityRing>
+                <Text style={styles.streakLabel} numberOfLines={2}>
+                  Sett. di fila
+                </Text>
+              </View>
+            }
+          />
+        </Card>
+
+        {/* KPI di supporto: due righe pulite, un colore per ogni significato. */}
         <View style={styles.pillRow}>
-          <StatPill label="Allenamenti" value={String(data.totalWorkouts)} color={colors.accent} />
-          <StatPill label="Streak (sett.)" value={`${data.streak}🔥`} />
+          <StatPill label="Allenamenti" value={String(data.totalWorkouts)} color={colors.mint} />
           <StatPill label="Freq./sett." value={String(data.frequency)} />
         </View>
         <View style={styles.pillRow}>
-          <StatPill label="Tonnellate" value={String(tons)} color={colors.success} />
-          <StatPill label="Peso medio" value={data.avgWeight != null ? `${data.avgWeight} kg` : '—'} />
+          <StatPill
+            label="Peso medio"
+            value={data.avgWeight != null ? `${data.avgWeight} kg` : '—'}
+            color={colors.cyan}
+          />
+          <StatPill label="Record" value={String(data.prs.length)} color={colors.rose} />
         </View>
 
         {data.insights.length > 0 ? (
-          <Card title="🧠 Insight per te">
-            {data.insights.map((ins) => (
-              <View key={ins.id} style={[styles.insight, { borderLeftColor: insightColor(ins.severity) }]}>
-                <Text style={[styles.insightTitle, { color: insightColor(ins.severity) }]}>{ins.title}</Text>
-                <Text style={sharedStyles.body}>{ins.body}</Text>
-              </View>
-            ))}
+          <Card>
+            <View style={styles.cardHead}>
+              <Ionicons name="sparkles" size={18} color={colors.violet} />
+              <Text style={[type.label, styles.aiLabel]}>Insight per te</Text>
+            </View>
+            <View style={styles.insightList}>
+              {data.insights.map((ins) => {
+                const tone = INSIGHT_TONE[ins.severity];
+                return (
+                  <View key={ins.id} style={styles.insight}>
+                    <Ionicons name={tone.icon} size={22} color={tone.color} style={styles.insightIcon} />
+                    <View style={styles.insightBody}>
+                      <Text style={[styles.insightTitle, { color: tone.color }]}>{ins.title}</Text>
+                      <Text style={styles.insightText}>{ins.body}</Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
           </Card>
         ) : null}
 
-        <Card title="Volume settimanale (8 settimane)">
-          <BarChart data={volumeBars} />
+        <Card title="Volume settimanale">
+          <BarChart data={volumeBars} color={colors.amber} height={152} />
           {data.trendPct != null ? (
-            <Text style={[sharedStyles.muted, { marginTop: spacing.sm }]}>
-              Andamento volume: {data.trendPct >= 0 ? '▲ +' : '▼ '}
-              {data.trendPct}% rispetto all'inizio del periodo.
-            </Text>
+            <View style={styles.delta}>
+              <Ionicons
+                name={data.trendPct >= 0 ? 'trending-up' : 'trending-down'}
+                size={20}
+                color={trendTone}
+              />
+              <Text style={styles.deltaText}>
+                <Text style={[styles.deltaValue, tabular, { color: trendTone }]}>
+                  {data.trendPct >= 0 ? '+' : ''}
+                  {data.trendPct}%
+                </Text>
+                {" rispetto all'inizio del periodo"}
+              </Text>
+            </View>
           ) : null}
         </Card>
 
-        <Card title="Attività settimanale (allenamenti)">
-          <BarChart data={freqBars} color={colors.avio} />
+        <Card title="Attività settimanale">
+          <Text style={styles.cardSub}>Allenamenti completati, settimana per settimana.</Text>
+          <BarChart data={freqBars} color={colors.mint} height={112} />
         </Card>
 
         {data.strength ? (
-          <Card title={`Progressione forza · ${data.strength.exerciseName}`}>
-            <Text style={[sharedStyles.muted, { marginBottom: spacing.sm }]}>1RM stimato per seduta (kg)</Text>
-            <BarChart data={data.strength.points} color={colors.celeste} />
+          <Card title="Progressione forza">
+            <Text style={styles.cardTitleStrong} numberOfLines={2}>
+              {data.strength.exerciseName}
+            </Text>
+            <Text style={styles.cardSub}>1RM stimato per seduta (kg).</Text>
+            <BarChart data={data.strength.points} color={colors.rose} />
           </Card>
         ) : null}
 
-        <Card title={data.prs.length > 0 ? `🏆 Record personali (${data.prs.length})` : '🏆 Record personali'}>
+        <Card title="Record personali">
           {data.prs.length > 0 ? (
-            data.prs.map((pr) => (
-              <View key={pr.id} style={styles.prRow}>
-                <View style={styles.prInfo}>
-                  <Text style={styles.prExercise} numberOfLines={1}>
-                    {pr.exercise?.name ?? 'Esercizio'}
-                  </Text>
-                  <Text style={sharedStyles.muted}>
-                    {RECORD_LABELS[pr.record_type]} · {formatDay(pr.achieved_at)}
+            <View style={styles.prList}>
+              {data.prs.map((pr, i) => (
+                <View key={pr.id} style={[styles.prRow, i === data.prs.length - 1 && styles.prRowLast]}>
+                  <View style={styles.prBadge}>
+                    <Ionicons name="trophy" size={18} color={colors.rose} />
+                  </View>
+                  <View style={styles.prInfo}>
+                    <Text style={styles.prExercise} numberOfLines={1}>
+                      {pr.exercise?.name ?? 'Esercizio'}
+                    </Text>
+                    <Text style={styles.prMeta} numberOfLines={1}>
+                      {RECORD_LABELS[pr.record_type]} · {formatDay(pr.achieved_at)}
+                    </Text>
+                  </View>
+                  <Text style={styles.prValue}>
+                    {pr.record_type === 'max_reps' ? `${Math.round(pr.value)}` : `${pr.value} kg`}
                   </Text>
                 </View>
-                <Text style={styles.prValue}>
-                  {pr.record_type === 'max_reps' ? `${Math.round(pr.value)}` : `${pr.value} kg`}
-                </Text>
-              </View>
-            ))
+              ))}
+            </View>
           ) : (
-            <Text style={sharedStyles.muted}>
+            <Text style={styles.emptyText}>
               Nessun record ancora: continua così e cominceranno ad arrivare. 💪
             </Text>
           )}
@@ -379,44 +450,134 @@ export default function ProgressiScreen() {
   );
 }
 
+/** Raggio interno delle superfici dentro una card (regola concentrica). */
+const innerRadius = concentric(radius.lg, spacing.lg);
+
 const styles = StyleSheet.create({
+  header: {
+    gap: spacing.xs,
+  },
+  streak: {
+    width: 96,
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  streakValue: {
+    ...type.metricSm,
+    ...tabular,
+    fontSize: 30,
+    lineHeight: 34,
+    color: colors.mint,
+  },
+  streakLabel: {
+    ...type.label,
+    textAlign: 'center',
+  },
   pillRow: {
     flexDirection: 'row',
     gap: spacing.sm,
   },
+  cardHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  aiLabel: {
+    color: colors.violet,
+  },
+  cardSub: {
+    ...sharedStyles.muted,
+  },
+  cardTitleStrong: {
+    ...type.title,
+  },
+  insightList: {
+    gap: spacing.sm,
+  },
   insight: {
-    borderLeftWidth: 3,
-    paddingLeft: spacing.md,
-    paddingVertical: spacing.sm,
-    gap: 2,
-    marginBottom: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    backgroundColor: colors.raised,
+    borderRadius: innerRadius,
+    padding: spacing.lg,
+  },
+  insightIcon: {
+    marginTop: 2,
+  },
+  insightBody: {
+    flex: 1,
+    gap: spacing.xs,
   },
   insightTitle: {
-    fontSize: 14,
+    ...type.body,
+    fontWeight: '700',
+  },
+  insightText: {
+    ...type.body,
+    color: colors.textSecondary,
+  },
+  delta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.raised,
+    borderRadius: innerRadius,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+  },
+  deltaText: {
+    ...sharedStyles.muted,
+    flex: 1,
+  },
+  deltaValue: {
+    fontSize: 17,
     fontWeight: '800',
+  },
+  prList: {
+    gap: 0,
   },
   prRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     gap: spacing.md,
     paddingVertical: spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
+  },
+  prRowLast: {
+    borderBottomWidth: 0,
+    paddingBottom: 0,
+  },
+  prBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.sm,
+    backgroundColor: colors.raised,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   prInfo: {
     flex: 1,
     gap: 2,
   },
   prExercise: {
-    color: colors.textPrimary,
-    fontSize: 15,
+    ...type.body,
     fontWeight: '700',
   },
+  prMeta: {
+    ...sharedStyles.muted,
+  },
   prValue: {
-    color: colors.accent,
-    fontSize: 17,
+    ...tabular,
+    fontSize: 20,
     fontWeight: '800',
-    fontVariant: ['tabular-nums'],
+    letterSpacing: -0.3,
+    color: colors.rose,
+  },
+  emptyText: {
+    ...type.body,
+    color: colors.textSecondary,
   },
 });

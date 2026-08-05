@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { colors, radius, spacing } from '../lib/theme';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, StyleSheet, Text, View } from 'react-native';
+import { colors, radius, spacing, tabular } from '../lib/theme';
 import { formatClock } from '../lib/utils';
-import { PrimaryButton } from './PrimaryButton';
+import { tapSuccess } from '../lib/haptics';
+import { GlassSurface } from './Glass';
+import { Press } from './Press';
 
 interface Props {
   /** Durata del recupero in secondi. */
@@ -13,13 +15,16 @@ interface Props {
   onSkip: () => void;
 }
 
+/**
+ * Il recupero è il momento in cui l'atleta guarda il telefono più a lungo:
+ * vive sul livello VETRO, ancorato in basso, col numero alla scala del gesto.
+ */
 export function RestTimer({ seconds, resetToken, onFinish, onSkip }: Props) {
   const [remaining, setRemaining] = useState(seconds);
+  const enter = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Timer basato su timestamp: memorizziamo l'istante di fine e a ogni tick
-    // ricalcoliamo il rimanente da Date.now(), così al rientro dal background
-    // (dove gli interval sono sospesi) il tempo mostrato resta corretto.
+    // Timer basato su timestamp: al rientro dal background il tempo resta corretto.
     const endsAt = Date.now() + seconds * 1000;
     setRemaining(seconds);
     const id = setInterval(() => {
@@ -29,67 +34,115 @@ export function RestTimer({ seconds, resetToken, onFinish, onSkip }: Props) {
   }, [seconds, resetToken]);
 
   useEffect(() => {
-    if (remaining <= 0) onFinish();
+    enter.setValue(0);
+    Animated.spring(enter, { toValue: 1, damping: 20, stiffness: 140, mass: 1, useNativeDriver: true }).start();
+  }, [resetToken, enter]);
+
+  useEffect(() => {
+    if (remaining <= 0) {
+      tapSuccess();
+      onFinish();
+    }
   }, [remaining, onFinish]);
 
   const fraction = seconds > 0 ? Math.max(remaining, 0) / seconds : 0;
+  const closing = remaining <= 5;
 
   return (
-    <View style={styles.banner}>
-      <View style={styles.info}>
-        <Text style={styles.label}>RECUPERO</Text>
-        <Text style={styles.clock}>{formatClock(remaining)}</Text>
-        <View style={styles.track}>
-          <View style={[styles.fill, { width: `${fraction * 100}%` }]} />
+    <Animated.View
+      style={[
+        styles.anchor,
+        {
+          opacity: enter,
+          transform: [
+            { translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) },
+            { scale: enter.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1] }) },
+          ],
+        },
+      ]}
+      pointerEvents="box-none"
+    >
+      <GlassSurface cornerRadius={radius.xl} padding={spacing.lg}>
+        <View style={styles.row}>
+          <View style={styles.info}>
+            <Text style={styles.label}>RECUPERO</Text>
+            <Text
+              style={[styles.clock, tabular, closing && { color: colors.amber }]}
+              numberOfLines={1}
+            >
+              {formatClock(remaining)}
+            </Text>
+          </View>
+          <Press onPress={onSkip} style={styles.skip} haptic="light" accessibilityLabel="Salta recupero">
+            <Text style={styles.skipText}>Salta</Text>
+          </Press>
         </View>
-      </View>
-      <PrimaryButton label="Salta" variant="ghost" onPress={onSkip} style={styles.skip} />
-    </View>
+        <View style={styles.track}>
+          <View
+            style={[
+              styles.fill,
+              { width: `${Math.round(fraction * 100)}%`, backgroundColor: closing ? colors.amber : colors.accent },
+            ]}
+          />
+        </View>
+      </GlassSurface>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  banner: {
+  anchor: {
+    position: 'absolute',
+    left: spacing.md,
+    right: spacing.md,
+    bottom: spacing.lg,
+  },
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.lg,
-    backgroundColor: colors.card,
-    borderColor: colors.accent,
-    borderWidth: 1,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    margin: spacing.lg,
-    marginTop: 0,
   },
   info: {
     flex: 1,
-    gap: spacing.xs,
+    gap: 2,
   },
   label: {
     color: colors.textSecondary,
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
-    letterSpacing: 1.2,
+    letterSpacing: 0.7,
   },
   clock: {
     color: colors.textPrimary,
-    fontSize: 36,
+    fontSize: 44,
     fontWeight: '800',
-    fontVariant: ['tabular-nums'],
+    letterSpacing: -1,
+    lineHeight: 48,
+  },
+  skip: {
+    minHeight: 48,
+    paddingHorizontal: spacing.xl,
+    borderRadius: radius.pill,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.glassBorder,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  skipText: {
+    color: colors.textPrimary,
+    fontSize: 15,
+    fontWeight: '700',
   },
   track: {
     height: 6,
     borderRadius: 3,
-    backgroundColor: colors.border,
+    backgroundColor: 'rgba(255,255,255,0.12)',
     overflow: 'hidden',
+    marginTop: spacing.md,
   },
   fill: {
     height: '100%',
     borderRadius: 3,
-    backgroundColor: colors.accent,
-  },
-  skip: {
-    minHeight: 44,
-    paddingVertical: 10,
   },
 });

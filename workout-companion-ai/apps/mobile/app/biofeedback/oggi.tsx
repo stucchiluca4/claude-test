@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -13,9 +11,19 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { DAYS_OF_WEEK } from '@wc/shared';
 import type { CoachClient, NutritionDay } from '@wc/shared';
-import { colors, radius, spacing, sharedStyles } from '../../lib/theme';
+import {
+  colors,
+  concentric,
+  radius,
+  shadow,
+  spacing,
+  sharedStyles,
+  tabular,
+  type,
+} from '../../lib/theme';
 import { localDateString, parseNum, showError } from '../../lib/utils';
 import {
   getActiveCoachClient,
@@ -25,9 +33,14 @@ import {
   upsertDailyBiofeedback,
   type DailyBiofeedback,
 } from '../../lib/queries';
+import { ActivityRing } from '../../components/ActivityRing';
 import { Card } from '../../components/Card';
 import { DotScale } from '../../components/DotScale';
+import { GlassSurface } from '../../components/Glass';
+import { MetricBlock } from '../../components/MetricBlock';
+import { Press } from '../../components/Press';
 import { PrimaryButton } from '../../components/PrimaryButton';
+import { EmptyState, LoadingState } from '../../components/States';
 
 type ScaleKey =
   | 'sleep_quality'
@@ -37,13 +50,29 @@ type ScaleKey =
   | 'joint_stress'
   | 'recovery';
 
-const SCALES: { key: ScaleKey; label: string; emoji: string; bands: readonly [string, string, string] }[] = [
-  { key: 'sleep_quality', label: 'Qualità del sonno', emoji: '😴', bands: ['Scarsa', 'Buona', 'Ottima'] },
-  { key: 'stress_level', label: 'Livello di stress', emoji: '⚡', bands: ['Basso', 'Moderato', 'Alto'] },
-  { key: 'energy_level', label: 'Livello di energia', emoji: '🔥', bands: ['Basso', 'Moderato', 'Alto'] },
-  { key: 'muscle_soreness', label: 'Dolore muscolare', emoji: '💪', bands: ['Leggero', 'Moderato', 'Alto'] },
-  { key: 'joint_stress', label: 'Stress articolare', emoji: '🦴', bands: ['Leggero', 'Moderato', 'Alto'] },
-  { key: 'recovery', label: 'Stato di recupero', emoji: '❤️', bands: ['Scarso', 'Buono', 'Ottimo'] },
+/** Veli dei segnali: colore al 12%, solo dietro le icone di sezione. */
+const WASH = {
+  cyan: 'rgba(100,210,255,0.12)',
+  amber: 'rgba(255,159,10,0.12)',
+  neutral: 'rgba(255,255,255,0.06)',
+} as const;
+
+/**
+ * Ogni scala porta il segnale del suo significato: ciano per il corpo che
+ * recupera, ambra per lo sforzo e il dolore, menta per l'energia disponibile.
+ */
+const SCALES: {
+  key: ScaleKey;
+  label: string;
+  bands: readonly [string, string, string];
+  tint: string;
+}[] = [
+  { key: 'sleep_quality', label: 'Qualità del sonno', bands: ['Scarsa', 'Buona', 'Ottima'], tint: colors.cyan },
+  { key: 'stress_level', label: 'Livello di stress', bands: ['Basso', 'Moderato', 'Alto'], tint: colors.amber },
+  { key: 'energy_level', label: 'Livello di energia', bands: ['Basso', 'Moderato', 'Alto'], tint: colors.mint },
+  { key: 'muscle_soreness', label: 'Dolore muscolare', bands: ['Leggero', 'Moderato', 'Alto'], tint: colors.amber },
+  { key: 'joint_stress', label: 'Stress articolare', bands: ['Leggero', 'Moderato', 'Alto'], tint: colors.amber },
+  { key: 'recovery', label: 'Stato di recupero', bands: ['Scarso', 'Buono', 'Ottimo'], tint: colors.cyan },
 ];
 
 const EMPTY_SCALES: Record<ScaleKey, number | null> = {
@@ -76,12 +105,35 @@ function italianDateLabel(d: Date): string {
     .join(' ');
 }
 
-/** Input numerico con etichetta e (facoltativo) obiettivo sotto. */
-function MetricInput({
+/** Testata di sezione: icona del segnale + etichetta. Il colore non viaggia mai da solo. */
+function SectionHead({
+  icon,
+  label,
+  tint,
+  wash,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  tint: string;
+  wash: string;
+}) {
+  return (
+    <View style={styles.head}>
+      <View style={[styles.headIcon, { backgroundColor: wash }]}>
+        <Ionicons name={icon} size={18} color={tint} />
+      </View>
+      <Text style={[type.label, styles.headLabel]}>{label}</Text>
+    </View>
+  );
+}
+
+/** Campo numerico su FERRO: cifra grande e tabulare, unità di misura a destra. */
+function NumberField({
   label,
   value,
   onChange,
   placeholder,
+  unit,
   target,
   decimal,
   grow,
@@ -90,23 +142,33 @@ function MetricInput({
   value: string;
   onChange: (v: string) => void;
   placeholder: string;
+  unit?: string;
   target?: string | null;
   decimal?: boolean;
-  /** Da attivare quando l'input vive in una riga con altri input. */
+  /** Da attivare quando il campo vive in una riga con altri campi. */
   grow?: boolean;
 }) {
   return (
-    <View style={[styles.metricBox, grow && styles.metricGrow]}>
-      <Text style={styles.metricLabel}>{label}</Text>
-      <TextInput
-        style={sharedStyles.input}
-        value={value}
-        onChangeText={onChange}
-        placeholder={placeholder}
-        placeholderTextColor={colors.textSecondary}
-        keyboardType={decimal ? 'decimal-pad' : 'number-pad'}
-      />
-      {target ? <Text style={styles.metricTarget}>Obiettivo: {target}</Text> : null}
+    <View style={[styles.field, grow && styles.fieldGrow]}>
+      <Text style={type.label} numberOfLines={1} adjustsFontSizeToFit>
+        {label}
+      </Text>
+      <View style={styles.fieldBox}>
+        <TextInput
+          style={[styles.fieldInput, tabular]}
+          value={value}
+          onChangeText={onChange}
+          placeholder={placeholder}
+          placeholderTextColor={colors.textTertiary}
+          keyboardType={decimal ? 'decimal-pad' : 'number-pad'}
+        />
+        {unit ? <Text style={styles.fieldUnit}>{unit}</Text> : null}
+      </View>
+      {target ? (
+        <Text style={[styles.fieldTarget, tabular]} numberOfLines={1}>
+          su {target}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -129,6 +191,10 @@ export default function BiofeedbackOggiScreen() {
   const [kcal, setKcal] = useState('');
   const [weight, setWeight] = useState('');
   const [notes, setNotes] = useState('');
+
+  // Altezze dei due livelli in vetro: il ferro scorre sotto senza finirci dietro.
+  const [headerH, setHeaderH] = useState(84);
+  const [barH, setBarH] = useState(96);
 
   const router = useRouter();
   const weekDates = currentWeekDates();
@@ -234,40 +300,42 @@ export default function BiofeedbackOggiScreen() {
   }
 
   if (loading) {
-    return (
-      <SafeAreaView style={sharedStyles.screen}>
-        <View style={sharedStyles.center}>
-          <ActivityIndicator size="large" color={colors.accent} />
-          <Text style={sharedStyles.muted}>Preparo il check di oggi…</Text>
-        </View>
-      </SafeAreaView>
-    );
+    return <LoadingState message="Preparo il check di oggi…" />;
   }
 
   const selected = new Date(`${selectedDate}T00:00:00`);
 
+  // L'unico numero dominante: quante scale hai già raccontato.
+  const answered = SCALES.filter((s) => scales[s.key] != null).length;
+  const complete = answered === SCALES.length;
+  const heroTone = complete ? colors.mint : colors.cyan;
+  const heroCaption = complete
+    ? 'Stato completo: puoi salvare il check.'
+    : answered === 0
+      ? 'Tocca le barre qui sotto: bastano trenta secondi.'
+      : `Manca${SCALES.length - answered === 1 ? '' : 'no'} ${SCALES.length - answered} rispost${SCALES.length - answered === 1 ? 'a' : 'e'}.`;
+
   return (
     <SafeAreaView style={sharedStyles.screen}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.header}>
-          <Pressable onPress={() => router.back()} hitSlop={12}>
-            <Text style={styles.back}>‹ Indietro</Text>
-          </Pressable>
-          <View>
-            <Text style={styles.headerTitle}>Check Biofeedback</Text>
-            <Text style={sharedStyles.muted}>{italianDateLabel(selected)}</Text>
-          </View>
-        </View>
-
         {!coachClient ? (
-          <View style={sharedStyles.center}>
-            <Text style={sharedStyles.body}>
-              Il check biofeedback si sblocca quando sei collegato a un coach. Quando il tuo coach ti
-              aggiungerà potrai registrare qui sonno, energia, nutrizione e molto altro.
-            </Text>
+          <View style={[styles.emptyWrap, { paddingTop: headerH }]}>
+            <EmptyState
+              emoji="🤝"
+              title="Nessun coach collegato"
+              message="Il check biofeedback si sblocca quando sei collegato a un coach. Quando il tuo coach ti aggiungerà potrai registrare qui sonno, energia, nutrizione e molto altro."
+            />
           </View>
         ) : (
-          <ScrollView contentContainerStyle={sharedStyles.content} keyboardShouldPersistTaps="handled">
+          /* FERRO: tutto ciò che si legge e si compila scorre qui sotto, opaco. */
+          <ScrollView
+            contentContainerStyle={[
+              styles.content,
+              { paddingTop: headerH + spacing.lg, paddingBottom: barH + spacing.xxl },
+            ]}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
             <View style={styles.weekStrip}>
               {weekDates.map((d, i) => {
                 const dateStr = localDateString(d);
@@ -276,95 +344,151 @@ export default function BiofeedbackOggiScreen() {
                 const isSelected = dateStr === selectedDate;
                 const hasEntry = weekEntries[dateStr] != null;
                 return (
-                  <Pressable
-                    key={dateStr}
-                    onPress={() => selectDay(dateStr)}
-                    disabled={isFuture}
-                    style={[styles.dayChip, isSelected && styles.dayChipSelected, isFuture && styles.dayChipFuture]}
-                  >
-                    <Text style={styles.dayAbbrev}>{DAYS_OF_WEEK[i].slice(0, 3).toUpperCase()}</Text>
-                    <Text style={styles.dayNumber}>{d.getDate()}</Text>
-                    <View style={[styles.dayDotRing, isToday && styles.dayDotRingToday]}>
-                      <View style={[styles.dayDot, hasEntry && styles.dayDotDone]} />
-                    </View>
-                  </Pressable>
+                  <View key={dateStr} style={styles.dayCell}>
+                    <Press
+                      onPress={() => selectDay(dateStr)}
+                      disabled={isFuture}
+                      haptic="light"
+                      scaleTo={0.94}
+                      style={[
+                        styles.dayChip,
+                        isSelected && styles.dayChipOn,
+                        isFuture && styles.dayChipOff,
+                      ]}
+                      accessibilityLabel={`${DAYS_OF_WEEK[i]} ${d.getDate()}`}
+                    >
+                      <Text style={[styles.dayAbbrev, isSelected && styles.dayTextOn]}>
+                        {DAYS_OF_WEEK[i].slice(0, 3).toUpperCase()}
+                      </Text>
+                      <Text style={[styles.dayNumber, tabular]}>{d.getDate()}</Text>
+                      <View
+                        style={[
+                          styles.dayDot,
+                          hasEntry && styles.dayDotDone,
+                          isToday && !hasEntry && styles.dayDotToday,
+                          isSelected && !hasEntry && styles.dayDotOnSelected,
+                        ]}
+                      />
+                    </Press>
+                  </View>
                 );
               })}
             </View>
 
-            <View style={styles.banner}>
-              <Text style={styles.bannerTitle}>Perché è importante?</Text>
-              <Text style={styles.bannerText}>
-                Le tue risposte ci aiutano ad adattare il programma e migliorare performance e recupero.
-              </Text>
-            </View>
-
-            <Card title="Stato generale">
-              {SCALES.map(({ key, label, emoji, bands }) => (
-                <View key={key} style={styles.scaleBlock}>
-                  <DotScale
-                    label={label}
-                    emoji={emoji}
-                    bands={bands}
-                    value={scales[key]}
-                    onChange={(v) => setScales((prev) => ({ ...prev, [key]: v }) as typeof prev)}
-                  />
-                  {key === 'sleep_quality' ? (
-                    <MetricInput
-                      label="Ore di sonno"
-                      value={sleepHours}
-                      onChange={setSleepHours}
-                      placeholder="Es. 7,5"
-                      decimal
+            {/* IL FARO: l'avanzamento del check, letto in tre secondi dall'anello. */}
+            <Card beacon={heroTone} style={shadow.beacon(heroTone)}>
+              <MetricBlock
+                value={String(answered)}
+                unit={`su ${SCALES.length}`}
+                label="Stato del check"
+                caption={heroCaption}
+                color={heroTone}
+                trailing={
+                  <ActivityRing
+                    progress={answered / SCALES.length}
+                    color={heroTone}
+                    size={84}
+                    strokeWidth={11}
+                  >
+                    <Ionicons
+                      name={complete ? 'checkmark' : 'pulse'}
+                      size={28}
+                      color={heroTone}
                     />
-                  ) : null}
-                </View>
-              ))}
+                  </ActivityRing>
+                }
+              />
             </Card>
 
-            <Card title="Nutrizione">
-              <View style={styles.metricRow}>
-                <MetricInput
+            <Card>
+              <SectionHead
+                icon="information-circle"
+                tint={colors.textSecondary}
+                wash={WASH.neutral}
+                label="Perché è importante"
+              />
+              <Text style={styles.note}>
+                Le tue risposte ci aiutano ad adattare il programma e migliorare performance e
+                recupero.
+              </Text>
+            </Card>
+
+            <Card>
+              <SectionHead icon="pulse" tint={colors.cyan} wash={WASH.cyan} label="Stato generale" />
+              <View style={styles.scaleGroup}>
+                {SCALES.map(({ key, label, bands, tint }) => (
+                  <View key={key} style={styles.scaleBlock}>
+                    <DotScale
+                      label={label}
+                      bands={bands}
+                      tint={tint}
+                      value={scales[key]}
+                      onChange={(v) => setScales((prev) => ({ ...prev, [key]: v }) as typeof prev)}
+                    />
+                    {key === 'sleep_quality' ? (
+                      <NumberField
+                        label="Ore di sonno"
+                        value={sleepHours}
+                        onChange={setSleepHours}
+                        placeholder="7,5"
+                        unit="h"
+                        decimal
+                      />
+                    ) : null}
+                  </View>
+                ))}
+              </View>
+            </Card>
+
+            <Card>
+              <SectionHead icon="nutrition" tint={colors.amber} wash={WASH.amber} label="Nutrizione" />
+              <View style={styles.fieldRow}>
+                <NumberField
                   grow
-                  label="Carboidrati (g)"
+                  label="Carboidrati"
                   value={carbs}
                   onChange={setCarbs}
                   placeholder="0"
-                  target={nutritionDay ? `${nutritionDay.carbs_g}g` : null}
+                  unit="g"
+                  target={nutritionDay ? `${nutritionDay.carbs_g} g` : null}
                 />
-                <MetricInput
+                <NumberField
                   grow
-                  label="Proteine (g)"
+                  label="Proteine"
                   value={protein}
                   onChange={setProtein}
                   placeholder="0"
-                  target={nutritionDay ? `${nutritionDay.protein_g}g` : null}
+                  unit="g"
+                  target={nutritionDay ? `${nutritionDay.protein_g} g` : null}
                 />
-                <MetricInput
+                <NumberField
                   grow
-                  label="Grassi (g)"
+                  label="Grassi"
                   value={fat}
                   onChange={setFat}
                   placeholder="0"
-                  target={nutritionDay ? `${nutritionDay.fat_g}g` : null}
+                  unit="g"
+                  target={nutritionDay ? `${nutritionDay.fat_g} g` : null}
                 />
               </View>
             </Card>
 
-            <Card title="Altre metriche">
-              <View style={styles.metricRow}>
-                <MetricInput
+            <Card>
+              <SectionHead icon="footsteps" tint={colors.cyan} wash={WASH.cyan} label="Altre metriche" />
+              <View style={styles.fieldRow}>
+                <NumberField
                   grow
-                  label="Idratazione (l)"
+                  label="Idratazione"
                   value={hydration}
                   onChange={setHydration}
-                  placeholder="Es. 2,5"
+                  placeholder="2,5"
+                  unit="l"
                   decimal
                 />
-                <MetricInput grow label="Passi" value={steps} onChange={setSteps} placeholder="Es. 8000" />
+                <NumberField grow label="Passi" value={steps} onChange={setSteps} placeholder="8000" />
               </View>
-              <View style={styles.metricRow}>
-                <MetricInput
+              <View style={styles.fieldRow}>
+                <NumberField
                   grow
                   label="Kcal consumate"
                   value={kcal}
@@ -372,155 +496,273 @@ export default function BiofeedbackOggiScreen() {
                   placeholder="0"
                   target={nutritionDay ? `${nutritionDay.kcal} kcal` : null}
                 />
-                <MetricInput
+                <NumberField
                   grow
-                  label="Peso (kg, opzionale)"
+                  label="Peso (facoltativo)"
                   value={weight}
                   onChange={setWeight}
-                  placeholder="Es. 72,5"
+                  placeholder="72,5"
+                  unit="kg"
                   decimal
                 />
               </View>
             </Card>
 
-            <Card title="Note libere">
+            <Card>
+              <SectionHead
+                icon="create"
+                tint={colors.textSecondary}
+                wash={WASH.neutral}
+                label="Note libere"
+              />
               <TextInput
-                style={[sharedStyles.input, styles.notes]}
+                style={styles.notes}
                 value={notes}
                 onChangeText={setNotes}
                 placeholder="Come ti senti oggi? Scrivi qui qualsiasi cosa utile per il coach."
-                placeholderTextColor={colors.textSecondary}
+                placeholderTextColor={colors.textTertiary}
                 multiline
               />
             </Card>
-
-            <PrimaryButton label="Salva check" onPress={save} loading={saving} />
           </ScrollView>
         )}
+
+        {/* VETRO 1 — testata compatta ancorata: indietro, titolo, giorno scelto. */}
+        <View
+          style={styles.headerAnchor}
+          pointerEvents="box-none"
+          onLayout={(e) => setHeaderH(e.nativeEvent.layout.height)}
+        >
+          <GlassSurface cornerRadius={radius.xl} padding={spacing.md}>
+            <View style={styles.headerRow}>
+              <Press
+                style={styles.glassBtn}
+                onPress={() => router.back()}
+                accessibilityLabel="Torna indietro"
+              >
+                <Ionicons name="chevron-back" size={22} color={colors.textPrimary} />
+              </Press>
+              <View style={styles.headerCenter}>
+                <Text style={styles.headerTitle} numberOfLines={1}>
+                  Check biofeedback
+                </Text>
+                <Text style={styles.headerMeta} numberOfLines={1}>
+                  {italianDateLabel(selected)}
+                </Text>
+              </View>
+            </View>
+          </GlassSurface>
+        </View>
+
+        {/* VETRO 2 — l'unica azione, ancorata sotto il pollice. */}
+        {coachClient ? (
+          <View
+            style={styles.barAnchor}
+            pointerEvents="box-none"
+            onLayout={(e) => setBarH(e.nativeEvent.layout.height)}
+          >
+            <GlassSurface cornerRadius={radius.xl} padding={spacing.md}>
+              <PrimaryButton label="SALVA CHECK" onPress={save} loading={saving} />
+            </GlassSurface>
+          </View>
+        ) : null}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
+/** Raggio interno delle card (26 − 16): le curve restano parallele. */
+const innerRadius = concentric(radius.lg, spacing.lg);
+
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
   },
-  header: {
+  content: {
+    paddingHorizontal: spacing.xl,
+    gap: spacing.lg,
+  },
+  emptyWrap: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+
+  // --- VETRO: testata e barra d'azione ---
+  headerAnchor: {
+    position: 'absolute',
+    top: 0,
+    left: spacing.md,
+    right: spacing.md,
+  },
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.lg,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    gap: spacing.md,
   },
-  back: {
-    color: colors.accent,
-    fontSize: 16,
-    fontWeight: '700',
+  glassBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.glassBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerCenter: {
+    flex: 1,
+    gap: 2,
   },
   headerTitle: {
     color: colors.textPrimary,
     fontSize: 17,
     fontWeight: '800',
+    letterSpacing: -0.2,
   },
+  headerMeta: {
+    color: colors.textSecondary,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  barAnchor: {
+    position: 'absolute',
+    left: spacing.md,
+    right: spacing.md,
+    bottom: spacing.md,
+  },
+
+  // --- FERRO: la settimana ---
   weekStrip: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     gap: spacing.xs,
+  },
+  dayCell: {
+    flex: 1,
   },
   dayChip: {
-    flex: 1,
     alignItems: 'center',
     gap: spacing.xs,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  dayChipSelected: {
+    paddingVertical: spacing.md,
+    borderRadius: radius.sm,
     backgroundColor: colors.card,
-    borderColor: colors.accent,
   },
-  dayChipFuture: {
-    opacity: 0.4,
+  /** Selezionato: pieno Blu Segnale, lo stato attivo del sistema. */
+  dayChipOn: {
+    backgroundColor: colors.accent,
+  },
+  dayChipOff: {
+    opacity: 0.35,
   },
   dayAbbrev: {
     color: colors.textSecondary,
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '700',
-    letterSpacing: 0.6,
+    letterSpacing: 0.7,
+  },
+  dayTextOn: {
+    color: colors.textPrimary,
   },
   dayNumber: {
     color: colors.textPrimary,
-    fontSize: 15,
-    fontWeight: '700',
-    fontVariant: ['tabular-nums'],
-  },
-  dayDotRing: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  dayDotRingToday: {
-    borderColor: colors.accent,
+    fontSize: 17,
+    fontWeight: '800',
+    letterSpacing: -0.2,
   },
   dayDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: colors.border,
   },
+  /** Menta: quel giorno è già stato raccontato. */
   dayDotDone: {
-    backgroundColor: colors.success,
+    backgroundColor: colors.mint,
   },
-  banner: {
-    backgroundColor: 'rgba(37, 99, 235, 0.12)',
-    borderColor: colors.accent,
-    borderWidth: 1,
-    borderRadius: radius.md,
-    padding: spacing.lg,
-    gap: spacing.xs,
+  dayDotToday: {
+    backgroundColor: colors.accent,
   },
-  bannerTitle: {
-    color: colors.textPrimary,
-    fontSize: 14,
-    fontWeight: '800',
+  dayDotOnSelected: {
+    backgroundColor: 'rgba(255,255,255,0.55)',
   },
-  bannerText: {
+
+  // --- FERRO: sezioni ---
+  head: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.xs,
+  },
+  headIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: radius.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headLabel: {
+    flex: 1,
+  },
+  note: {
     color: colors.textSecondary,
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 17,
+    fontWeight: '500',
+    lineHeight: 25,
+  },
+  scaleGroup: {
+    gap: spacing.xl,
   },
   scaleBlock: {
     gap: spacing.md,
   },
-  metricRow: {
+
+  // --- FERRO: campi ---
+  fieldRow: {
     flexDirection: 'row',
     gap: spacing.md,
   },
-  metricBox: {
-    gap: spacing.xs,
+  field: {
+    gap: spacing.sm,
   },
-  metricGrow: {
+  fieldGrow: {
     flex: 1,
   },
-  metricLabel: {
+  fieldBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.raised,
+    borderRadius: innerRadius,
+    paddingHorizontal: spacing.md,
+    minHeight: 56,
+  },
+  fieldInput: {
+    flex: 1,
     color: colors.textPrimary,
-    fontSize: 13,
+    fontSize: 24,
+    fontWeight: '800',
+    letterSpacing: -0.4,
+    paddingVertical: spacing.md,
+    minHeight: 56,
+  },
+  fieldUnit: {
+    color: colors.textSecondary,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  fieldTarget: {
+    color: colors.textSecondary,
+    fontSize: 15,
     fontWeight: '600',
   },
-  metricTarget: {
-    color: colors.textSecondary,
-    fontSize: 12,
-  },
   notes: {
-    minHeight: 100,
+    backgroundColor: colors.raised,
+    borderRadius: innerRadius,
+    color: colors.textPrimary,
+    fontSize: 17,
+    fontWeight: '500',
+    lineHeight: 25,
+    padding: spacing.lg,
+    minHeight: 120,
     textAlignVertical: 'top',
   },
 });

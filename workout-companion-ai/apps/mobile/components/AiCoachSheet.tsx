@@ -10,10 +10,14 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
-import { colors, radius, spacing, sharedStyles } from '../lib/theme';
-import { PrimaryButton } from './PrimaryButton';
+import { colors, concentric, radius, spacing, sharedStyles, type } from '../lib/theme';
+import { GlassSurface } from './Glass';
+import { Press } from './Press';
 
 interface Props {
   visible: boolean;
@@ -32,15 +36,58 @@ const SUGGESTIONS = [
 ];
 
 /**
+ * L'azione che sveglia il motore. Il viola è riservato all'AI in tutto il
+ * prodotto: qui è il colore del gesto, non una decorazione.
+ */
+function AskButton({
+  label,
+  loading,
+  onPress,
+}: {
+  label: string;
+  loading: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Press
+      onPress={onPress}
+      disabled={loading}
+      haptic="medium"
+      style={[styles.ask, loading && styles.askDim]}
+      accessibilityLabel={label}
+    >
+      {loading ? (
+        <ActivityIndicator color={colors.textPrimary} />
+      ) : (
+        <View style={styles.askRow}>
+          <Ionicons name="sparkles" size={18} color={colors.textPrimary} />
+          <Text style={styles.askLabel} numberOfLines={1}>
+            {label}
+          </Text>
+        </View>
+      )}
+    </Press>
+  );
+}
+
+/**
  * Assistente AI legato a un esercizio: la funzione server aggiunge
  * automaticamente esercizio corrente, serie prescritte, ultime esecuzioni,
  * feedback precedenti e recupero. L'atleta scrive (o sceglie) la domanda.
+ *
+ * Anatomia "Glass Over Iron": il guscio è VETRO (maniglia, testata, composer),
+ * la risposta del coach vive su FERRO opaco — un paragrafo non poggia mai su
+ * una superficie sfocata.
  */
 export function AiCoachSheet({ visible, exerciseId, workoutExerciseId, exerciseName, coachClientId, onClose }: Props) {
   const [question, setQuestion] = useState('');
   const [loading, setLoading] = useState(false);
   const [answer, setAnswer] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
+  const wellMaxHeight = Math.round(height * 0.46);
 
   useEffect(() => {
     if (visible) {
@@ -77,58 +124,105 @@ export function AiCoachSheet({ visible, exerciseId, workoutExerciseId, exerciseN
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <Pressable style={styles.backdrop} onPress={onClose} />
+        <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Chiudi il foglio" />
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <View style={styles.sheet}>
+          <GlassSurface
+            cornerRadius={radius.xl}
+            lift="sheet"
+            padding={spacing.lg}
+            style={[styles.sheet, { marginBottom: Math.max(insets.bottom, spacing.md) }]}
+          >
             <View style={styles.handle} />
-            <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-              <Text style={sharedStyles.sectionLabel}>🤖 Coach AI</Text>
-              <Text style={styles.title} numberOfLines={2}>
-                {exerciseName}
-              </Text>
 
+            {/* VETRO — testata: l'identità viola dice chi risponde. */}
+            <View style={styles.head}>
+              <View style={styles.mark}>
+                <Ionicons name="sparkles" size={20} color={colors.violet} />
+              </View>
+              <View style={styles.headText}>
+                <Text style={[type.label, styles.eyebrow]}>Coach AI</Text>
+                <Text style={type.title} numberOfLines={2}>
+                  {exerciseName}
+                </Text>
+              </View>
+              <Press onPress={onClose} style={styles.glassBtn} accessibilityLabel="Chiudi il coach AI">
+                <Ionicons name="close" size={22} color={colors.textPrimary} />
+              </Press>
+            </View>
+
+            {/* FERRO — tutto ciò che si legge sta qui sopra, opaco. */}
+            <ScrollView
+              style={[styles.well, { maxHeight: wellMaxHeight }]}
+              contentContainerStyle={styles.wellBody}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
               {answer ? (
-                <View style={styles.answerBox}>
-                  <Text style={sharedStyles.body}>{answer}</Text>
+                // Faro unico del foglio: bordo viola attorno alla risposta appena generata.
+                <View style={styles.answer}>
+                  <View style={styles.answerHead}>
+                    <Ionicons name="sparkles" size={15} color={colors.violet} />
+                    <Text style={[type.label, styles.eyebrow]}>Risposta del coach AI</Text>
+                  </View>
+                  <Text style={type.body}>{answer}</Text>
                 </View>
               ) : loading ? (
-                <View style={styles.loadingBox}>
-                  <ActivityIndicator color={colors.accent} />
-                  <Text style={sharedStyles.muted}>Il coach sta pensando…</Text>
+                <View style={styles.thinking}>
+                  <ActivityIndicator color={colors.violet} />
+                  <Text style={[type.body, styles.thinkingText]}>Il coach sta pensando…</Text>
                 </View>
               ) : (
                 <>
-                  <Text style={sharedStyles.muted}>Domande frequenti:</Text>
+                  <Text style={type.label}>Domande frequenti</Text>
                   <View style={styles.chips}>
                     {SUGGESTIONS.map((s) => (
-                      <Pressable key={s} style={styles.chip} onPress={() => ask(s)}>
-                        <Text style={styles.chipText}>{s}</Text>
-                      </Pressable>
+                      <Press
+                        key={s}
+                        onPress={() => ask(s)}
+                        scaleTo={0.98}
+                        style={styles.chip}
+                        accessibilityLabel={s}
+                      >
+                        <Text style={[type.body, styles.chipText]}>{s}</Text>
+                        <Ionicons name="arrow-forward" size={18} color={colors.violet} />
+                      </Press>
                     ))}
                   </View>
                 </>
               )}
 
-              {error ? <Text style={styles.error}>{error}</Text> : null}
+              {error ? (
+                <View style={styles.error}>
+                  <Ionicons name="alert-circle" size={20} color={colors.rose} />
+                  <Text style={[type.body, styles.errorText]}>{error}</Text>
+                </View>
+              ) : null}
 
+              <View style={styles.disclaimer}>
+                <Ionicons name="information-circle-outline" size={16} color={colors.textTertiary} />
+                <Text style={styles.disclaimerText}>
+                  L'AI è un supporto: per dolori o infortuni parla sempre col tuo coach o un medico.
+                </Text>
+              </View>
+            </ScrollView>
+
+            {/* VETRO — composer: il campo resta opaco, così si legge mentre scrivi. */}
+            <View style={styles.foot}>
               <TextInput
                 style={[sharedStyles.input, styles.input]}
                 value={question}
                 onChangeText={setQuestion}
                 placeholder="Scrivi la tua domanda al coach AI…"
-                placeholderTextColor={colors.textSecondary}
+                placeholderTextColor={colors.textTertiary}
                 multiline
               />
-              <PrimaryButton
+              <AskButton
                 label={answer ? 'Chiedi ancora' : 'Chiedi al coach AI'}
                 loading={loading}
                 onPress={() => ask(question)}
               />
-              <Text style={styles.disclaimer}>
-                L'AI è un supporto: per dolori o infortuni parla sempre col tuo coach o un medico.
-              </Text>
-            </ScrollView>
-          </View>
+            </View>
+          </GlassSurface>
         </KeyboardAvoidingView>
       </View>
     </Modal>
@@ -139,7 +233,7 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(6,8,13,0.74)',
   },
   backdrop: {
     position: 'absolute',
@@ -149,71 +243,159 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   sheet: {
-    backgroundColor: colors.card,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
-    borderTopWidth: 1,
-    borderColor: colors.border,
-    maxHeight: '88%',
+    marginHorizontal: spacing.md,
   },
   handle: {
     alignSelf: 'center',
     width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.border,
-    marginTop: spacing.sm,
-    marginBottom: spacing.xs,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.24)',
+    marginTop: -spacing.sm,
+    marginBottom: spacing.md,
   },
-  body: {
+
+  // --- VETRO: testata ---
+  head: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  mark: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(191,90,242,0.18)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(191,90,242,0.45)',
+  },
+  headText: {
+    flex: 1,
+    gap: 2,
+  },
+  eyebrow: {
+    color: colors.violet,
+  },
+  glassBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.glassBorder,
+  },
+
+  // --- FERRO: il pozzo del contenuto (raggio concentrico 34 − 16) ---
+  well: {
+    backgroundColor: colors.card,
+    borderRadius: concentric(radius.xl, spacing.lg),
+    overflow: 'hidden',
+  },
+  wellBody: {
     padding: spacing.lg,
     gap: spacing.md,
-    paddingBottom: spacing.xxl,
   },
-  title: {
-    color: colors.textPrimary,
-    fontSize: 20,
-    fontWeight: '800',
-  },
-  chips: {
+  answer: {
+    backgroundColor: colors.raised,
+    borderRadius: radius.xs,
+    borderWidth: 1,
+    borderColor: colors.violet,
+    padding: spacing.lg,
     gap: spacing.sm,
   },
-  chip: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
+  answerHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
-  chipText: {
-    color: colors.textPrimary,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  answerBox: {
-    backgroundColor: 'rgba(56,189,248,0.08)',
-    borderColor: colors.accent,
-    borderWidth: 1,
-    borderRadius: radius.md,
-    padding: spacing.lg,
-  },
-  loadingBox: {
+  thinking: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
     paddingVertical: spacing.lg,
   },
-  input: {
-    minHeight: 64,
-    textAlignVertical: 'top',
+  thinkingText: {
+    color: colors.textSecondary,
+  },
+  chips: {
+    gap: spacing.sm,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    minHeight: 56,
+    backgroundColor: colors.raised,
+    borderRadius: radius.xs,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+  },
+  chipText: {
+    flex: 1,
   },
   error: {
-    color: colors.danger,
-    fontSize: 14,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    backgroundColor: 'rgba(255,55,95,0.10)',
+    borderRadius: radius.xs,
+    padding: spacing.md,
+  },
+  errorText: {
+    flex: 1,
+    color: colors.rose,
   },
   disclaimer: {
-    color: colors.textSecondary,
-    fontSize: 12,
-    textAlign: 'center',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  disclaimerText: {
+    flex: 1,
+    color: colors.textTertiary,
+    fontSize: 15,
+    fontWeight: '500',
+    lineHeight: 20,
+  },
+
+  // --- VETRO: composer ---
+  foot: {
+    gap: spacing.md,
+    marginTop: spacing.lg,
+  },
+  input: {
+    minHeight: 64,
+    maxHeight: 132,
+    paddingTop: spacing.md,
+    textAlignVertical: 'top',
+  },
+  ask: {
+    minHeight: 56,
+    borderRadius: radius.pill,
+    backgroundColor: colors.violet,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xxl,
+    paddingVertical: spacing.lg,
+  },
+  askDim: {
+    opacity: 0.45,
+  },
+  askRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  askLabel: {
+    color: colors.textPrimary,
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: -0.2,
   },
 });

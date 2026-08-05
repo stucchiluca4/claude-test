@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -13,14 +11,27 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import type { CoachClient } from '@wc/shared';
 import { supabase } from '../../lib/supabase';
-import { colors, spacing, sharedStyles } from '../../lib/theme';
+import {
+  colors,
+  concentric,
+  radius,
+  shadow,
+  spacing,
+  sharedStyles,
+  tabular,
+  type,
+} from '../../lib/theme';
 import { mondayOfCurrentWeek, parseNum, showError } from '../../lib/utils';
 import { getActiveCoachClient, getUserId } from '../../lib/queries';
 import { Card } from '../../components/Card';
 import { DotScale } from '../../components/DotScale';
+import { GlassSurface } from '../../components/Glass';
+import { Press } from '../../components/Press';
 import { PrimaryButton } from '../../components/PrimaryButton';
+import { EmptyState, LoadingState } from '../../components/States';
 
 type ScaleKey =
   | 'sleep_quality'
@@ -33,17 +44,93 @@ type ScaleKey =
   | 'training_adherence'
   | 'nutrition_adherence';
 
-const SCALES: { key: ScaleKey; label: string }[] = [
-  { key: 'sleep_quality', label: 'Qualità del sonno' },
-  { key: 'energy_level', label: 'Energia' },
-  { key: 'stress_level', label: 'Stress' },
-  { key: 'hunger_level', label: 'Fame' },
-  { key: 'muscle_soreness', label: 'Dolori muscolari (DOMS)' },
-  { key: 'joint_stress', label: 'Stress articolare' },
-  { key: 'recovery', label: 'Recupero' },
-  { key: 'training_adherence', label: 'Aderenza agli allenamenti' },
-  { key: 'nutrition_adherence', label: 'Aderenza alla dieta' },
+/** Veli dei segnali: colore al 12%, solo dietro le icone di sezione. */
+const WASH = {
+  cyan: 'rgba(100,210,255,0.12)',
+  neutral: 'rgba(255,255,255,0.06)',
+} as const;
+
+/**
+ * Ogni scala porta il segnale del suo significato: ciano per il corpo che
+ * recupera, ambra per lo sforzo e il disagio, menta per ciò che è andato fatto.
+ */
+const SCALES: { key: ScaleKey; label: string; tint: string }[] = [
+  { key: 'sleep_quality', label: 'Qualità del sonno', tint: colors.cyan },
+  { key: 'energy_level', label: 'Energia', tint: colors.mint },
+  { key: 'stress_level', label: 'Stress', tint: colors.amber },
+  { key: 'hunger_level', label: 'Fame', tint: colors.amber },
+  { key: 'muscle_soreness', label: 'Dolori muscolari (DOMS)', tint: colors.amber },
+  { key: 'joint_stress', label: 'Stress articolare', tint: colors.amber },
+  { key: 'recovery', label: 'Recupero', tint: colors.cyan },
+  { key: 'training_adherence', label: 'Aderenza agli allenamenti', tint: colors.mint },
+  { key: 'nutrition_adherence', label: 'Aderenza alla dieta', tint: colors.mint },
 ];
+
+/** "2026-05-12" -> "12 maggio". */
+function italianDayMonth(dateStr: string): string {
+  return new Date(`${dateStr}T00:00:00`).toLocaleDateString('it-IT', {
+    day: 'numeric',
+    month: 'long',
+  });
+}
+
+/** Testata di sezione: icona del segnale + etichetta. Il colore non viaggia mai da solo. */
+function SectionHead({
+  icon,
+  label,
+  tint,
+  wash,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  tint: string;
+  wash: string;
+}) {
+  return (
+    <View style={styles.head}>
+      <View style={[styles.headIcon, { backgroundColor: wash }]}>
+        <Ionicons name={icon} size={18} color={tint} />
+      </View>
+      <Text style={[type.label, styles.headLabel]}>{label}</Text>
+    </View>
+  );
+}
+
+/** Campo numerico su FERRO: cifra grande e tabulare, unità di misura a destra. */
+function NumberField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  unit,
+  decimal,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  unit?: string;
+  decimal?: boolean;
+}) {
+  return (
+    <View style={styles.field}>
+      <Text style={type.label} numberOfLines={1} adjustsFontSizeToFit>
+        {label}
+      </Text>
+      <View style={styles.fieldBox}>
+        <TextInput
+          style={[styles.fieldInput, tabular]}
+          value={value}
+          onChangeText={onChange}
+          placeholder={placeholder}
+          placeholderTextColor={colors.textTertiary}
+          keyboardType={decimal ? 'decimal-pad' : 'number-pad'}
+        />
+        {unit ? <Text style={styles.fieldUnit}>{unit}</Text> : null}
+      </View>
+    </View>
+  );
+}
 
 export default function NuovoCheckinScreen() {
   const [coachClient, setCoachClient] = useState<CoachClient | null>(null);
@@ -63,6 +150,9 @@ export default function NuovoCheckinScreen() {
     training_adherence: null,
     nutrition_adherence: null,
   });
+  // Altezze dei due livelli in vetro: il ferro scorre sotto senza finirci dietro.
+  const [headerH, setHeaderH] = useState(84);
+  const [barH, setBarH] = useState(96);
   const router = useRouter();
 
   const load = useCallback(async () => {
@@ -125,108 +215,292 @@ export default function NuovoCheckinScreen() {
   }
 
   if (loading) {
-    return (
-      <SafeAreaView style={sharedStyles.screen}>
-        <View style={sharedStyles.center}>
-          <ActivityIndicator size="large" color={colors.accent} />
-          <Text style={sharedStyles.muted}>Preparo il check-in…</Text>
-        </View>
-      </SafeAreaView>
-    );
+    return <LoadingState message="Preparo il check-in…" />;
   }
+
+  const answered = SCALES.filter((s) => scales[s.key] != null).length;
 
   return (
     <SafeAreaView style={sharedStyles.screen}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.header}>
-          <Pressable onPress={() => router.back()} hitSlop={12}>
-            <Text style={styles.back}>‹ Indietro</Text>
-          </Pressable>
-          <Text style={styles.headerTitle}>Check-in settimanale</Text>
-        </View>
-
         {!coachClient ? (
-          <View style={sharedStyles.center}>
-            <Text style={sharedStyles.body}>
-              Il check-in si sblocca quando sei collegato a un coach.
-            </Text>
+          <View style={[styles.emptyWrap, { paddingTop: headerH }]}>
+            <EmptyState
+              emoji="🤝"
+              title="Nessun coach collegato"
+              message="Il check-in si sblocca quando sei collegato a un coach."
+            />
           </View>
         ) : (
-          <ScrollView contentContainerStyle={sharedStyles.content} keyboardShouldPersistTaps="handled">
-            <Card title="Peso">
-              <TextInput
-                style={sharedStyles.input}
-                value={weight}
-                onChangeText={setWeight}
-                placeholder="Peso in kg (es. 72,5)"
-                placeholderTextColor={colors.textSecondary}
-                keyboardType="decimal-pad"
-              />
-            </Card>
-
-            <Card title="Come è andata la settimana?">
-              {SCALES.map(({ key, label }) => (
-                <DotScale
-                  key={key}
-                  label={label}
-                  value={scales[key]}
-                  onChange={(v) => setScales((prev) => ({ ...prev, [key]: v }) as typeof prev)}
+          /* FERRO: tutto ciò che si legge e si compila scorre qui sotto, opaco. */
+          <ScrollView
+            contentContainerStyle={[
+              styles.content,
+              { paddingTop: headerH + spacing.lg, paddingBottom: barH + spacing.xxl },
+            ]}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {/* IL FARO: il peso è il dato che apre il check-in e senza il quale non parte. */}
+            <Card beacon={colors.cyan} style={shadow.beacon(colors.cyan)}>
+              <Text style={type.label}>Peso di questa settimana</Text>
+              <View style={styles.weightBox}>
+                <TextInput
+                  style={[styles.weightInput, tabular]}
+                  value={weight}
+                  onChangeText={setWeight}
+                  placeholder="72,5"
+                  placeholderTextColor={colors.textTertiary}
+                  keyboardType="decimal-pad"
                 />
-              ))}
+                <Text style={styles.weightUnit}>kg</Text>
+              </View>
+              <Text style={styles.note}>
+                È il primo dato che il tuo coach guarda: senza peso il check-in non può partire.
+              </Text>
             </Card>
 
-            <Card title="Passi e note">
-              <TextInput
-                style={sharedStyles.input}
+            <Card>
+              <SectionHead
+                icon="pulse"
+                tint={colors.cyan}
+                wash={WASH.cyan}
+                label={`Come è andata · ${answered}/${SCALES.length}`}
+              />
+              <View style={styles.scaleGroup}>
+                {SCALES.map(({ key, label, tint }) => (
+                  <DotScale
+                    key={key}
+                    label={label}
+                    tint={tint}
+                    value={scales[key]}
+                    onChange={(v) => setScales((prev) => ({ ...prev, [key]: v }) as typeof prev)}
+                  />
+                ))}
+              </View>
+            </Card>
+
+            <Card>
+              <SectionHead icon="footsteps" tint={colors.cyan} wash={WASH.cyan} label="Passi" />
+              <NumberField
+                label="Passi medi al giorno"
                 value={steps}
-                onChangeText={setSteps}
-                placeholder="Passi medi giornalieri (es. 8000)"
-                placeholderTextColor={colors.textSecondary}
-                keyboardType="number-pad"
+                onChange={setSteps}
+                placeholder="8000"
+              />
+            </Card>
+
+            <Card>
+              <SectionHead
+                icon="create"
+                tint={colors.textSecondary}
+                wash={WASH.neutral}
+                label="Note per il coach"
               />
               <TextInput
-                style={[sharedStyles.input, styles.notes]}
+                style={styles.notes}
                 value={notes}
                 onChangeText={setNotes}
-                placeholder="Note per il coach (facoltative)"
-                placeholderTextColor={colors.textSecondary}
+                placeholder="Come è andata davvero questa settimana? (facoltativo)"
+                placeholderTextColor={colors.textTertiary}
                 multiline
               />
             </Card>
-
-            <PrimaryButton label="INVIA CHECK-IN" onPress={submit} loading={saving} />
           </ScrollView>
         )}
+
+        {/* VETRO 1 — testata compatta ancorata: indietro, titolo, settimana. */}
+        <View
+          style={styles.headerAnchor}
+          pointerEvents="box-none"
+          onLayout={(e) => setHeaderH(e.nativeEvent.layout.height)}
+        >
+          <GlassSurface cornerRadius={radius.xl} padding={spacing.md}>
+            <View style={styles.headerRow}>
+              <Press
+                style={styles.glassBtn}
+                onPress={() => router.back()}
+                accessibilityLabel="Torna indietro"
+              >
+                <Ionicons name="chevron-back" size={22} color={colors.textPrimary} />
+              </Press>
+              <View style={styles.headerCenter}>
+                <Text style={styles.headerTitle} numberOfLines={1}>
+                  Check-in settimanale
+                </Text>
+                <Text style={styles.headerMeta} numberOfLines={1}>
+                  Settimana dal {italianDayMonth(mondayOfCurrentWeek())}
+                </Text>
+              </View>
+            </View>
+          </GlassSurface>
+        </View>
+
+        {/* VETRO 2 — l'unica azione, ancorata sotto il pollice. */}
+        {coachClient ? (
+          <View
+            style={styles.barAnchor}
+            pointerEvents="box-none"
+            onLayout={(e) => setBarH(e.nativeEvent.layout.height)}
+          >
+            <GlassSurface cornerRadius={radius.xl} padding={spacing.md}>
+              <PrimaryButton label="INVIA CHECK-IN" onPress={submit} loading={saving} />
+            </GlassSurface>
+          </View>
+        ) : null}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
+/** Raggio interno delle card (26 − 16): le curve restano parallele. */
+const innerRadius = concentric(radius.lg, spacing.lg);
+
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
   },
-  header: {
+  content: {
+    paddingHorizontal: spacing.xl,
+    gap: spacing.lg,
+  },
+  emptyWrap: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+
+  // --- VETRO: testata e barra d'azione ---
+  headerAnchor: {
+    position: 'absolute',
+    top: 0,
+    left: spacing.md,
+    right: spacing.md,
+  },
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.lg,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    gap: spacing.md,
   },
-  back: {
-    color: colors.accent,
-    fontSize: 16,
-    fontWeight: '700',
+  glassBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.glassBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerCenter: {
+    flex: 1,
+    gap: 2,
   },
   headerTitle: {
     color: colors.textPrimary,
     fontSize: 17,
     fontWeight: '800',
+    letterSpacing: -0.2,
+  },
+  headerMeta: {
+    color: colors.textSecondary,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  barAnchor: {
+    position: 'absolute',
+    left: spacing.md,
+    right: spacing.md,
+    bottom: spacing.md,
+  },
+
+  // --- FERRO: sezioni ---
+  head: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.xs,
+  },
+  headIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: radius.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headLabel: {
+    flex: 1,
+  },
+  note: {
+    color: colors.textSecondary,
+    fontSize: 17,
+    fontWeight: '500',
+    lineHeight: 25,
+  },
+  scaleGroup: {
+    gap: spacing.xl,
+  },
+
+  // --- FERRO: il peso, numero dominante della schermata ---
+  weightBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.raised,
+    borderRadius: innerRadius,
+    paddingHorizontal: spacing.lg,
+    minHeight: 88,
+  },
+  weightInput: {
+    flex: 1,
+    color: colors.textPrimary,
+    fontSize: 44,
+    fontWeight: '800',
+    letterSpacing: -1,
+    paddingVertical: spacing.md,
+    minHeight: 88,
+  },
+  weightUnit: {
+    color: colors.textSecondary,
+    fontSize: 20,
+    fontWeight: '700',
+  },
+
+  // --- FERRO: campi ---
+  field: {
+    gap: spacing.sm,
+  },
+  fieldBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.raised,
+    borderRadius: innerRadius,
+    paddingHorizontal: spacing.md,
+    minHeight: 56,
+  },
+  fieldInput: {
+    flex: 1,
+    color: colors.textPrimary,
+    fontSize: 24,
+    fontWeight: '800',
+    letterSpacing: -0.4,
+    paddingVertical: spacing.md,
+    minHeight: 56,
+  },
+  fieldUnit: {
+    color: colors.textSecondary,
+    fontSize: 15,
+    fontWeight: '700',
   },
   notes: {
-    minHeight: 100,
+    backgroundColor: colors.raised,
+    borderRadius: innerRadius,
+    color: colors.textPrimary,
+    fontSize: 17,
+    fontWeight: '500',
+    lineHeight: 25,
+    padding: spacing.lg,
+    minHeight: 120,
     textAlignVertical: 'top',
   },
 });

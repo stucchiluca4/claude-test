@@ -2,15 +2,20 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { recoveryPrediction, workoutKcal, workoutScore } from '@wc/shared';
 import type { PersonalRecord, RecordType, WorkoutLog } from '@wc/shared';
 import { supabase } from '../../../lib/supabase';
-import { colors, radius, spacing, sharedStyles } from '../../../lib/theme';
+import { colors, concentric, radius, shadow, spacing, sharedStyles, tabular, type } from '../../../lib/theme';
 import { localDateString, showError } from '../../../lib/utils';
 import { getActiveCoachClient, getExerciseFeedbackForLog, getUserId } from '../../../lib/queries';
+import { ActivityRing } from '../../../components/ActivityRing';
 import { Card } from '../../../components/Card';
+import { GlassSurface } from '../../../components/Glass';
+import { MetricBlock } from '../../../components/MetricBlock';
 import { PrimaryButton } from '../../../components/PrimaryButton';
 import { StatPill } from '../../../components/StatPill';
+import { LoadingState } from '../../../components/States';
 
 const RECORD_LABELS: Record<RecordType, string> = {
   max_load: 'Carico massimo',
@@ -18,6 +23,17 @@ const RECORD_LABELS: Record<RecordType, string> = {
   max_volume: 'Miglior volume serie',
   estimated_1rm: '1RM stimato',
 };
+
+/** Veli dei segnali: colore al 12-14%, solo dietro le icone di sezione. */
+const WASH = {
+  mint: 'rgba(50,215,75,0.12)',
+  rose: 'rgba(255,55,95,0.12)',
+  cyan: 'rgba(100,210,255,0.12)',
+  violet: 'rgba(191,90,242,0.14)',
+} as const;
+
+/** Ore massime della previsione di recupero: riempiono l'anello ciano. */
+const RECOVERY_MAX_HOURS = 72;
 
 interface SummaryData {
   log: WorkoutLog;
@@ -38,6 +54,28 @@ function throwIf(error: { message: string } | null): void {
   if (error) throw new Error(error.message);
 }
 
+/** Testata di sezione: icona del segnale + etichetta. Il colore non viaggia mai da solo. */
+function SectionHead({
+  icon,
+  label,
+  tint,
+  wash,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  tint: string;
+  wash: string;
+}) {
+  return (
+    <View style={styles.head}>
+      <View style={[styles.headIcon, { backgroundColor: wash }]}>
+        <Ionicons name={icon} size={18} color={tint} />
+      </View>
+      <Text style={[type.label, styles.headLabel]}>{label}</Text>
+    </View>
+  );
+}
+
 /**
  * Riepilogo di fine allenamento: punteggio, numeri chiave, record personali,
  * previsione di recupero e recap del coach AI.
@@ -49,6 +87,8 @@ export default function WorkoutSummaryScreen() {
   const [aiText, setAiText] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiFailed, setAiFailed] = useState(false);
+  // Altezza della barra d'azione in vetro: il contenuto le scorre sotto senza finirci dietro.
+  const [barH, setBarH] = useState(96);
 
   useEffect(() => {
     let cancelled = false;
@@ -209,14 +249,7 @@ export default function WorkoutSummaryScreen() {
   }, [data]);
 
   if (!data) {
-    return (
-      <SafeAreaView style={sharedStyles.screen}>
-        <View style={sharedStyles.center}>
-          <ActivityIndicator size="large" color={colors.accent} />
-          <Text style={sharedStyles.muted}>Preparo il riepilogo…</Text>
-        </View>
-      </SafeAreaView>
-    );
+    return <LoadingState message="Preparo il riepilogo…" />;
   }
 
   const tonnage = Number(data.log.total_volume_kg ?? 0);
@@ -240,138 +273,300 @@ export default function WorkoutSummaryScreen() {
       ? `Volume ${data.volumeRatio >= 1 ? '+' : ''}${Math.round((data.volumeRatio - 1) * 100)}% rispetto alla volta scorsa`
       : 'Prima volta con questa seduta: hai fissato il punto di partenza.';
 
+  const hasPr = data.prs.length > 0;
+  // Il tono della celebrazione: rosa se hai battuto un record, menta se hai chiuso.
+  const tone = hasPr ? colors.rose : colors.mint;
+
   return (
-    <SafeAreaView style={sharedStyles.screen} edges={['top']}>
-      <ScrollView contentContainerStyle={sharedStyles.content}>
+    <SafeAreaView style={sharedStyles.screen}>
+      {/* FERRO: tutto ciò che si legge scorre qui sotto, opaco. */}
+      <ScrollView
+        contentContainerStyle={[styles.content, { paddingBottom: barH + spacing.xxl }]}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.hero}>
-          <Text style={styles.heroEmoji}>🎉</Text>
-          <Text style={sharedStyles.screenTitle}>Allenamento completato</Text>
-          <Text style={sharedStyles.muted}>{data.workoutName}</Text>
+          <View style={styles.doneChip}>
+            <Ionicons name="checkmark-circle" size={17} color={colors.mint} />
+            <Text style={styles.doneChipText}>Allenamento completato</Text>
+          </View>
+          <Text style={[sharedStyles.screenTitle, styles.heroTitle]}>{data.workoutName}</Text>
         </View>
 
-        <Card title="Punteggio seduta">
-          <View style={styles.scoreRow}>
-            <Text style={sharedStyles.bigNumber}>{score}</Text>
-            <Text style={styles.scoreUnit}>/100</Text>
+        {/* IL FARO: il punteggio della seduta, letto in tre secondi dall'anello. */}
+        <Card title="Punteggio seduta" beacon={tone} style={shadow.beacon(tone)}>
+          <View style={styles.ringWrap}>
+            <ActivityRing progress={score / 100} color={tone} size={212} strokeWidth={16}>
+              <View style={styles.ringCore}>
+                <Text style={[type.metric, tabular, { color: tone }]}>{score}</Text>
+                <Text style={[type.label, styles.ringUnit]}>su 100</Text>
+              </View>
+            </ActivityRing>
           </View>
-          <Text style={sharedStyles.muted}>{scoreCaption}</Text>
+
+          {hasPr ? (
+            <View style={styles.recordChip}>
+              <Ionicons name="trophy" size={16} color={colors.rose} />
+              <Text style={styles.recordChipText}>
+                {data.prs.length === 1 ? '1 nuovo record personale' : `${data.prs.length} nuovi record personali`}
+              </Text>
+            </View>
+          ) : null}
+
+          <Text style={styles.heroCaption}>{scoreCaption}</Text>
         </Card>
 
-        <View style={styles.pillRow}>
-          <StatPill label="Durata" value={`${durationMin}′`} />
-          <StatPill label="Volume" value={`${Math.round(tonnage)} kg`} color={colors.accent} />
-          <StatPill label="Serie" value={String(data.setsCount)} />
-        </View>
-        <View style={styles.pillRow}>
-          <StatPill label="Ripetizioni" value={String(data.totalReps)} />
-          <StatPill label="Kcal stimate" value={String(kcal)} color={colors.warning} />
-          <StatPill label="Esercizi" value={String(data.exercisesDone)} />
+        {/* I numeri di supporto: piccoli, tabulari, mai in gara col punteggio. */}
+        <View style={styles.section}>
+          <Text style={type.label}>I numeri della seduta</Text>
+          <View style={styles.pillRow}>
+            <StatPill label="Durata" value={`${durationMin}′`} />
+            <StatPill label="Volume kg" value={Math.round(tonnage).toLocaleString('it-IT')} color={colors.amber} />
+            <StatPill label="Serie" value={String(data.setsCount)} />
+          </View>
+          <View style={styles.pillRow}>
+            <StatPill label="Ripetizioni" value={String(data.totalReps)} />
+            <StatPill label="Kcal" value={String(kcal)} color={colors.amber} />
+            <StatPill label="Esercizi" value={String(data.exercisesDone)} />
+          </View>
         </View>
 
-        <Card title={data.prs.length > 0 ? `🏆 Nuovi record (${data.prs.length})` : '🏆 Record personali'}>
-          {data.prs.length > 0 ? (
+        <Card>
+          <SectionHead
+            icon="trophy"
+            tint={colors.rose}
+            wash={WASH.rose}
+            label={hasPr ? `Nuovi record · ${data.prs.length}` : 'Record personali'}
+          />
+          {hasPr ? (
             data.prs.map((pr) => (
               <View key={pr.id} style={styles.prRow}>
-                <Text style={styles.prExercise} numberOfLines={1}>
-                  {pr.exercise?.name ?? 'Esercizio'}
-                </Text>
-                <Text style={styles.prValue}>
-                  {RECORD_LABELS[pr.record_type]}:{' '}
+                <View style={styles.prIcon}>
+                  <Ionicons name="trophy" size={20} color={colors.rose} />
+                </View>
+                <View style={styles.prBody}>
+                  <Text style={styles.prExercise} numberOfLines={1}>
+                    {pr.exercise?.name ?? 'Esercizio'}
+                  </Text>
+                  <Text style={styles.prType} numberOfLines={1}>
+                    {RECORD_LABELS[pr.record_type]}
+                  </Text>
+                </View>
+                <Text style={[styles.prValue, tabular]}>
                   {pr.record_type === 'max_reps' ? `${Math.round(pr.value)} reps` : `${pr.value} kg`}
                 </Text>
               </View>
             ))
           ) : (
-            <Text style={sharedStyles.muted}>
-              Nessun nuovo record oggi: la costanza vale più di tutto. 💪
-            </Text>
+            <Text style={styles.note}>Nessun nuovo record oggi: la costanza vale più di tutto. 💪</Text>
           )}
         </Card>
 
-        <Card title="🔋 Recupero previsto">
-          <View style={styles.scoreRow}>
-            <Text style={styles.recoveryHours}>{recovery.hours}</Text>
-            <Text style={styles.scoreUnit}>ore</Text>
-          </View>
-          <Text style={sharedStyles.muted}>{recovery.label}</Text>
+        <Card>
+          <SectionHead icon="battery-charging" tint={colors.cyan} wash={WASH.cyan} label="Recupero previsto" />
+          <MetricBlock
+            value={String(recovery.hours)}
+            unit="ore"
+            color={colors.cyan}
+            trailing={
+              <ActivityRing
+                progress={recovery.hours / RECOVERY_MAX_HOURS}
+                color={colors.cyan}
+                size={84}
+                strokeWidth={11}
+              >
+                <Ionicons name="moon" size={28} color={colors.cyan} />
+              </ActivityRing>
+            }
+          />
+          <Text style={styles.note}>{recovery.label}</Text>
         </Card>
 
-        <Card title="🤖 Il recap del coach AI">
+        {/* Viola: se è viola, l'ha scritto il motore. Ma il testo resta su ferro. */}
+        <Card>
+          <SectionHead icon="sparkles" tint={colors.violet} wash={WASH.violet} label="Il recap del coach AI" />
           {aiLoading ? (
-            <View style={styles.aiLoading}>
-              <ActivityIndicator color={colors.accent} />
-              <Text style={sharedStyles.muted}>Sto analizzando la tua seduta…</Text>
+            <View style={styles.aiRow}>
+              <ActivityIndicator color={colors.violet} />
+              <Text style={[styles.note, styles.aiFlex]}>Sto analizzando la tua seduta…</Text>
             </View>
           ) : aiText ? (
-            <Text style={sharedStyles.body}>{aiText}</Text>
+            <Text style={styles.aiText}>{aiText}</Text>
           ) : aiFailed ? (
-            <Text style={sharedStyles.muted}>
-              Recap AI non disponibile al momento (la funzione AI non è ancora attiva).
-            </Text>
+            <View style={styles.aiRow}>
+              <Ionicons name="cloud-offline-outline" size={20} color={colors.textTertiary} />
+              <Text style={[styles.note, styles.aiFlex]}>
+                Recap AI non disponibile al momento (la funzione AI non è ancora attiva).
+              </Text>
+            </View>
           ) : null}
         </Card>
-
-        <PrimaryButton
-          label="TORNA ALLA HOME"
-          variant="success"
-          onPress={() => router.replace('/(tabs)')}
-        />
       </ScrollView>
+
+      {/* VETRO: l'unica barra d'azione, sempre sotto il pollice. */}
+      <View
+        style={styles.barAnchor}
+        pointerEvents="box-none"
+        onLayout={(e) => setBarH(e.nativeEvent.layout.height)}
+      >
+        <GlassSurface cornerRadius={radius.xl} padding={spacing.md}>
+          <PrimaryButton
+            label="TORNA ALLA HOME"
+            variant="success"
+            onPress={() => router.replace('/(tabs)')}
+          />
+        </GlassSurface>
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  content: {
+    padding: spacing.xl,
+    gap: spacing.lg,
+  },
   hero: {
     alignItems: 'center',
-    gap: spacing.xs,
-    paddingTop: spacing.md,
+    gap: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xs,
   },
-  heroEmoji: {
-    fontSize: 44,
-  },
-  scoreRow: {
+  doneChip: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     gap: spacing.sm,
+    backgroundColor: WASH.mint,
+    borderRadius: radius.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
   },
-  scoreUnit: {
+  doneChipText: {
+    color: colors.mint,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  heroTitle: {
+    textAlign: 'center',
+  },
+  ringWrap: {
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+  },
+  ringCore: {
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  ringUnit: {
     color: colors.textSecondary,
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
   },
-  recoveryHours: {
-    color: colors.textPrimary,
-    fontSize: 34,
-    fontWeight: '800',
-    fontVariant: ['tabular-nums'],
+  recordChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    gap: spacing.sm,
+    backgroundColor: WASH.rose,
+    borderRadius: radius.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  recordChipText: {
+    color: colors.rose,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  heroCaption: {
+    color: colors.textSecondary,
+    fontSize: 17,
+    fontWeight: '500',
+    lineHeight: 25,
+    textAlign: 'center',
+  },
+  section: {
+    gap: spacing.md,
+    paddingTop: spacing.xs,
   },
   pillRow: {
     flexDirection: 'row',
     gap: spacing.sm,
   },
+  head: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.xs,
+  },
+  headIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: radius.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headLabel: {
+    flex: 1,
+  },
   prRow: {
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: radius.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.raised,
+    borderRadius: concentric(radius.lg, spacing.lg),
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
+  },
+  prIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.xs,
+    backgroundColor: WASH.rose,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  prBody: {
+    flex: 1,
     gap: 2,
   },
   prExercise: {
     color: colors.textPrimary,
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+  prType: {
+    color: colors.textSecondary,
+    fontSize: 15,
+    fontWeight: '600',
   },
   prValue: {
-    color: colors.accent,
-    fontSize: 13,
-    fontWeight: '700',
+    color: colors.rose,
+    fontSize: 17,
+    fontWeight: '800',
+    letterSpacing: -0.2,
   },
-  aiLoading: {
+  note: {
+    color: colors.textSecondary,
+    fontSize: 17,
+    fontWeight: '500',
+    lineHeight: 25,
+  },
+  aiRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
+  },
+  aiFlex: {
+    flex: 1,
+  },
+  aiText: {
+    color: colors.textPrimary,
+    fontSize: 17,
+    fontWeight: '500',
+    lineHeight: 25,
+  },
+  barAnchor: {
+    position: 'absolute',
+    left: spacing.md,
+    right: spacing.md,
+    bottom: spacing.md,
   },
 });

@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,10 +10,11 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { estimate1RM, loadSuggestion, setVolume } from '@wc/shared';
 import type { ExerciseFeedback, ExerciseSet, ProgramWorkout, RecordType, SetLog, WorkoutExercise } from '@wc/shared';
 import { supabase } from '../../lib/supabase';
-import { colors, radius, spacing, sharedStyles } from '../../lib/theme';
+import { colors, concentric, radius, shadow, spacing, sharedStyles, tabular, type } from '../../lib/theme';
 import { formatClock, localDateString, parseNum, showError } from '../../lib/utils';
 import {
   getActiveCoachClient,
@@ -25,6 +24,8 @@ import {
   upsertExerciseFeedback,
   type ExercisePrCandidate,
 } from '../../lib/queries';
+import { GlassSurface } from '../../components/Glass';
+import { Press } from '../../components/Press';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { RestTimer } from '../../components/RestTimer';
 import { SetRow, type SetEntry } from '../../components/SetRow';
@@ -32,6 +33,7 @@ import { ExerciseFeedbackModal, type ExerciseFeedbackValues } from '../../compon
 import { AdvancedTimer } from '../../components/AdvancedTimer';
 import { AiCoachSheet } from '../../components/AiCoachSheet';
 import { ExerciseMediaBar } from '../../components/ExerciseMediaBar';
+import { EmptyState, LoadingState } from '../../components/States';
 import { demoLastPerf, demoWorkout } from '../../lib/demo';
 
 interface RowState extends SetEntry {
@@ -46,6 +48,9 @@ interface RestState {
 }
 
 const emptyEntry: RowState = { load: '', reps: '', rpe: '', completed: false };
+
+/** Raggio degli elementi dentro la card esercizio (26 − 16): curve parallele. */
+const INNER = concentric(radius.lg, spacing.lg);
 
 function entryKey(workoutExerciseId: string, setNumber: number): string {
   return `${workoutExerciseId}:${setNumber}`;
@@ -83,6 +88,11 @@ export default function WorkoutTrackerScreen() {
   const [aiFor, setAiFor] = useState<WorkoutExercise | null>(null);
   const [coachClientId, setCoachClientId] = useState<string | null>(null);
   const [clientUid, setClientUid] = useState<string | null>(null);
+  // Apertura della galleria allegati per esercizio (solo presentazione).
+  const [mediaOpen, setMediaOpen] = useState<Record<string, boolean>>({});
+  // Altezze misurate dei due strati in vetro, per non coprire il contenuto.
+  const [headerH, setHeaderH] = useState(104);
+  const [barH, setBarH] = useState(92);
 
   // Caricamento scheda + apertura del workout_log + ultima performance.
   useEffect(() => {
@@ -403,6 +413,19 @@ export default function WorkoutTrackerScreen() {
     [workout]
   );
 
+  /**
+   * FARO UNICO (DESIGN.md § Elevation): una sola card può brillare. È quella su
+   * cui l'atleta sta lavorando, cioè il primo esercizio aperto con serie ancora
+   * da chiudere; se sono tutte chiuse, il primo aperto.
+   */
+  const beaconId = useMemo(() => {
+    const open = (workout?.workout_exercises ?? []).filter((we) => expanded[we.id]);
+    const working = open.find((we) =>
+      (we.exercise_sets ?? []).some((s) => !(entries[entryKey(we.id, s.set_number)]?.completed)),
+    );
+    return working?.id ?? open[0]?.id ?? null;
+  }, [workout, expanded, entries]);
+
   function completeWorkout() {
     if (!logId) return;
     Alert.alert(
@@ -493,147 +516,289 @@ export default function WorkoutTrackerScreen() {
   }
 
   if (loading || !workout) {
-    return (
-      <SafeAreaView style={sharedStyles.screen}>
-        <View style={sharedStyles.center}>
-          <ActivityIndicator size="large" color={colors.accent} />
-          <Text style={sharedStyles.muted}>Preparo la tua scheda…</Text>
-        </View>
-      </SafeAreaView>
-    );
+    return <LoadingState message="Preparo la tua scheda…" />;
   }
 
   const exercises = workout.workout_exercises ?? [];
+  const progress = totalSets > 0 ? Math.min(1, completedCount / totalSets) : 0;
+  // Il recupero galleggia appena sopra la barra d'azione, senza sovrapporsi.
+  const restLift = spacing.md + barH - spacing.lg + spacing.sm;
 
   return (
     <SafeAreaView style={sharedStyles.screen}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        {/* Header con cronometro di seduta */}
-        <View style={styles.header}>
-          <Pressable onPress={() => router.back()} hitSlop={12}>
-            <Text style={styles.close}>✕</Text>
-          </Pressable>
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle} numberOfLines={1}>
-              {workout.name}
-            </Text>
-            <Text style={sharedStyles.muted}>
-              {completedCount}/{totalSets} serie
-            </Text>
-          </View>
-          <Pressable style={styles.timerBtn} onPress={() => setShowTimer(true)} hitSlop={8}>
-            <Text style={styles.timerBtnText}>⏱</Text>
-          </Pressable>
-          <Text style={styles.stopwatch}>{formatClock(elapsed)}</Text>
-        </View>
-
-        <ScrollView contentContainerStyle={sharedStyles.content} keyboardShouldPersistTaps="handled">
+        {/* FERRO: il contenuto scorre sotto i due strati in vetro. */}
+        <ScrollView
+          contentContainerStyle={[
+            styles.content,
+            { paddingTop: headerH + spacing.lg, paddingBottom: barH + spacing.xxl },
+          ]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
           {exercises.length === 0 ? (
-            <View style={sharedStyles.center}>
-              <Text style={sharedStyles.body}>Questa scheda non ha ancora esercizi.</Text>
-            </View>
+            <EmptyState
+              emoji="🏋️"
+              title="Nessun esercizio"
+              message="Questa scheda non ha ancora esercizi. Chiedi al tuo coach di aggiungerli."
+            />
           ) : (
             exercises.map((we, index) => {
               const isOpen = expanded[we.id] ?? false;
+              const isBeacon = beaconId === we.id;
               const prev = lastPerf[we.exercise_id];
+              const sets = we.exercise_sets ?? [];
+              const doneSets = sets.filter(
+                (s) => entries[entryKey(we.id, s.set_number)]?.completed,
+              ).length;
+              const allDone = sets.length > 0 && doneSets === sets.length;
+              const meta = [we.exercise?.muscle_group, we.exercise?.equipment]
+                .filter(Boolean)
+                .join(' · ');
+              const hasFeedback = feedbacks[we.id] != null;
+              const showMedia = mediaOpen[we.id] ?? false;
+
               return (
-                <View key={we.id} style={styles.exerciseCard}>
-                  <Pressable
-                    style={styles.exerciseHeader}
-                    onPress={() => setExpanded((prevState) => ({ ...prevState, [we.id]: !isOpen }))}
-                  >
-                    <View style={styles.exerciseTitleBox}>
-                      <Text style={styles.exerciseName}>
-                        {index + 1}. {we.exercise?.name ?? 'Esercizio'}
-                      </Text>
-                      <Text style={sharedStyles.muted}>
-                        {[we.exercise?.muscle_group, we.exercise?.equipment].filter(Boolean).join(' · ')}
-                      </Text>
-                    </View>
-                    <Text style={styles.chevron}>{isOpen ? '▾' : '▸'}</Text>
-                  </Pressable>
+                <View key={we.id} style={[styles.shell, isBeacon ? shadow.beacon(colors.accent) : null]}>
+                  <View style={[styles.card, isBeacon && styles.cardBeacon]}>
+                    <View style={styles.topLight} pointerEvents="none" />
 
-                  {isOpen ? (
-                    <View style={styles.exerciseBody}>
-                      {we.coach_notes ? (
-                        <Text style={styles.coachNotes}>📝 {we.coach_notes}</Text>
-                      ) : null}
-                      <Text style={sharedStyles.muted}>
-                        Ultima performance:{' '}
-                        {prev && prev.length > 0 ? lastPerformanceText(prev) : 'nessun dato precedente'}
-                      </Text>
-                      {(() => {
-                        if (!prev || prev.length === 0) return null;
-                        const topSet = prev.reduce((a, b) =>
-                          Number(b.load_kg ?? 0) > Number(a.load_kg ?? 0) ? b : a,
-                        );
-                        const firstPrescribed = we.exercise_sets?.[0];
-                        const tip = loadSuggestion({
-                          lastLoadKg: topSet.load_kg,
-                          lastReps: topSet.reps,
-                          lastRpe: topSet.rpe,
-                          targetRpe: firstPrescribed?.target_rpe ?? null,
-                          repsMax: firstPrescribed?.reps_max ?? null,
-                        });
-                        return tip ? <Text style={styles.tip}>💡 {tip}</Text> : null;
-                      })()}
-                      {(we.exercise_sets ?? []).map((set) => {
-                        const key = entryKey(we.id, set.set_number);
-                        const entry = entries[key] ?? emptyEntry;
-                        return (
-                          <SetRow
-                            key={set.id}
-                            set={set}
-                            entry={entry}
-                            saving={entry.saving}
-                            onChange={(field, value) => updateEntry(key, { [field]: value } as Partial<RowState>)}
-                            onToggle={() => toggleSet(we, set)}
-                          />
-                        );
-                      })}
-
-                      <Pressable
-                        style={[styles.feedbackBtn, feedbacks[we.id] && styles.feedbackBtnDone]}
-                        onPress={() => setFeedbackFor(we)}
-                      >
-                        <Text style={styles.feedbackBtnText}>
-                          {feedbacks[we.id]
-                            ? '✓ Feedback salvato · tocca per modificare'
-                            : '💬 Com’è andato questo esercizio?'}
+                    <Press
+                      style={styles.head}
+                      scaleTo={0.99}
+                      onPress={() => setExpanded((prevState) => ({ ...prevState, [we.id]: !isOpen }))}
+                      accessibilityLabel={`${we.exercise?.name ?? 'Esercizio'}, ${doneSets} serie su ${sets.length}`}
+                    >
+                      <View style={[styles.index, allDone && styles.indexDone]}>
+                        <Text style={[styles.indexText, tabular, allDone && styles.indexTextDone]}>
+                          {index + 1}
                         </Text>
-                      </Pressable>
-                      <Pressable style={styles.aiBtn} onPress={() => setAiFor(we)}>
-                        <Text style={styles.aiBtnText}>🤖 Chiedi al coach AI</Text>
-                      </Pressable>
-                      <ExerciseMediaBar
-                        clientId={clientUid}
-                        workoutLogId={logId ?? ''}
-                        workoutExerciseId={we.id}
-                        exerciseId={we.exercise_id}
+                      </View>
+
+                      <View style={styles.headText}>
+                        <Text style={type.title} numberOfLines={2}>
+                          {we.exercise?.name ?? 'Esercizio'}
+                        </Text>
+                        {meta ? (
+                          <Text style={type.label} numberOfLines={1}>
+                            {meta}
+                          </Text>
+                        ) : null}
+                      </View>
+
+                      <View style={[styles.status, allDone && styles.statusDone]}>
+                        {allDone ? <Ionicons name="checkmark" size={15} color={colors.mint} /> : null}
+                        <Text style={[styles.statusText, tabular, allDone && styles.statusTextDone]}>
+                          {doneSets}/{sets.length}
+                        </Text>
+                      </View>
+
+                      <Ionicons
+                        name={isOpen ? 'chevron-up' : 'chevron-down'}
+                        size={18}
+                        color={colors.textTertiary}
                       />
-                    </View>
-                  ) : null}
+                    </Press>
+
+                    {isOpen ? (
+                      <View style={styles.body}>
+                        {we.coach_notes ? (
+                          <View style={styles.note}>
+                            <Ionicons
+                              name="clipboard"
+                              size={18}
+                              color={colors.amber}
+                              style={styles.blockIcon}
+                            />
+                            <Text style={[type.body, styles.blockText]}>{we.coach_notes}</Text>
+                          </View>
+                        ) : null}
+
+                        <View style={styles.reference}>
+                          <Text style={type.label}>Ultima volta</Text>
+                          <Text style={[type.body, tabular, styles.referenceValue]}>
+                            {prev && prev.length > 0 ? lastPerformanceText(prev) : 'Nessun dato precedente'}
+                          </Text>
+                        </View>
+
+                        {(() => {
+                          if (!prev || prev.length === 0) return null;
+                          const topSet = prev.reduce((a, b) =>
+                            Number(b.load_kg ?? 0) > Number(a.load_kg ?? 0) ? b : a,
+                          );
+                          const firstPrescribed = we.exercise_sets?.[0];
+                          const tip = loadSuggestion({
+                            lastLoadKg: topSet.load_kg,
+                            lastReps: topSet.reps,
+                            lastRpe: topSet.rpe,
+                            targetRpe: firstPrescribed?.target_rpe ?? null,
+                            repsMax: firstPrescribed?.reps_max ?? null,
+                          });
+                          return tip ? (
+                            <View style={styles.tip}>
+                              <Ionicons
+                                name="bulb"
+                                size={18}
+                                color={colors.cyan}
+                                style={styles.blockIcon}
+                              />
+                              <Text style={[type.body, styles.blockText]}>{tip}</Text>
+                            </View>
+                          ) : null;
+                        })()}
+
+                        {sets.map((set) => {
+                          const key = entryKey(we.id, set.set_number);
+                          const entry = entries[key] ?? emptyEntry;
+                          return (
+                            <SetRow
+                              key={set.id}
+                              set={set}
+                              entry={entry}
+                              saving={entry.saving}
+                              onChange={(field, value) => updateEntry(key, { [field]: value } as Partial<RowState>)}
+                              onToggle={() => toggleSet(we, set)}
+                            />
+                          );
+                        })}
+
+                        <View style={styles.divider} />
+
+                        {/* Riga di azioni compatte: una sola parola per bersaglio. */}
+                        <View style={styles.actions}>
+                          <Press
+                            style={[styles.action, hasFeedback && styles.actionDone]}
+                            onPress={() => setFeedbackFor(we)}
+                            accessibilityLabel={
+                              hasFeedback
+                                ? 'Feedback salvato, tocca per modificare'
+                                : 'Com’è andato questo esercizio?'
+                            }
+                          >
+                            <Ionicons
+                              name={hasFeedback ? 'checkmark-circle' : 'chatbubble-ellipses'}
+                              size={20}
+                              color={hasFeedback ? colors.mint : colors.textSecondary}
+                            />
+                            <Text style={[type.callout, styles.actionText, hasFeedback && styles.actionTextDone]}>
+                              Feedback
+                            </Text>
+                          </Press>
+
+                          <Press
+                            style={styles.action}
+                            onPress={() => setAiFor(we)}
+                            accessibilityLabel="Chiedi al coach AI"
+                          >
+                            <Ionicons name="sparkles" size={20} color={colors.violet} />
+                            <Text style={[type.callout, styles.actionText]}>Coach AI</Text>
+                          </Press>
+
+                          <Press
+                            style={[styles.action, showMedia && styles.actionOpen]}
+                            onPress={() => setMediaOpen((prevState) => ({ ...prevState, [we.id]: !showMedia }))}
+                            accessibilityLabel="Foto e video dell’esercizio"
+                          >
+                            <Ionicons
+                              name="camera"
+                              size={20}
+                              color={showMedia ? colors.accent : colors.textSecondary}
+                            />
+                            <Text style={[type.callout, styles.actionText, showMedia && styles.actionTextOpen]}>
+                              Allegati
+                            </Text>
+                          </Press>
+                        </View>
+
+                        {/* La galleria resta montata anche da chiusa: il caricamento
+                            degli allegati non deve dipendere dall'apertura. */}
+                        <View style={showMedia ? undefined : styles.hidden}>
+                          <ExerciseMediaBar
+                            clientId={clientUid}
+                            workoutLogId={logId ?? ''}
+                            workoutExerciseId={we.id}
+                            exerciseId={we.exercise_id}
+                          />
+                        </View>
+                      </View>
+                    ) : null}
+                  </View>
                 </View>
               );
             })
           )}
-
-          <PrimaryButton
-            label="COMPLETA ALLENAMENTO"
-            variant="success"
-            onPress={completeWorkout}
-            loading={finishing}
-          />
         </ScrollView>
 
+        {/* VETRO 1 — testata ancorata: nome, cronometro, contatore, timer. */}
+        <View
+          style={styles.headerAnchor}
+          pointerEvents="box-none"
+          onLayout={(e) => setHeaderH(e.nativeEvent.layout.height)}
+        >
+          <GlassSurface cornerRadius={radius.xl} padding={spacing.md}>
+            <View style={styles.headerRow}>
+              <Press
+                style={styles.glassBtn}
+                onPress={() => router.back()}
+                accessibilityLabel="Chiudi allenamento"
+              >
+                <Ionicons name="close" size={22} color={colors.textPrimary} />
+              </Press>
+
+              <View style={styles.headerCenter}>
+                <Text style={styles.headerTitle} numberOfLines={1}>
+                  {workout.name}
+                </Text>
+                <View style={styles.headerMeta}>
+                  <Text style={[styles.stopwatch, tabular]}>{formatClock(elapsed)}</Text>
+                  <Text style={styles.headerSep}>·</Text>
+                  <Text style={[styles.headerCount, tabular]}>
+                    {completedCount}/{totalSets} serie
+                  </Text>
+                </View>
+              </View>
+
+              <Press
+                style={styles.glassBtn}
+                onPress={() => setShowTimer(true)}
+                accessibilityLabel="Apri il timer"
+              >
+                <Ionicons name="stopwatch-outline" size={22} color={colors.accent} />
+              </Press>
+            </View>
+
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: `${Math.round(progress * 100)}%` }]} />
+            </View>
+          </GlassSurface>
+        </View>
+
         {rest ? (
-          <RestTimer
-            seconds={rest.seconds}
-            resetToken={rest.token}
-            onFinish={() => setRest(null)}
-            onSkip={() => setRest(null)}
-          />
+          <View style={[styles.restAnchor, { bottom: restLift }]} pointerEvents="box-none">
+            <RestTimer
+              seconds={rest.seconds}
+              resetToken={rest.token}
+              onFinish={() => setRest(null)}
+              onSkip={() => setRest(null)}
+            />
+          </View>
         ) : null}
+
+        {/* VETRO 2 — barra d'azione finale, sempre sotto il pollice. */}
+        <View
+          style={styles.barAnchor}
+          pointerEvents="box-none"
+          onLayout={(e) => setBarH(e.nativeEvent.layout.height)}
+        >
+          <GlassSurface cornerRadius={radius.xl} padding={spacing.md}>
+            <PrimaryButton
+              label="COMPLETA ALLENAMENTO"
+              variant="success"
+              onPress={completeWorkout}
+              loading={finishing}
+            />
+          </GlassSurface>
+        </View>
 
         <ExerciseFeedbackModal
           visible={feedbackFor != null}
@@ -682,116 +847,239 @@ const styles = StyleSheet.create({
   flex: {
     flex: 1,
   },
-  header: {
+  content: {
+    paddingHorizontal: spacing.xl,
+    gap: spacing.lg,
+  },
+
+  // --- VETRO: testata ancorata in alto ---
+  headerAnchor: {
+    position: 'absolute',
+    top: 0,
+    left: spacing.md,
+    right: spacing.md,
+  },
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.lg,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    gap: spacing.md,
   },
-  close: {
-    color: colors.textSecondary,
-    fontSize: 20,
-    fontWeight: '700',
+  glassBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.glassBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerCenter: {
     flex: 1,
+    gap: 2,
   },
   headerTitle: {
     color: colors.textPrimary,
     fontSize: 17,
     fontWeight: '800',
+    letterSpacing: -0.2,
   },
-  timerBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
+  headerMeta: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: spacing.sm,
+  },
+  stopwatch: {
+    color: colors.textPrimary,
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: -0.4,
+  },
+  headerSep: {
+    color: colors.textSecondary,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  headerCount: {
+    color: colors.textSecondary,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  progressTrack: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    overflow: 'hidden',
+    marginTop: spacing.md,
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 2,
+    backgroundColor: colors.mint,
+  },
+
+  // --- VETRO: barra d'azione e recupero ---
+  barAnchor: {
+    position: 'absolute',
+    left: spacing.md,
+    right: spacing.md,
+    bottom: spacing.md,
+  },
+  restAnchor: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+  },
+
+  // --- FERRO: card esercizio ---
+  shell: {
+    borderRadius: radius.lg,
+    backgroundColor: colors.card,
+  },
+  card: {
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'transparent',
+    overflow: 'hidden',
+  },
+  /** L'unico faro della schermata: l'esercizio in corso. */
+  cardBeacon: {
+    borderColor: colors.accent,
+  },
+  topLight: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  head: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.lg,
+    minHeight: 72,
+  },
+  index: {
+    width: 28,
+    height: 28,
+    borderRadius: 9,
+    backgroundColor: colors.raised,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  timerBtnText: {
-    fontSize: 20,
+  indexDone: {
+    backgroundColor: colors.mint,
   },
-  stopwatch: {
-    color: colors.accent,
-    fontSize: 22,
+  indexText: {
+    color: colors.textSecondary,
+    fontSize: 15,
     fontWeight: '800',
-    fontVariant: ['tabular-nums'],
   },
-  exerciseCard: {
-    backgroundColor: colors.card,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: radius.lg,
-    overflow: 'hidden',
+  indexTextDone: {
+    color: colors.void,
   },
-  exerciseHeader: {
+  headText: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  status: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.lg,
-    gap: spacing.md,
+    gap: 3,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 5,
+    borderRadius: radius.pill,
+    backgroundColor: colors.raised,
   },
-  exerciseTitleBox: {
-    flex: 1,
-    gap: 2,
+  statusDone: {
+    backgroundColor: 'rgba(50,215,75,0.14)',
   },
-  exerciseName: {
-    color: colors.textPrimary,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  chevron: {
+  statusText: {
     color: colors.textSecondary,
-    fontSize: 16,
+    fontSize: 15,
+    fontWeight: '700',
   },
-  exerciseBody: {
+  statusTextDone: {
+    color: colors.mint,
+  },
+  body: {
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.lg,
     gap: spacing.md,
   },
-  coachNotes: {
-    color: colors.warning,
-    fontSize: 13,
+
+  // --- Blocchi di riferimento dentro la card ---
+  note: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    borderRadius: INNER,
+    padding: spacing.md,
+    backgroundColor: 'rgba(255,159,10,0.10)',
   },
   tip: {
-    color: colors.celeste,
-    fontSize: 13,
-    fontWeight: '600',
+    flexDirection: 'row',
+    gap: spacing.md,
+    borderRadius: INNER,
+    padding: spacing.md,
+    backgroundColor: 'rgba(100,210,255,0.10)',
   },
-  feedbackBtn: {
-    marginTop: spacing.xs,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    alignItems: 'center',
+  blockIcon: {
+    marginTop: 3,
   },
-  feedbackBtnDone: {
-    borderColor: colors.accent,
-    backgroundColor: 'rgba(56,189,248,0.08)',
+  blockText: {
+    flex: 1,
   },
-  feedbackBtnText: {
+  reference: {
+    borderRadius: INNER,
+    padding: spacing.md,
+    backgroundColor: colors.raised,
+    gap: spacing.xs,
+  },
+  referenceValue: {
     color: colors.textPrimary,
-    fontSize: 14,
-    fontWeight: '700',
   },
-  aiBtn: {
-    borderWidth: 1,
-    borderColor: colors.accent,
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.line,
+    marginTop: spacing.xs,
+  },
+
+  // --- Riga di azioni compatte ---
+  actions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  action: {
+    flex: 1,
+    minHeight: 68,
+    borderRadius: INNER,
+    backgroundColor: colors.raised,
     alignItems: 'center',
-    backgroundColor: 'rgba(56,189,248,0.06)',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
   },
-  aiBtnText: {
+  actionDone: {
+    backgroundColor: 'rgba(50,215,75,0.12)',
+  },
+  actionOpen: {
+    backgroundColor: 'rgba(10,132,255,0.14)',
+  },
+  actionText: {
+    color: colors.textSecondary,
+  },
+  actionTextDone: {
+    color: colors.mint,
+  },
+  actionTextOpen: {
     color: colors.accent,
-    fontSize: 14,
-    fontWeight: '700',
+  },
+  hidden: {
+    display: 'none',
   },
 });

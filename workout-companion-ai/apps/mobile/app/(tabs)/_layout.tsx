@@ -1,76 +1,144 @@
 import { Tabs } from 'expo-router';
-import { Text } from 'react-native';
+import { StyleSheet, View, type ColorValue } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors } from '../../lib/theme';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import { colors, glass, radius } from '../../lib/theme';
 
-function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
-  return <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.45 }}>{emoji}</Text>;
+type IconName = keyof typeof Ionicons.glyphMap;
+
+/** Icona di scheda: contorno a riposo, piena quando attiva (convenzione iOS). */
+function TabIcon({ name, color, focused }: { name: string; color: ColorValue; focused: boolean }) {
+  const icon = (focused ? name : `${name}-outline`) as IconName;
+  return <Ionicons name={icon} size={25} color={color as string} />;
+}
+
+/** Il fondo in VETRO della barra: sfocatura, tinta, luce speculare, bordo capello. */
+function GlassTabBar() {
+  return (
+    <View style={styles.glass}>
+      <BlurView intensity={glass.intensity} tint="dark" style={StyleSheet.absoluteFill} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: glass.tint }]} />
+      <LinearGradient
+        colors={['rgba(255,255,255,0.10)', 'rgba(255,255,255,0)']}
+        style={styles.sheen}
+        pointerEvents="none"
+      />
+      <LinearGradient
+        colors={[...glass.edge]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.specular}
+        pointerEvents="none"
+      />
+    </View>
+  );
 }
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.textSecondary,
+        tabBarBackground: GlassTabBar,
         tabBarStyle: {
-          backgroundColor: colors.card,
-          borderTopColor: colors.border,
-          // Rispetta la safe-area in basso (home indicator) su ogni telefono.
-          height: 56 + insets.bottom,
-          paddingBottom: insets.bottom + 6,
-          paddingTop: 6,
+          position: 'absolute',
+          left: 12,
+          right: 12,
+          bottom: Math.max(insets.bottom, 12),
+          height: 66,
+          paddingTop: 8,
+          paddingBottom: 8,
+          borderTopWidth: 0,
+          backgroundColor: 'transparent',
+          elevation: 0,
         },
         tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
+          fontSize: 10,
+          fontWeight: '700',
+          letterSpacing: 0.2,
+          marginTop: 1,
+        },
+        tabBarItemStyle: {
+          borderRadius: radius.md,
         },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🏠" focused={focused} />,
+          title: 'Oggi',
+          tabBarIcon: ({ color, focused }) => <TabIcon name="home" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="allenamento"
         options={{
-          title: 'Allenamento',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🏋️" focused={focused} />,
+          title: 'Scheda',
+          tabBarIcon: ({ color, focused }) => <TabIcon name="barbell" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="nutrizione"
         options={{
           title: 'Nutrizione',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🍽️" focused={focused} />,
+          tabBarIcon: ({ color, focused }) => <TabIcon name="restaurant" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="progressi"
         options={{
           title: 'Progressi',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="📈" focused={focused} />,
+          tabBarIcon: ({ color, focused }) => <TabIcon name="stats-chart" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="chat"
         options={{
           title: 'Chat',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="💬" focused={focused} />,
+          tabBarIcon: ({ color, focused }) => <TabIcon name="chatbubble" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="profilo"
         options={{
           title: 'Profilo',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="👤" focused={focused} />,
+          tabBarIcon: ({ color, focused }) => <TabIcon name="person" color={color} focused={focused} />,
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  glass: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: radius.xl,
+    overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.glassBorder,
+  },
+  sheen: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '60%',
+  },
+  specular: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 1.5,
+  },
+});
