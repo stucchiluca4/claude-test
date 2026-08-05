@@ -36,7 +36,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <div className="flex min-h-screen">
       <Sidebar userName={fullName(profile)} />
-      <main className="flex-1 px-8 py-6 max-w-[1400px]">{children}</main>
+      {/* Il contenuto scorre sotto la rail in vetro; in basso lo spazio serve
+          alla barra flottante che compare sotto i 1024px. */}
+      <main className="flex-1 min-w-0 px-5 py-6 pb-28 lg:px-10 lg:py-8 lg:pb-10 max-w-[1280px]">
+        {children}
+      </main>
     </div>
   );
 }

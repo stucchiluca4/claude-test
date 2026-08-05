@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
-import { inputClass, buttonPrimary } from '@/components/ui';
-import { Send } from 'lucide-react';
+import { Card, inputClass, buttonPrimary } from '@/components/ui';
+import { AlertCircle, Check, CheckCheck, MessageSquare, Send } from 'lucide-react';
 
 interface Contact {
   coachClientId: string;
@@ -17,6 +17,31 @@ interface Msg {
   sender_id: string;
   body: string | null;
   created_at: string;
+  status?: string | null;
+}
+
+/** Iniziali dell'atleta: si riconosce la conversazione prima di leggerne il nome. */
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function dayKey(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+/** Separatore di giornata: oggi, ieri, oppure la data per esteso. */
+function dayLabel(iso: string): string {
+  const d = new Date(iso);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  if (dayKey(iso) === dayKey(today.toISOString())) return 'Oggi';
+  if (dayKey(iso) === dayKey(yesterday.toISOString())) return 'Ieri';
+  return d.toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' });
 }
 
 export function ChatPanel({ contacts, myId }: { contacts: Contact[]; myId: string }) {
@@ -105,7 +130,7 @@ export function ChatPanel({ contacts, myId }: { contacts: Contact[]; myId: strin
         if (status !== 'SUBSCRIBED') return;
         const { data: msgs } = await supabase
           .from('messages')
-          .select('id, sender_id, body, created_at')
+          .select('id, sender_id, body, created_at, status')
           .eq('conversation_id', convId)
           .order('created_at', { ascending: true })
           .limit(200);
@@ -134,7 +159,7 @@ export function ChatPanel({ contacts, myId }: { contacts: Contact[]; myId: strin
     const { data, error: sendError } = await supabase
       .from('messages')
       .insert({ conversation_id: conversationId, sender_id: myId, body })
-      .select('id, sender_id, body, created_at')
+      .select('id, sender_id, body, created_at, status')
       .single();
     if (sendError || !data) {
       // Mantieni il testo nell'input per permettere di riprovare
@@ -151,84 +176,214 @@ export function ChatPanel({ contacts, myId }: { contacts: Contact[]; myId: strin
       .eq('id', conversationId);
   }
 
+  function openContact(c: Contact) {
+    setSelected(c);
+    setMessages([]);
+  }
+
   return (
-    <div className="flex-1 flex border border-border rounded-xl overflow-hidden min-h-0">
-      {/* Lista contatti */}
-      <div className="w-64 border-r border-border overflow-y-auto shrink-0">
-        {contacts.map((c) => (
-          <button
-            key={c.coachClientId}
-            onClick={() => {
-              setSelected(c);
-              setMessages([]);
-            }}
-            className={cn(
-              'w-full text-left px-4 py-3.5 border-b border-border text-sm transition',
-              selected?.coachClientId === c.coachClientId
-                ? 'bg-card font-medium'
-                : 'hover:bg-card/50 text-text-secondary'
-            )}
-          >
-            {c.name}
-          </button>
-        ))}
-      </div>
-
-      {/* Conversazione */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <div className="px-5 py-3.5 border-b border-border font-medium text-sm">
-          {selected?.name}
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
-          {messages.length === 0 && (
-            <p className="text-sm text-text-secondary text-center mt-8">
-              Nessun messaggio ancora. Scrivi il primo! 👇
-            </p>
-          )}
-          {messages.map((m) => (
-            <div
-              key={m.id}
-              className={cn('flex', m.sender_id === myId ? 'justify-end' : 'justify-start')}
-            >
-              <div
-                className={cn(
-                  'max-w-[70%] rounded-2xl px-4 py-2.5 text-sm',
-                  m.sender_id === myId ? 'grad-primary text-white' : 'glass'
-                )}
-              >
-                {m.body}
-                <div
+    <div className="flex min-h-0 flex-1 flex-col gap-3 lg:grid lg:grid-cols-[280px_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)] lg:gap-4">
+      {/* ---------- Elenco conversazioni (FERRO) ---------- */}
+      <Card className="hidden min-h-0 flex-col overflow-hidden p-0 lg:flex">
+        <h2 className="px-5 pb-3 pt-5 text-[12px] font-bold uppercase tracking-[0.06em] text-text-secondary">
+          Conversazioni
+        </h2>
+        <ul className="min-h-0 flex-1 overflow-y-auto pb-3">
+          {contacts.map((c) => {
+            const active = selected?.coachClientId === c.coachClientId;
+            return (
+              <li key={c.coachClientId}>
+                <button
+                  type="button"
+                  onClick={() => openContact(c)}
+                  aria-current={active ? 'true' : undefined}
                   className={cn(
-                    'text-[10px] mt-1',
-                    m.sender_id === myId ? 'text-white/70' : 'text-text-secondary'
+                    'press flex min-h-[64px] w-full items-center gap-3 border-l-2 px-4 py-3 text-left transition',
+                    active
+                      ? 'border-accent bg-raised'
+                      : 'border-transparent hover:bg-raised/60'
                   )}
                 >
-                  {new Date(m.created_at).toLocaleTimeString('it-IT', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </div>
-              </div>
+                  <span
+                    className={cn(
+                      'grid h-10 w-10 shrink-0 place-items-center rounded-full text-[14px] font-bold',
+                      active ? 'bg-accent text-white' : 'bg-raised text-text-secondary'
+                    )}
+                    aria-hidden
+                  >
+                    {initialsOf(c.name)}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span
+                      className={cn(
+                        'block truncate text-[15px]',
+                        active ? 'font-bold text-white' : 'font-semibold text-text-secondary'
+                      )}
+                    >
+                      {c.name}
+                    </span>
+                    <span className="mt-0.5 block truncate text-[12px] text-text-secondary">
+                      {active ? 'Conversazione aperta' : 'Apri la chat'}
+                    </span>
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </Card>
+
+      {/* ---------- Sotto i 1024px: le conversazioni diventano una fila di pastiglie ---------- */}
+      <div
+        className="flex shrink-0 gap-2 overflow-x-auto pb-1 lg:hidden"
+        role="group"
+        aria-label="Conversazioni"
+      >
+        {contacts.map((c) => {
+          const active = selected?.coachClientId === c.coachClientId;
+          return (
+            <button
+              key={c.coachClientId}
+              type="button"
+              onClick={() => openContact(c)}
+              aria-current={active ? 'true' : undefined}
+              className={cn(
+                'press inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-full px-4 text-[14px] transition',
+                active ? 'bg-accent font-bold text-white' : 'bg-raised font-semibold text-text-secondary'
+              )}
+            >
+              <span
+                className={cn(
+                  'grid h-6 w-6 place-items-center rounded-full text-[10px] font-bold',
+                  active ? 'bg-white/20 text-white' : 'bg-card text-text-secondary'
+                )}
+                aria-hidden
+              >
+                {initialsOf(c.name)}
+              </span>
+              {c.name}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ---------- La conversazione: contenuto su FERRO, comandi sul VETRO ---------- */}
+      <Card className="relative min-h-0 flex-1 overflow-hidden p-0">
+        {/* Testata ancorata: livello vetro, galleggia sui messaggi che scorrono */}
+        {/* `!absolute`: .glass-chrome è dichiarata dopo le utility e riporterebbe
+            altrimenti la posizione a relative. */}
+        <div className="glass-chrome !absolute inset-x-3 top-3 z-20 flex items-center gap-3 rounded-2xl px-4 py-3">
+          <span
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent text-[14px] font-bold text-white"
+            aria-hidden
+          >
+            {selected ? initialsOf(selected.name) : '—'}
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-[17px] font-bold text-white">{selected?.name ?? '—'}</p>
+            <p className="truncate text-[12px] font-medium text-text-secondary">
+              Risponde dall&apos;app Workout Companion
+            </p>
+          </div>
+        </div>
+
+        {/* Il flusso dei messaggi: ogni bolla è opaca, si legge sempre */}
+        <div className="h-full overflow-y-auto px-4 pb-32 pt-24 sm:px-6">
+          {messages.length === 0 ? (
+            <div className="flex h-full min-h-[220px] flex-col items-center justify-center px-6 text-center">
+              <span className="mb-4 grid h-16 w-16 place-items-center rounded-lg bg-raised text-text-secondary">
+                <MessageSquare size={26} aria-hidden />
+              </span>
+              <p className="text-[17px] font-bold text-white">Nessun messaggio</p>
+              <p className="mt-1.5 max-w-xs text-[15px] text-text-secondary">
+                Apri tu il dialogo: una riga sul check-in della settimana vale più di dieci notifiche.
+              </p>
             </div>
-          ))}
+          ) : (
+            <div className="mx-auto flex max-w-3xl flex-col gap-2.5">
+              {messages.map((m, i) => {
+                const mine = m.sender_id === myId;
+                const prev = messages[i - 1];
+                const newDay = !prev || dayKey(prev.created_at) !== dayKey(m.created_at);
+                const read = mine && m.status === 'read';
+                return (
+                  <Fragment key={m.id}>
+                    {newDay && (
+                      <div className="flex justify-center py-2">
+                        <span className="rounded-full bg-raised px-3 py-1 text-[11px] font-bold uppercase tracking-[0.06em] text-text-secondary">
+                          {dayLabel(m.created_at)}
+                        </span>
+                      </div>
+                    )}
+                    <div className={cn('flex', mine ? 'justify-end' : 'justify-start')}>
+                      <div
+                        className={cn(
+                          'max-w-[82%] px-4 py-2.5 sm:max-w-[68%]',
+                          mine
+                            ? 'rounded-lg rounded-br-[8px] bg-accent text-white'
+                            : 'rounded-lg rounded-bl-[8px] bg-raised text-white'
+                        )}
+                      >
+                        <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
+                          {m.body}
+                        </p>
+                        <div
+                          className={cn(
+                            'mt-1 flex items-center justify-end gap-1 text-[11px] font-semibold tnum',
+                            mine ? 'text-white/70' : 'text-text-secondary'
+                          )}
+                        >
+                          {new Date(m.created_at).toLocaleTimeString('it-IT', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                          {mine &&
+                            (read ? (
+                              <CheckCheck size={13} aria-label="Letto" />
+                            ) : (
+                              <Check size={13} aria-label="Inviato" />
+                            ))}
+                        </div>
+                      </div>
+                    </div>
+                  </Fragment>
+                );
+              })}
+            </div>
+          )}
           <div ref={bottomRef} />
         </div>
 
-        {error && <p className="text-danger text-sm px-5 pb-2">{error}</p>}
-
-        <form onSubmit={send} className="p-4 border-t border-border flex gap-2">
-          <input
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            className={inputClass}
-            placeholder="Scrivi un messaggio…"
-          />
-          <button type="submit" className={buttonPrimary + ' !px-3.5'} disabled={!text.trim()}>
-            <Send size={16} />
-          </button>
-        </form>
-      </div>
+        {/* Barra di scrittura ancorata: livello vetro, campo di testo su ferro */}
+        <div className="glass-chrome !absolute inset-x-3 bottom-3 z-20 rounded-2xl p-2.5">
+          {error && (
+            <p
+              role="alert"
+              className="mb-2 flex items-center gap-1.5 px-1.5 text-[13px] font-semibold text-rose"
+            >
+              <AlertCircle size={14} aria-hidden />
+              {error}
+            </p>
+          )}
+          <form onSubmit={send} className="flex items-center gap-2">
+            <input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              aria-label="Scrivi un messaggio"
+              className={cn(inputClass, 'min-h-[48px] flex-1')}
+              placeholder="Scrivi un messaggio…"
+            />
+            <button
+              type="submit"
+              aria-label="Invia messaggio"
+              className={cn(buttonPrimary, 'h-12 w-12 shrink-0 px-0 py-0')}
+              disabled={!text.trim() || !conversationId}
+            >
+              <Send size={18} aria-hidden />
+            </button>
+          </form>
+        </div>
+      </Card>
     </div>
   );
 }

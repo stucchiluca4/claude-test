@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { Card, buttonPrimary, buttonSecondary } from '@/components/ui';
+import { cn } from '@/lib/utils';
+import { AlertTriangle, Check, Lock } from 'lucide-react';
 
 const PLANS = [
   {
@@ -27,6 +29,9 @@ const PLANS = [
     features: ['Clienti illimitati', 'Tutto di Pro', 'White label (v2)', 'Supporto prioritario'],
   },
 ];
+
+/** Ritardi scalati: i piani entrano da sinistra a destra. */
+const RISE_DELAY = ['rise-1', 'rise-2', 'rise-3'];
 
 export function PlanButtons({ hasSubscription }: { hasSubscription: boolean }) {
   const [loading, setLoading] = useState<string | null>(null);
@@ -56,46 +61,75 @@ export function PlanButtons({ hasSubscription }: { hasSubscription: boolean }) {
   }
 
   return (
-    <div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {PLANS.map((p) => (
+    <section aria-label="Piani disponibili">
+      <h2 className="mb-3 text-[12px] font-bold uppercase tracking-[0.06em] text-text-secondary">
+        Piani disponibili
+      </h2>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        {PLANS.map((p, i) => (
           <Card
             key={p.key}
-            className={p.highlight ? 'border-accent relative' : ''}
+            beacon={p.highlight}
+            className={cn('relative flex flex-col rise', RISE_DELAY[i])}
           >
             {p.highlight && (
-              <span className="absolute -top-2.5 left-4 grad-primary text-white text-xs font-bold px-2 py-0.5 rounded-md">
+              <span className="absolute -top-3 left-6 inline-flex items-center rounded-full bg-accent px-3 py-1 text-[11px] font-bold uppercase tracking-[0.06em] text-white">
                 Più scelto
               </span>
             )}
-            <h3 className="font-semibold">{p.name}</h3>
-            <div className="text-3xl font-bold mt-2">
-              {p.price}
-              <span className="text-sm text-text-secondary font-normal">/mese</span>
+
+            <h3 className="text-[22px] font-bold leading-tight tracking-[-0.01em] text-white">
+              {p.name}
+            </h3>
+
+            <div className="mt-3 flex items-baseline gap-1.5">
+              <span className="font-metric tnum text-[44px] font-extrabold leading-none text-white">
+                {p.price}
+              </span>
+              <span className="text-[15px] font-semibold text-text-secondary">/mese</span>
             </div>
-            <ul className="mt-4 space-y-2 text-sm text-text-secondary">
+
+            <ul className="mt-6 space-y-3">
               {p.features.map((f) => (
-                <li key={f}>✓ {f}</li>
+                <li key={f} className="flex items-start gap-2.5 text-[15px] text-text-secondary">
+                  <Check size={17} className="mt-0.5 shrink-0 text-mint" aria-hidden />
+                  <span>{f}</span>
+                </li>
               ))}
             </ul>
-            <button
-              onClick={() => goToCheckout(p.key, p.priceEnv)}
-              disabled={loading !== null}
-              className={(p.highlight ? buttonPrimary : buttonSecondary) + ' w-full mt-5'}
-            >
-              {loading === p.key
-                ? 'Apertura…'
-                : hasSubscription
-                  ? 'Gestisci abbonamento'
-                  : 'Prova gratis 14 giorni'}
-            </button>
+
+            <div className="mt-auto pt-6">
+              <button
+                onClick={() => goToCheckout(p.key, p.priceEnv)}
+                disabled={loading !== null}
+                className={cn(p.highlight ? buttonPrimary : buttonSecondary, 'w-full')}
+              >
+                {loading === p.key
+                  ? 'Apertura…'
+                  : hasSubscription
+                    ? 'Gestisci abbonamento'
+                    : 'Prova gratis 14 giorni'}
+              </button>
+            </div>
           </Card>
         ))}
       </div>
-      {error && <p className="text-danger text-sm mt-4">{error}</p>}
-      <p className="text-xs text-text-secondary mt-4">
+
+      {error && (
+        <p
+          role="alert"
+          className="mt-4 flex items-start gap-2.5 rounded-sm bg-rose/10 px-4 py-3 text-[14px] font-semibold text-rose"
+        >
+          <AlertTriangle size={17} className="mt-0.5 shrink-0" aria-hidden />
+          {error}
+        </p>
+      )}
+
+      <p className="mt-5 flex items-center gap-2 text-[13px] text-text-secondary">
+        <Lock size={15} aria-hidden />
         Pagamenti sicuri con Stripe. Disdici quando vuoi dal portale clienti.
       </p>
-    </div>
+    </section>
   );
 }

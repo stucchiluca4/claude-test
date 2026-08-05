@@ -1,11 +1,26 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { Card, Badge, buttonPrimary, buttonSecondary, inputClass } from '@/components/ui';
+import { Card, Badge, GlassBar, buttonPrimary, inputClass } from '@/components/ui';
 import { DAYS_OF_WEEK, SET_TYPES, PROGRAM_GOALS, classifyPPL } from '@wc/shared';
-import { ChevronLeft, ChevronRight, Plus, Trash2, Search } from 'lucide-react';
+import {
+  AlertCircle,
+  AlertTriangle,
+  ArrowLeft,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  GripVertical,
+  Plus,
+  Search,
+  Trash2,
+  X,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 /* Tipi locali che rispecchiano la query del server */
 interface SetRow {
@@ -56,6 +71,57 @@ interface ProgramData {
   program_weeks: WeekRow[];
 }
 
+/* Comandi che vivono sul livello VETRO: pillole a bordo capello. */
+const buttonOnGlass =
+  'press inline-flex min-h-[44px] items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.07] px-4 text-[15px] font-semibold text-white transition hover:bg-white/[0.14] disabled:opacity-40 disabled:pointer-events-none';
+
+/* Comando circolare sul vetro (indietro, settimana precedente/successiva). */
+const iconOnGlass =
+  'press grid shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.07] text-white transition hover:bg-white/[0.14] disabled:opacity-30 disabled:pointer-events-none';
+
+/* Conferma: la menta è il colore di ciò che è compiuto. */
+const buttonConfirm =
+  'press inline-flex min-h-[44px] items-center justify-center gap-2 rounded-full bg-mint px-4 text-[15px] font-bold text-[#06120A] transition hover:brightness-110 disabled:opacity-45 disabled:pointer-events-none';
+
+/* Etichette di colonna dell'editor: sempre la stessa voce. */
+const columnLabel = 'text-[12px] font-bold uppercase tracking-[0.06em] text-text-secondary';
+
+/* Campi tabulari della griglia serie: compatti ma con bersaglio da 40px. */
+const cellField =
+  'tnum h-10 w-full rounded-xs border border-transparent bg-raised px-2 text-center text-[15px] font-semibold text-white transition hover:border-white/10 focus:border-accent focus:outline-none';
+const cellSelect =
+  'h-10 w-full rounded-xs border border-transparent bg-raised px-2 text-[14px] font-semibold text-white transition hover:border-white/10 focus:border-accent focus:outline-none';
+
+/* Sei colonne: serie · tipo · reps min · reps max · RPE · recupero */
+const setsGrid = 'md:grid-cols-[3.5rem_minmax(8rem,1.25fr)_repeat(4,minmax(4.5rem,0.9fr))]';
+
+const SET_COLUMNS = ['Serie', 'Tipo', 'Reps min', 'Reps max', 'RPE', 'Rec. (s)'] as const;
+
+/** Sintesi della prescrizione: «4 × 8-10 @ RPE 8 · rec 120s». */
+function setsSummary(sets: SetRow[]) {
+  if (sets.length === 0) return null;
+  const ordered = [...sets].sort((a, b) => a.set_number - b.set_number);
+  const first = ordered[0];
+  const reps =
+    first.reps_min == null && first.reps_max == null
+      ? '—'
+      : first.reps_max == null || first.reps_min === first.reps_max
+        ? String(first.reps_min ?? first.reps_max)
+        : `${first.reps_min}-${first.reps_max}`;
+  const mixed = ordered.some(
+    (s) =>
+      s.reps_min !== first.reps_min ||
+      s.reps_max !== first.reps_max ||
+      s.target_rpe !== first.target_rpe
+  );
+  return {
+    scheme: `${sets.length} × ${reps}`,
+    rpe: first.target_rpe,
+    rest: first.rest_seconds,
+    mixed,
+  };
+}
+
 export function ProgramBuilder({ initialProgram }: { initialProgram: ProgramData }) {
   const router = useRouter();
   const supabase = createClient();
@@ -63,9 +129,41 @@ export function ProgramBuilder({ initialProgram }: { initialProgram: ProgramData
   const [weekIdx, setWeekIdx] = useState(0);
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  /** Conferma effimera in menta dopo ogni scrittura andata a buon fine. */
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+
+  const [addOpen, setAddOpen] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newDay, setNewDay] = useState(1);
+  const addTriggerRef = useRef<HTMLButtonElement>(null);
 
   const weeks = [...program.program_weeks].sort((a, b) => a.week_number - b.week_number);
   const week = weeks[weekIdx];
+
+  /** "Salvato" resta visibile giusto il tempo di essere letto. */
+  useEffect(() => {
+    if (!savedAt) return;
+    const t = setTimeout(() => setSavedAt(null), 2600);
+    return () => clearTimeout(t);
+  }, [savedAt]);
+
+  // Esc chiude il foglio "nuova sessione" e riporta il fuoco sul comando.
+  useEffect(() => {
+    if (!addOpen) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setAddOpen(false);
+        addTriggerRef.current?.focus();
+      }
+    }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [addOpen]);
+
+  function markSaved() {
+    setErrorMsg(null);
+    setSavedAt(Date.now());
+  }
 
   /** Ricarica il programma dal DB dopo ogni modifica (semplice e affidabile). */
   async function reload() {
@@ -84,18 +182,21 @@ export function ProgramBuilder({ initialProgram }: { initialProgram: ProgramData
     if (data) setProgram(data as any);
   }
 
-  async function addWorkout() {
+  async function addWorkout(e: React.FormEvent) {
+    e.preventDefault();
     // Guardia: senza settimane non c'è dove creare la sessione
     if (!week) return setErrorMsg('Il programma non ha settimane: impossibile aggiungere una sessione.');
-    const name = prompt('Nome della sessione (es. "Pull Lower"):');
+    const name = newName.trim();
     if (!name) return;
-    const day = Number(prompt('Giorno della settimana (1=Lunedì … 7=Domenica):', '1'));
+    const day = Number(newDay);
     if (!day || day < 1 || day > 7) return;
     const { error } = await supabase
       .from('program_workouts')
       .insert({ program_week_id: week.id, name, day_of_week: day });
     if (error) return setErrorMsg('Creazione della sessione non riuscita: ' + error.message);
-    setErrorMsg(null);
+    markSaved();
+    setAddOpen(false);
+    setNewName('');
     await reload();
   }
 
@@ -103,7 +204,7 @@ export function ProgramBuilder({ initialProgram }: { initialProgram: ProgramData
     if (!confirm('Eliminare questa sessione e tutti i suoi esercizi?')) return;
     const { error } = await supabase.from('program_workouts').delete().eq('id', id);
     if (error) return setErrorMsg('Eliminazione della sessione non riuscita: ' + error.message);
-    setErrorMsg(null);
+    markSaved();
     await reload();
   }
 
@@ -119,7 +220,7 @@ export function ProgramBuilder({ initialProgram }: { initialProgram: ProgramData
       rest_seconds: last?.rest_seconds ?? 120,
     });
     if (error) return setErrorMsg('Aggiunta della serie non riuscita: ' + error.message);
-    setErrorMsg(null);
+    markSaved();
     await reload();
   }
 
@@ -128,7 +229,7 @@ export function ProgramBuilder({ initialProgram }: { initialProgram: ProgramData
     const { error } = await supabase.from('exercise_sets').update(patch).eq('id', id);
     setSaving(false);
     if (error) return setErrorMsg('Salvataggio della serie non riuscito: ' + error.message);
-    setErrorMsg(null);
+    markSaved();
     // Aggiorna anche lo stato locale: "+ serie" e "Copia nella settimana
     // successiva" devono leggere i valori appena modificati, non quelli vecchi.
     setProgram((prev) => ({
@@ -150,7 +251,7 @@ export function ProgramBuilder({ initialProgram }: { initialProgram: ProgramData
     if (!confirm('Rimuovere questo esercizio dalla sessione?')) return;
     const { error } = await supabase.from('workout_exercises').delete().eq('id', id);
     if (error) return setErrorMsg('Rimozione dell’esercizio non riuscita: ' + error.message);
-    setErrorMsg(null);
+    markSaved();
     await reload();
   }
 
@@ -158,7 +259,7 @@ export function ProgramBuilder({ initialProgram }: { initialProgram: ProgramData
     const { error } = await supabase.from('programs').update({ status: 'active' }).eq('id', program.id);
     // Non mostrare "Attivo" se l'update è fallito
     if (error) return setErrorMsg('Attivazione del programma non riuscita: ' + error.message);
-    setErrorMsg(null);
+    markSaved();
     setProgram({ ...program, status: 'active' });
     router.refresh();
   }
@@ -220,87 +321,294 @@ export function ProgramBuilder({ initialProgram }: { initialProgram: ProgramData
       }
     }
     setSaving(false);
-    setErrorMsg(null);
+    markSaved();
     await reload();
     setWeekIdx(weekIdx + 1);
   }
 
+  const workouts = [...(week?.program_workouts ?? [])].sort((a, b) => a.day_of_week - b.day_of_week);
+  const isLastWeek = weekIdx >= weeks.length - 1;
+
   return (
-    <div>
-      {/* Banner errore: mostrato quando una mutazione fallisce */}
+    <div className="space-y-5">
+      {/* ============ VETRO: la testata di comando, ancorata in alto ============ */}
+      <GlassBar className="z-30 rounded-lg px-3.5 py-3 lg:sticky lg:top-6 lg:px-5">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <Link
+              href="/allenamenti"
+              aria-label="Torna a tutti i programmi"
+              className={cn(iconOnGlass, 'h-11 w-11')}
+            >
+              <ArrowLeft size={18} aria-hidden />
+            </Link>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2.5">
+                <h1 className="truncate text-[19px] font-bold tracking-[-0.01em] text-white">
+                  {program.name}
+                </h1>
+                <Badge color={program.status === 'active' ? 'success' : 'warning'}>
+                  {program.status === 'active' ? 'Attivo' : 'Bozza'}
+                </Badge>
+              </div>
+              <p className="mt-0.5 truncate text-[13px] text-text-secondary">
+                <span className="tnum">
+                  {PROGRAM_GOALS[program.goal as keyof typeof PROGRAM_GOALS] ?? program.goal} ·{' '}
+                  {program.duration_weeks} settimane
+                </span>
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Stato della scrittura: menta se salvato, rosa se rotto */}
+            <span role="status" aria-live="polite" className="px-1 text-[13px] font-bold">
+              {saving ? (
+                <span className="inline-flex items-center gap-1.5 text-text-secondary">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-accent" aria-hidden />
+                  Salvataggio…
+                </span>
+              ) : errorMsg ? (
+                <span className="inline-flex items-center gap-1.5 text-rose">
+                  <AlertCircle size={14} aria-hidden />
+                  Non salvato
+                </span>
+              ) : savedAt ? (
+                <span className="inline-flex items-center gap-1.5 text-mint">
+                  <Check size={14} aria-hidden />
+                  Salvato
+                </span>
+              ) : null}
+            </span>
+
+            <button
+              onClick={copyWeekToNext}
+              className={buttonOnGlass}
+              disabled={saving || isLastWeek || weeks.length === 0}
+              title={isLastWeek ? 'Sei sull’ultima settimana del programma' : undefined}
+            >
+              <Copy size={16} aria-hidden />
+              <span className="hidden sm:inline">Duplica settimana</span>
+              <span className="sm:hidden">Duplica</span>
+            </button>
+
+            {/* Nuova sessione: foglio di controlli sul livello vetro */}
+            <div className="relative">
+              <button
+                ref={addTriggerRef}
+                type="button"
+                onClick={() => setAddOpen(!addOpen)}
+                aria-haspopup="dialog"
+                aria-expanded={addOpen}
+                className={cn(buttonPrimary, 'min-h-[44px] px-4 py-0')}
+              >
+                <Plus size={17} aria-hidden />
+                Sessione
+              </button>
+
+              {addOpen && (
+                <form
+                  onSubmit={addWorkout}
+                  role="dialog"
+                  aria-label="Aggiungi una sessione alla settimana"
+                  className="glass-chrome absolute right-0 z-40 mt-2 w-[20rem] max-w-[calc(100vw_-_2.5rem)] rounded-lg p-4 text-left"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <p className={columnLabel}>
+                      Nuova sessione · settimana {week?.week_number ?? '—'}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAddOpen(false);
+                        addTriggerRef.current?.focus();
+                      }}
+                      aria-label="Chiudi il pannello"
+                      className="press -mr-1.5 -mt-1.5 grid h-9 w-9 shrink-0 place-items-center rounded-full text-text-secondary transition hover:text-white"
+                    >
+                      <X size={16} aria-hidden />
+                    </button>
+                  </div>
+
+                  <label htmlFor="workout-name" className={cn(columnLabel, 'mt-3.5 block')}>
+                    Nome della sessione
+                  </label>
+                  <input
+                    id="workout-name"
+                    required
+                    autoFocus
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    className={cn(inputClass, 'mt-2')}
+                    placeholder="Es. Pull Lower"
+                  />
+
+                  <label htmlFor="workout-day" className={cn(columnLabel, 'mt-3.5 block')}>
+                    Giorno della settimana
+                  </label>
+                  <select
+                    id="workout-day"
+                    value={newDay}
+                    onChange={(e) => setNewDay(Number(e.target.value))}
+                    className={cn(inputClass, 'mt-2')}
+                  >
+                    {DAYS_OF_WEEK.map((d, i) => (
+                      <option key={d} value={i + 1}>
+                        {d}
+                      </option>
+                    ))}
+                  </select>
+
+                  <button type="submit" className={cn(buttonPrimary, 'mt-4 min-h-[44px] w-full')}>
+                    Aggiungi alla settimana
+                  </button>
+                </form>
+              )}
+            </div>
+
+            {program.status !== 'active' && (
+              <button onClick={activateProgram} className={buttonConfirm}>
+                <Check size={17} aria-hidden />
+                <span className="hidden sm:inline">Attiva programma</span>
+                <span className="sm:hidden">Attiva</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Settimane: pillole selezionabili, scorrono da sole senza muovere la pagina */}
+        {weeks.length > 0 && (
+          <div className="mt-3 flex items-center gap-2 border-t border-white/10 pt-3">
+            <span className={cn(columnLabel, 'hidden shrink-0 pr-1 lg:block')} aria-hidden>
+              Settimane
+            </span>
+            <button
+              className={cn(iconOnGlass, 'h-10 w-10')}
+              onClick={() => setWeekIdx(Math.max(0, weekIdx - 1))}
+              disabled={weekIdx === 0}
+              aria-label="Settimana precedente"
+            >
+              <ChevronLeft size={17} aria-hidden />
+            </button>
+
+            <div className="min-w-0 flex-1 overflow-x-auto">
+              <div className="flex gap-1.5" role="group" aria-label="Settimane del programma">
+                {weeks.map((w, i) => {
+                  const sessions = w.program_workouts.length;
+                  const selected = i === weekIdx;
+                  return (
+                    <button
+                      key={w.id}
+                      onClick={() => setWeekIdx(i)}
+                      aria-pressed={selected}
+                      aria-label={`Settimana ${w.week_number}${w.label ? ` · ${w.label}` : ''} · ${sessions} ${sessions === 1 ? 'sessione' : 'sessioni'}`}
+                      title={w.label ?? undefined}
+                      className={cn(
+                        'press flex h-10 shrink-0 items-center gap-2 rounded-full pl-3.5 pr-2 text-[15px] font-bold transition',
+                        selected
+                          ? 'bg-accent text-white'
+                          : 'border border-white/10 bg-white/[0.07] text-text-secondary hover:bg-white/[0.14] hover:text-white'
+                      )}
+                    >
+                      <span className="tnum">S{w.week_number}</span>
+                      <span
+                        className={cn(
+                          'tnum grid h-6 min-w-[1.5rem] place-items-center rounded-full px-1 text-[12px] font-bold',
+                          selected
+                            ? 'bg-white/20 text-white'
+                            : sessions > 0
+                              ? 'bg-mint/15 text-mint'
+                              : 'bg-white/[0.06] text-text-tertiary'
+                        )}
+                        aria-hidden
+                      >
+                        {sessions}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <button
+              className={cn(iconOnGlass, 'h-10 w-10')}
+              onClick={() => setWeekIdx(Math.min(weeks.length - 1, weekIdx + 1))}
+              disabled={weekIdx >= weeks.length - 1}
+              aria-label="Settimana successiva"
+            >
+              <ChevronRight size={17} aria-hidden />
+            </button>
+          </div>
+        )}
+      </GlassBar>
+
+      {/* Banner errore: FERRO opaco, così il messaggio resta leggibile */}
       {errorMsg && (
-        <div className="mb-4 px-4 py-2.5 rounded-xl border border-danger/40 bg-danger/10 text-danger text-sm">
-          {errorMsg}
+        <div role="alert" className="iron flex items-start gap-3 rounded-md px-4 py-3.5 rise">
+          <AlertCircle size={18} className="mt-0.5 shrink-0 text-rose" aria-hidden />
+          <div className="min-w-0">
+            <p className={cn(columnLabel, 'text-rose')}>Operazione non riuscita</p>
+            <p className="mt-1 text-[15px] leading-snug text-white">{errorMsg}</p>
+          </div>
+          <button
+            onClick={() => setErrorMsg(null)}
+            aria-label="Chiudi l’avviso"
+            className="press ml-auto -mr-1 -mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-full text-text-secondary transition hover:text-white"
+          >
+            <X size={16} aria-hidden />
+          </button>
         </div>
       )}
-
-      {/* Header */}
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-3">
-            {program.name}
-            <Badge color={program.status === 'active' ? 'success' : 'default'}>
-              {program.status === 'active' ? 'Attivo' : 'Bozza'}
-            </Badge>
-          </h1>
-          <p className="text-text-secondary text-sm mt-1">
-            {PROGRAM_GOALS[program.goal as keyof typeof PROGRAM_GOALS] ?? program.goal} ·{' '}
-            {program.duration_weeks} settimane {saving && '· salvataggio…'}
-          </p>
-        </div>
-        {program.status !== 'active' && (
-          <button onClick={activateProgram} className={buttonPrimary}>
-            ✓ Attiva programma
-          </button>
-        )}
-      </div>
-
-      {/* Selettore settimana */}
-      <div className="flex items-center gap-2 mb-5">
-        <button
-          className={buttonSecondary + ' !px-2.5'}
-          onClick={() => setWeekIdx(Math.max(0, weekIdx - 1))}
-          disabled={weekIdx === 0}
-        >
-          <ChevronLeft size={16} />
-        </button>
-        <span className="text-sm font-medium px-2">
-          Settimana {week?.week_number} di {weeks.length}
-        </span>
-        <button
-          className={buttonSecondary + ' !px-2.5'}
-          onClick={() => setWeekIdx(Math.min(weeks.length - 1, weekIdx + 1))}
-          disabled={weekIdx >= weeks.length - 1}
-        >
-          <ChevronRight size={16} />
-        </button>
-        <button onClick={copyWeekToNext} className={buttonSecondary + ' ml-2'} disabled={saving}>
-          ⧉ Copia nella settimana successiva
-        </button>
-        <button onClick={addWorkout} className={buttonPrimary + ' ml-auto'}>
-          <Plus size={14} className="inline -mt-0.5" /> Aggiungi sessione
-        </button>
-      </div>
 
       {/* Riepilogo volume settimana */}
       {week && week.program_workouts.length > 0 && <VolumeSummary week={week} />}
 
       {/* Sessioni della settimana */}
-      {week?.program_workouts.length === 0 ? (
-        <Card className="text-center py-12 text-text-secondary text-sm">
-          Nessuna sessione in questa settimana. Aggiungine una con il bottone qui sopra.
+      {weeks.length === 0 ? (
+        <Card className="rise py-14 text-center">
+          <p className="text-[17px] font-bold text-white">Questo programma non ha settimane</p>
+          <p className="mx-auto mt-2 max-w-md text-[15px] leading-relaxed text-text-secondary">
+            Ricrea la scheda dalla lista programmi: le settimane vuote vengono generate alla
+            creazione.
+          </p>
+        </Card>
+      ) : workouts.length === 0 ? (
+        <Card className="rise py-14 text-center">
+          <p className="text-[17px] font-bold text-white">
+            Settimana {week?.week_number} ancora vuota
+          </p>
+          <p className="mx-auto mt-2 max-w-md text-[15px] leading-relaxed text-text-secondary">
+            Aggiungi la prima sessione con «Sessione» qui sopra, oppure duplica la settimana
+            precedente e ritocca i carichi.
+          </p>
         </Card>
       ) : (
-        <div className="space-y-5">
-          {[...(week?.program_workouts ?? [])]
-            .sort((a, b) => a.day_of_week - b.day_of_week)
-            .map((w) => (
-              <Card key={w.id}>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold">
-                    {DAYS_OF_WEEK[w.day_of_week - 1]} — {w.name}
-                  </h3>
-                  <div className="flex gap-2">
+        <div className="space-y-4">
+          {workouts.map((w, wi) => {
+            const exercises = [...w.workout_exercises].sort((a, b) => a.sort_order - b.sort_order);
+            const setCount = exercises.reduce((n, e) => n + e.exercise_sets.length, 0);
+            return (
+              <Card
+                key={w.id}
+                className={cn('overflow-hidden p-0 rise', wi < 5 && `rise-${wi + 1}`)}
+              >
+                {/* Testata della giornata */}
+                <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className={cn(columnLabel, 'shrink-0 rounded-full bg-raised px-3 py-1.5')}>
+                      {DAYS_OF_WEEK[w.day_of_week - 1] ?? `Giorno ${w.day_of_week}`}
+                    </span>
+                    <div className="min-w-0">
+                      <h2 className="truncate text-[19px] font-bold tracking-[-0.01em] text-white">
+                        {w.name}
+                      </h2>
+                      <p className="tnum mt-0.5 text-[13px] text-text-secondary">
+                        {exercises.length} {exercises.length === 1 ? 'esercizio' : 'esercizi'} ·{' '}
+                        {setCount} {setCount === 1 ? 'serie' : 'serie'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1.5">
                     <ExercisePicker
                       programWorkoutId={w.id}
                       nextSortOrder={
@@ -310,106 +618,205 @@ export function ProgramBuilder({ initialProgram }: { initialProgram: ProgramData
                     />
                     <button
                       onClick={() => deleteWorkout(w.id)}
-                      className="text-text-secondary hover:text-danger transition p-1.5"
+                      className="press grid h-11 w-11 place-items-center rounded-full text-text-secondary transition hover:bg-raised hover:text-rose"
+                      aria-label={`Elimina la sessione ${w.name}`}
                       title="Elimina sessione"
                     >
-                      <Trash2 size={16} />
+                      <Trash2 size={17} aria-hidden />
                     </button>
                   </div>
                 </div>
 
-                {[...w.workout_exercises]
-                  .sort((a, b) => a.sort_order - b.sort_order)
-                  .map((wex, i) => (
-                    <div key={wex.id} className="border-t border-border py-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <span className="w-6 h-6 rounded-full bg-accent/15 text-accent text-xs font-bold flex items-center justify-center">
-                            {i + 1}
-                          </span>
-                          <span className="font-medium">{wex.exercise.name}</span>
-                          <span className="text-xs text-text-secondary">
-                            {wex.exercise.muscle_group}
-                            {wex.exercise.equipment ? ` · ${wex.exercise.equipment}` : ''}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => addSet(wex)}
-                            className="text-xs text-accent hover:underline"
-                          >
-                            + serie
-                          </button>
-                          <button
-                            onClick={() => deleteExercise(wex.id)}
-                            className="text-text-secondary hover:text-danger transition p-1"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </div>
+                {exercises.length === 0 ? (
+                  <p className="border-t border-line/60 px-6 py-8 text-center text-[15px] text-text-secondary">
+                    Sessione vuota: aggiungi il primo esercizio dalla libreria con «Esercizio».
+                  </p>
+                ) : (
+                  <ul>
+                    {exercises.map((wex, i) => {
+                      const summary = setsSummary(wex.exercise_sets);
+                      return (
+                        <li
+                          key={wex.id}
+                          className="border-t border-line/60 px-4 py-4 transition hover:bg-white/[0.015] sm:px-6"
+                        >
+                          {/* Riga esercizio: maniglia, nome, prescrizione, comandi */}
+                          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2.5">
+                            <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                              <span className="flex shrink-0 items-center gap-1" aria-hidden>
+                                <GripVertical size={16} className="text-text-tertiary/70" />
+                                <span className="tnum grid h-8 w-8 place-items-center rounded-full bg-raised text-[13px] font-bold text-white">
+                                  {i + 1}
+                                </span>
+                              </span>
+                              <div className="min-w-0">
+                                <p className="truncate text-[17px] font-bold text-white">
+                                  {wex.exercise.name}
+                                </p>
+                                <p className="mt-0.5 truncate text-[13px] capitalize text-text-secondary">
+                                  {wex.exercise.muscle_group}
+                                  {wex.exercise.equipment ? ` · ${wex.exercise.equipment}` : ''}
+                                </p>
+                              </div>
+                            </div>
 
-                      {/* Tabella serie prescritte */}
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="text-text-secondary text-xs text-left">
-                            <th className="py-1 font-medium w-12">SET</th>
-                            <th className="py-1 font-medium">TIPO</th>
-                            <th className="py-1 font-medium">REPS MIN</th>
-                            <th className="py-1 font-medium">REPS MAX</th>
-                            <th className="py-1 font-medium">RPE</th>
-                            <th className="py-1 font-medium">RECUPERO (s)</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {[...wex.exercise_sets]
-                            .sort((a, b) => a.set_number - b.set_number)
-                            .map((s) => (
-                              <tr key={s.id}>
-                                <td className="py-1 text-text-secondary">{s.set_number}</td>
-                                <td className="py-1 pr-2">
-                                  <select
-                                    defaultValue={s.set_type}
-                                    onChange={(e) => updateSet(s.id, { set_type: e.target.value })}
-                                    className={inputClass + ' !py-1'}
-                                  >
-                                    {Object.entries(SET_TYPES).map(([k, v]) => (
-                                      <option key={k} value={k}>
-                                        {v}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </td>
-                                {(
-                                  [
-                                    ['reps_min', s.reps_min],
-                                    ['reps_max', s.reps_max],
-                                    ['target_rpe', s.target_rpe],
-                                    ['rest_seconds', s.rest_seconds],
-                                  ] as const
-                                ).map(([field, value]) => (
-                                  <td key={field} className="py-1 pr-2">
-                                    <input
-                                      type="number"
-                                      step={field === 'target_rpe' ? 0.5 : 1}
-                                      defaultValue={value ?? ''}
-                                      onBlur={(e) =>
-                                        updateSet(s.id, {
-                                          [field]: e.target.value === '' ? null : Number(e.target.value),
-                                        } as Partial<SetRow>)
-                                      }
-                                      className={inputClass + ' !py-1 w-20'}
-                                    />
-                                  </td>
+                            <div className="flex shrink-0 items-center gap-1">
+                              {summary && (
+                                <span className="mr-1 hidden items-center gap-2 rounded-full bg-raised px-3 py-1.5 sm:inline-flex">
+                                  <span className="tnum text-[13px] font-bold text-white">
+                                    {summary.scheme}
+                                  </span>
+                                  {summary.mixed ? (
+                                    <span className="text-[12px] font-semibold text-text-secondary">
+                                      schema misto
+                                    </span>
+                                  ) : (
+                                    summary.rpe != null && (
+                                      <span
+                                        className={cn(
+                                          'tnum text-[12px] font-bold',
+                                          summary.rpe >= 9 ? 'text-amber' : 'text-text-secondary'
+                                        )}
+                                      >
+                                        RPE {summary.rpe}
+                                      </span>
+                                    )
+                                  )}
+                                  {summary.rest != null && (
+                                    <span className="tnum hidden text-[12px] font-semibold text-text-tertiary lg:inline">
+                                      rec {summary.rest}s
+                                    </span>
+                                  )}
+                                </span>
+                              )}
+                              <button
+                                onClick={() => addSet(wex)}
+                                className="press inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-3 text-[15px] font-semibold text-accent transition hover:bg-raised"
+                                aria-label={`Aggiungi una serie a ${wex.exercise.name}`}
+                              >
+                                <Plus size={16} aria-hidden />
+                                Serie
+                              </button>
+                              <button
+                                onClick={() => deleteExercise(wex.id)}
+                                className="press grid h-11 w-11 place-items-center rounded-full text-text-secondary transition hover:bg-raised hover:text-rose"
+                                aria-label={`Rimuovi ${wex.exercise.name} dalla sessione`}
+                                title="Rimuovi esercizio"
+                              >
+                                <Trash2 size={16} aria-hidden />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Serie prescritte: griglia tabulare in un incasso più scuro */}
+                          {wex.exercise_sets.length === 0 ? (
+                            <p className="mt-3 rounded-md bg-background px-4 py-3 text-[13px] text-text-secondary">
+                              Nessuna serie prescritta: premi «Serie» per aggiungerne una.
+                            </p>
+                          ) : (
+                            <div className="mt-3 rounded-md bg-background p-2.5">
+                              <div
+                                className={cn(
+                                  'hidden gap-2 px-1 pb-2 md:grid md:items-center',
+                                  setsGrid
+                                )}
+                              >
+                                {SET_COLUMNS.map((h, ci) => (
+                                  <span key={h} className={cn(columnLabel, ci > 0 && 'text-center')}>
+                                    {h}
+                                  </span>
                                 ))}
-                              </tr>
-                            ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ))}
+                              </div>
+
+                              <ul className="space-y-2 md:space-y-1">
+                                {[...wex.exercise_sets]
+                                  .sort((a, b) => a.set_number - b.set_number)
+                                  .map((s) => (
+                                    <li
+                                      key={s.id}
+                                      className={cn(
+                                        'grid grid-cols-2 gap-2 rounded-sm bg-white/[0.03] p-2.5 transition md:items-center md:rounded-xs md:bg-transparent md:p-1 md:hover:bg-white/[0.03]',
+                                        setsGrid
+                                      )}
+                                    >
+                                      <div className="col-span-2 flex items-center gap-2 md:col-span-1">
+                                        <span className="tnum grid h-8 min-w-[2rem] place-items-center rounded-full bg-raised px-2 text-[13px] font-bold text-white md:h-10">
+                                          {s.set_number}
+                                        </span>
+                                        <span className={cn(columnLabel, 'md:hidden')}>Serie</span>
+                                      </div>
+
+                                      <label className="col-span-2 flex flex-col gap-1 md:contents">
+                                        <span className={cn(columnLabel, 'md:hidden')}>Tipo</span>
+                                        <select
+                                          defaultValue={s.set_type}
+                                          onChange={(e) =>
+                                            updateSet(s.id, { set_type: e.target.value })
+                                          }
+                                          aria-label={`Serie ${s.set_number}: tipo`}
+                                          className={cellSelect}
+                                        >
+                                          {Object.entries(SET_TYPES).map(([k, v]) => (
+                                            <option key={k} value={k}>
+                                              {v}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </label>
+
+                                      {(
+                                        [
+                                          ['reps_min', s.reps_min, 'Reps min'],
+                                          ['reps_max', s.reps_max, 'Reps max'],
+                                          ['target_rpe', s.target_rpe, 'RPE'],
+                                          ['rest_seconds', s.rest_seconds, 'Rec. (s)'],
+                                        ] as const
+                                      ).map(([field, value, label]) => (
+                                        <label
+                                          key={field}
+                                          className="flex flex-col gap-1 md:contents"
+                                        >
+                                          <span className={cn(columnLabel, 'md:hidden')}>
+                                            {label}
+                                          </span>
+                                          <input
+                                            type="number"
+                                            inputMode="decimal"
+                                            step={field === 'target_rpe' ? 0.5 : 1}
+                                            defaultValue={value ?? ''}
+                                            aria-label={`Serie ${s.set_number}: ${label}`}
+                                            onBlur={(e) =>
+                                              updateSet(s.id, {
+                                                [field]:
+                                                  e.target.value === ''
+                                                    ? null
+                                                    : Number(e.target.value),
+                                              } as Partial<SetRow>)
+                                            }
+                                            className={cn(
+                                              cellField,
+                                              /* L'ambra è lo sforzo: un RPE da 9 in su si vede subito. */
+                                              field === 'target_rpe' &&
+                                                s.target_rpe != null &&
+                                                s.target_rpe >= 9 &&
+                                                'text-amber'
+                                            )}
+                                          />
+                                        </label>
+                                      ))}
+                                    </li>
+                                  ))}
+                              </ul>
+                            </div>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
               </Card>
-            ))}
+            );
+          })}
         </div>
       )}
     </div>
@@ -425,12 +832,14 @@ function VolumeSummary({ week }: { week: WeekRow }) {
   const indirect: Record<string, number> = {};
   const ppl: Record<string, number> = { push: 0, pull: 0, legs: 0, other: 0 };
   let totalSets = 0;
+  let totalExercises = 0;
 
   for (const w of week.program_workouts) {
     for (const wex of w.workout_exercises) {
       const sets = wex.exercise_sets.length;
       if (sets === 0) continue;
       totalSets += sets;
+      totalExercises += 1;
       const mg = wex.exercise.muscle_group;
       direct[mg] = (direct[mg] ?? 0) + sets;
       for (const sec of wex.exercise.secondary_muscles ?? []) {
@@ -445,63 +854,132 @@ function VolumeSummary({ week }: { week: WeekRow }) {
   );
   const pplTotal = ppl.push + ppl.pull + ppl.legs;
   const pct = (n: number) => (pplTotal > 0 ? Math.round((n / pplTotal) * 100) : 0);
+  /* Scala delle barrette: il gruppo più allenato riempie la riga. */
+  const maxLoad = muscles.reduce(
+    (max, m) => Math.max(max, (direct[m] ?? 0) + (indirect[m] ?? 0)),
+    0
+  );
 
   if (totalSets === 0) return null;
 
-  return (
-    <Card className="mb-5">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-sm">
-          RIEPILOGO VOLUME{' '}
-          <span className="text-text-secondary font-normal">(settimana · per gruppo muscolare)</span>
-        </h3>
-        <span className="text-sm">
-          Totale: <b>{totalSets} serie</b>
-        </span>
-      </div>
+  /* Range consigliati in ipertrofia: fuori range è un avviso, non un errore. */
+  const balance = [
+    { key: 'push', label: 'Spinta', sets: ppl.push, min: 40, max: 55, shade: 'bg-white/85' },
+    { key: 'pull', label: 'Trazione', sets: ppl.pull, min: 30, max: 40, shade: 'bg-white/50' },
+    { key: 'legs', label: 'Gambe', sets: ppl.legs, min: 15, max: 25, shade: 'bg-white/25' },
+  ].map((b) => {
+    const p = pct(b.sets);
+    return { ...b, p, off: pplTotal > 0 && (p < b.min || p > b.max) };
+  });
 
-      <div className="flex flex-wrap gap-3 mb-5">
-        {muscles.map((m) => (
-          <div key={m} className="text-center">
-            <div className="flex gap-1 justify-center">
-              <span className="px-2 py-0.5 rounded-md bg-accent/20 text-accent text-xs font-bold tabular-nums">
-                {direct[m] ?? 0}
-              </span>
-              {(indirect[m] ?? 0) > 0 && (
-                <span className="px-2 py-0.5 rounded-md bg-success/15 text-success text-xs font-bold tabular-nums">
-                  {indirect[m]}
-                </span>
-              )}
-            </div>
-            <div className="text-xs text-text-secondary mt-1 capitalize">{m}</div>
+  return (
+    /* IL FARO: è il numero che dice al coach se la settimana regge. */
+    <Card beacon className="rise rise-2">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className={columnLabel}>
+            Volume · settimana {week.week_number}
+            {week.label ? ` · ${week.label}` : ''}
+          </h2>
+          <p className="tnum mt-1.5 text-[15px] text-text-secondary">
+            {week.program_workouts.length}{' '}
+            {week.program_workouts.length === 1 ? 'sessione' : 'sessioni'} · {totalExercises}{' '}
+            {totalExercises === 1 ? 'esercizio' : 'esercizi'} · serie per gruppo muscolare, dirette e
+            indirette.
+          </p>
+        </div>
+        <div className="text-right">
+          <div className="font-metric tnum text-[44px] font-extrabold leading-none text-amber">
+            {totalSets}
           </div>
-        ))}
-        <div className="text-xs text-text-secondary self-end ml-auto">
-          <span className="text-accent">■</span> dirette · <span className="text-success">■</span>{' '}
-          indirette
+          <div className={cn(columnLabel, 'mt-1.5')}>serie totali</div>
         </div>
       </div>
 
-      <div className="flex items-center gap-4 text-sm border-t border-border pt-4">
-        <span className="text-text-secondary text-xs uppercase tracking-wide">
-          Bilanciamento
-        </span>
-        {(
-          [
-            ['Push', ppl.push, 'bg-danger'],
-            ['Pull', ppl.pull, 'bg-accent'],
-            ['Gambe', ppl.legs, 'bg-success'],
-          ] as const
-        ).map(([label, sets, color]) => (
-          <span key={label} className="flex items-center gap-1.5">
-            <span className={`w-2.5 h-2.5 rounded-sm ${color}`} />
-            {label} <b className="tabular-nums">{pct(sets)}%</b>
-            <span className="text-text-secondary text-xs">({sets})</span>
-          </span>
-        ))}
-        <span className="text-xs text-text-secondary ml-auto">
-          Range ipertrofia consigliato: Push 40-55% · Pull 30-40% · Gambe 15-25%
-        </span>
+      <ul className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+        {muscles.map((m) => {
+          const d = direct[m] ?? 0;
+          const ind = indirect[m] ?? 0;
+          const dw = maxLoad > 0 ? (d / maxLoad) * 100 : 0;
+          const iw = maxLoad > 0 ? (ind / maxLoad) * 100 : 0;
+          return (
+            <li key={m} className="rounded-md bg-raised px-3.5 py-3">
+              <div className="flex items-baseline gap-1.5">
+                <span className="font-metric tnum text-[24px] font-extrabold leading-none text-white">
+                  {d}
+                </span>
+                {ind > 0 && (
+                  <span className="tnum text-[13px] font-semibold text-text-secondary">
+                    +{ind} ind.
+                  </span>
+                )}
+              </div>
+              <div className="mt-2 flex h-1.5 overflow-hidden rounded-full bg-white/[0.07]" aria-hidden>
+                <span className="bg-white/80" style={{ width: `${dw}%` }} />
+                <span className="bg-white/25" style={{ width: `${iw}%` }} />
+              </div>
+              <div className="mt-1.5 truncate text-[13px] capitalize text-text-secondary">{m}</div>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="mt-2.5 text-[13px] text-text-tertiary">
+        Il numero grande è il volume diretto; «ind.» sono le serie che il gruppo raccoglie come
+        muscolo secondario.
+      </p>
+
+      <div className="mt-5 border-t border-line/60 pt-4">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h3 className={columnLabel}>Bilanciamento spinta · trazione · gambe</h3>
+          <p className="tnum text-[13px] text-text-secondary">
+            Range ipertrofia: 40-55% · 30-40% · 15-25%
+          </p>
+        </div>
+
+        {pplTotal > 0 ? (
+          <>
+            <div className="mt-3 flex h-2.5 overflow-hidden rounded-full bg-raised" aria-hidden>
+              {balance.map((b) => (
+                <span key={b.key} className={b.shade} style={{ width: `${b.p}%` }} />
+              ))}
+            </div>
+            <ul className="mt-3 grid gap-2 sm:grid-cols-3">
+              {balance.map((b) => (
+                <li key={b.key} className="rounded-md bg-raised px-3.5 py-3">
+                  <div className="flex items-center gap-2.5">
+                    <span className={cn('h-2.5 w-2.5 shrink-0 rounded-sm', b.shade)} aria-hidden />
+                    <span className="text-[15px] font-semibold text-white">{b.label}</span>
+                    <span
+                      className={cn(
+                        'tnum ml-auto text-[17px] font-bold',
+                        b.off ? 'text-amber' : 'text-white'
+                      )}
+                    >
+                      {b.p}%
+                    </span>
+                    <span className="tnum text-[13px] text-text-secondary">({b.sets})</span>
+                  </div>
+                  <p className="tnum mt-1.5 flex items-center gap-1.5 pl-5 text-[12px] font-semibold text-text-tertiary">
+                    {b.off && (
+                      <AlertTriangle
+                        size={13}
+                        className="shrink-0 text-amber"
+                        aria-label="Fuori dal range consigliato"
+                      />
+                    )}
+                    <span className={cn(b.off && 'text-amber')}>
+                      {b.off ? 'fuori range' : 'in range'} {b.min}-{b.max}%
+                    </span>
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <p className="mt-3 text-[13px] text-text-secondary">
+            Nessun esercizio classificato come spinta, trazione o gambe in questa settimana.
+          </p>
+        )}
       </div>
     </Card>
   );
@@ -526,6 +1004,20 @@ function ExercisePicker({
   >([]);
   // Id incrementale dell'ultima ricerca: le risposte arrivate fuori ordine vengono ignorate
   const searchReqId = useRef(0);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  // Esc chiude il foglio e riporta il fuoco sul comando che l'ha aperto.
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
 
   async function search(q: string) {
     setQuery(q);
@@ -578,40 +1070,79 @@ function ExercisePicker({
 
   return (
     <div className="relative">
-      <button onClick={() => setOpen(!open)} className={buttonSecondary + ' !py-1.5 text-xs'}>
-        <Plus size={12} className="inline -mt-0.5" /> Esercizio
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => setOpen(!open)}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        className="press inline-flex min-h-[44px] items-center gap-1.5 rounded-full bg-raised px-4 text-[15px] font-semibold text-white transition hover:bg-[#252E3E]"
+      >
+        <Plus size={16} aria-hidden />
+        Esercizio
       </button>
+
       {open && (
-        <div className="absolute right-0 mt-2 w-80 glass rounded-xl p-3 shadow-xl z-20">
+        <div
+          role="dialog"
+          aria-label="Cerca un esercizio nella libreria"
+          className="glass-chrome absolute right-0 z-30 mt-2 w-[22rem] max-w-[calc(100vw_-_2.5rem)] rounded-lg p-3.5"
+        >
           <div className="relative">
-            <Search size={14} className="absolute left-2.5 top-2.5 text-text-secondary" />
+            <Search
+              size={16}
+              className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary"
+              aria-hidden
+            />
             <input
               autoFocus
               value={query}
               onChange={(e) => search(e.target.value)}
-              className={inputClass + ' pl-8'}
+              className={cn(inputClass, 'pl-10')}
               placeholder="Cerca esercizio… (min 2 lettere)"
+              aria-label="Cerca esercizio nella libreria"
             />
           </div>
-          {errorMsg && <p className="mt-2 px-2.5 text-xs text-danger">{errorMsg}</p>}
-          <ul className="mt-2 max-h-64 overflow-y-auto">
+
+          {errorMsg && (
+            <p
+              role="alert"
+              className="mt-2.5 flex items-start gap-2 rounded-xs bg-raised px-3 py-2.5 text-[13px] leading-snug text-rose"
+            >
+              <AlertCircle size={15} className="mt-0.5 shrink-0" aria-hidden />
+              {errorMsg}
+            </p>
+          )}
+
+          <ul className="mt-2.5 max-h-72 space-y-1.5 overflow-y-auto">
             {results.map((r) => (
               <li key={r.id}>
                 <button
                   onClick={() => add(r.id)}
-                  className="w-full text-left px-2.5 py-2 rounded-lg hover:bg-card-hover text-sm"
+                  className="press flex min-h-[48px] w-full items-center gap-3 rounded-xs bg-raised px-3.5 py-2.5 text-left transition hover:bg-[#252E3E]"
                 >
-                  {r.name}
-                  <span className="text-xs text-text-secondary block">
-                    {r.muscle_group}
-                    {r.equipment ? ` · ${r.equipment}` : ''}
+                  <Plus size={15} className="shrink-0 text-accent" aria-hidden />
+                  <span className="min-w-0">
+                    <span className="block truncate text-[15px] font-semibold text-white">
+                      {r.name}
+                    </span>
+                    <span className="mt-0.5 block truncate text-[13px] capitalize text-text-secondary">
+                      {r.muscle_group}
+                      {r.equipment ? ` · ${r.equipment}` : ''}
+                    </span>
                   </span>
                 </button>
               </li>
             ))}
             {query.length >= 2 && results.length === 0 && (
-              <li className="text-xs text-text-secondary px-2.5 py-2">
+              <li className="rounded-xs bg-raised px-3.5 py-3 text-[13px] leading-snug text-text-secondary">
                 Nessun risultato. Hai caricato la libreria esercizi? (supabase/seed)
+              </li>
+            )}
+            {query.length < 2 && (
+              <li className="rounded-xs bg-raised px-3.5 py-3 text-[13px] leading-snug text-text-secondary">
+                Scrivi almeno due lettere: l’esercizio entra con 3 serie da 8-10 reps @ RPE 8, poi
+                le ritocchi.
               </li>
             )}
           </ul>

@@ -1,21 +1,19 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
-import { Badge } from '@/components/ui';
-import { Sparkline } from '@/components/sparkline';
-import { fullName, formatDate } from '@/lib/utils';
+import { Badge, Card, KpiCard, buttonGhost, buttonSecondary } from '@/components/ui';
+import { cn, fullName, formatDate } from '@/lib/utils';
 import { QuickNotes } from './quick-notes';
 import {
-  Activity,
   AlertTriangle,
   ArrowUpRight,
-  BarChart3,
+  CheckCircle2,
+  ChevronRight,
   ClipboardCheck,
   Dumbbell,
   MessageSquare,
   Plus,
   Search,
   ShieldCheck,
-  Target,
   TrendingUp,
   Users,
   Utensils,
@@ -58,6 +56,18 @@ type CheckinRow = {
   priority: 'high' | 'medium' | 'low';
 };
 
+/** Una voce della coda di lavoro: cosa richiede attenzione oggi, e perché. */
+type TriageItem = {
+  key: string;
+  href: string;
+  title: string;
+  detail: string;
+  tag: string;
+  tone: 'rose' | 'amber';
+  icon: typeof Dumbbell;
+  rank: number;
+};
+
 const QUICK_ACTIONS: ActionItem[] = [
   { href: '/allenamenti', label: 'Crea programma', detail: 'Periodizzazione e blocchi', icon: Dumbbell },
   { href: '/nutrizione', label: 'Crea piano food', detail: 'Macro e progressioni', icon: Utensils },
@@ -65,6 +75,15 @@ const QUICK_ACTIONS: ActionItem[] = [
   { href: '/checkin', label: 'Valuta check', detail: 'Foto, misure, feedback', icon: ClipboardCheck },
   { href: '/clienti', label: 'Nuovo cliente', detail: 'Invito e intake iniziale', icon: Plus },
   { href: '/dashboard?demo=1', label: 'Demo prodotto', detail: 'Stessa app con dati demo', icon: ShieldCheck },
+];
+
+/** Ritardi scalati per l'ingresso della fascia KPI (il ritardo va sulla Card interna). */
+const KPI_DELAY = [
+  '[&>div]:[animation-delay:0ms]',
+  '[&>div]:[animation-delay:50ms]',
+  '[&>div]:[animation-delay:100ms]',
+  '[&>div]:[animation-delay:150ms]',
+  '[&>div]:[animation-delay:200ms]',
 ];
 
 const DEMO_CLIENTS: ClientRow[] = [
@@ -331,278 +350,593 @@ function DashboardControlRoom({
       ? Math.round(activeClients.reduce((sum, client) => sum + client.readiness, 0) / activeClients.length)
       : 0;
 
-  const kpis = [
-    { label: 'Clienti attivi', value: String(activeClients.length), detail: `${invitedClients} onboarding`, icon: Users },
-    { label: 'Workout 7 giorni', value: String(workouts7d), detail: 'Volume operativo', icon: Dumbbell },
-    { label: 'Aderenza media', value: `${adherence}%`, detail: demoMode ? '+7% vs mese scorso' : 'Ultimi clienti attivi', icon: Target },
-    { label: 'Readiness media', value: `${readiness}%`, detail: `${atRiskClients} alert da leggere`, icon: Activity },
-    { label: 'Retention', value: retention != null ? `${retention}%` : '-', detail: 'Attivi vs conclusi', icon: TrendingUp },
+  // Il passo settimanale: quanto si è mosso il parco clienti rispetto a 7 giorni fa.
+  const lastWeek = weeklyWorkouts[weeklyWorkouts.length - 1] ?? 0;
+  const prevWeek = weeklyWorkouts[weeklyWorkouts.length - 2] ?? 0;
+  const weekDelta = lastWeek - prevWeek;
+
+  const today = new Date().toLocaleDateString('it-IT', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
+  const todayLabel = today.charAt(0).toUpperCase() + today.slice(1);
+
+  const kpis: {
+    label: string;
+    value: string;
+    delta: string;
+    deltaGood: boolean;
+    tone: 'neutral' | 'accent' | 'mint' | 'amber' | 'rose';
+    href: string;
+  }[] = [
+    {
+      label: 'Clienti attivi',
+      value: String(activeClients.length),
+      delta: invitedClients > 0 ? `${invitedClients} in onboarding` : 'Roster stabile',
+      deltaGood: true,
+      tone: 'neutral',
+      href: '/clienti',
+    },
+    {
+      label: 'Silenti da 7 giorni',
+      value: String(atRiskClients),
+      delta: atRiskClients === 0 ? 'Si allenano tutti' : 'Da ricontattare oggi',
+      deltaGood: atRiskClients === 0,
+      tone: 'rose',
+      href: '/clienti',
+    },
+    {
+      label: 'Check da valutare',
+      value: String(checkins.length),
+      delta: checkins.length === 0 ? 'Nessun arretrato' : 'In attesa di risposta',
+      deltaGood: checkins.length === 0,
+      tone: 'amber',
+      href: '/checkin',
+    },
+    {
+      label: 'Messaggi non letti',
+      value: String(unreadMessages),
+      delta: unreadMessages === 0 ? 'Inbox pulita' : 'Rispondi ai clienti',
+      deltaGood: unreadMessages === 0,
+      tone: 'accent',
+      href: '/messaggi',
+    },
+    {
+      label: 'Workout completati',
+      value: String(workouts7d),
+      delta: `${weekDelta >= 0 ? '+' : ''}${weekDelta} vs settimana scorsa`,
+      deltaGood: weekDelta >= 0,
+      tone: 'mint',
+      href: '/allenamenti',
+    },
   ];
 
+  // La coda di oggi: prima chi si è fermato, poi le scadenze, poi i check.
+  const triage: TriageItem[] = [
+    ...clients
+      .filter((client) => client.status === 'risk')
+      .map((client): TriageItem => ({
+        key: `risk-${client.id}`,
+        href: demoMode ? '/demo' : `/clienti/${client.id}`,
+        title: client.name,
+        detail: `${client.lastWorkout} · aderenza ${client.adherence}%`,
+        tag: 'Silente',
+        tone: 'rose',
+        icon: AlertTriangle,
+        rank: 0,
+      })),
+    ...programs.map((program): TriageItem => ({
+      key: `prog-${program.id}`,
+      href: demoMode ? '/demo' : `/allenamenti/${program.id}`,
+      title: program.clientName,
+      detail: `${program.name} · ${
+        program.daysLeft === 0
+          ? 'finisce oggi'
+          : program.daysLeft === 1
+            ? 'finisce domani'
+            : `finisce tra ${program.daysLeft} giorni`
+      }`,
+      tag: program.daysLeft <= 2 ? 'Scheda da rinnovare' : 'In scadenza',
+      tone: program.daysLeft <= 2 ? 'rose' : 'amber',
+      icon: Dumbbell,
+      rank: program.daysLeft <= 2 ? 1 : 3,
+    })),
+    ...checkins.map((checkin): TriageItem => ({
+      key: `check-${checkin.id}`,
+      href: demoMode ? '/demo' : `/checkin/${checkin.id}`,
+      title: checkin.clientName,
+      detail: `Settimana del ${formatDate(checkin.weekStart)} · inviato ${checkin.submittedAt}`,
+      tag: checkin.priority === 'high' ? 'Check urgente' : 'Check da valutare',
+      tone: checkin.priority === 'high' ? 'rose' : 'amber',
+      icon: ClipboardCheck,
+      rank: checkin.priority === 'high' ? 1 : checkin.priority === 'medium' ? 2 : 4,
+    })),
+  ].sort((a, b) => a.rank - b.rank);
+
+  const triageTop = triage.slice(0, 6);
+
+  const trained = clients.filter((client) => client.status === 'active').length;
+  const silent = clients.filter((client) => client.status === 'risk').length;
+  const onboarding = clients.filter((client) => client.status === 'invited').length;
+
   return (
-    <div className="space-y-5">
-      <div className="flex flex-col gap-4 rounded-xl border border-white/10 bg-[#151920] p-5 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-text-secondary">
-            {demoMode ? 'Preview app integrata' : 'Elite coaching control room'}
+    <div className="space-y-6">
+      {/* ---------- Intestazione: chi sei, che giorno è, cosa cerchi ---------- */}
+      <header className="rise flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <p className="text-[12px] font-bold uppercase tracking-[0.06em] text-text-secondary">
+            {demoMode ? 'Modalità demo · dati di esempio' : todayLabel}
           </p>
-          <h1 className="mt-2 text-3xl font-black text-white">
+          <h1 className="mt-2 text-[34px] font-extrabold leading-[1.1] tracking-[-0.02em] text-white">
             Bentornato, {coachName}
           </h1>
-          <p className="mt-1 text-sm text-text-secondary">
+          <p className="mt-2 max-w-xl text-[15px] leading-relaxed text-text-secondary">
             {demoMode
-              ? 'Questa e la stessa app in modalita demo: menu identico, dati gia compilati e nessuna attesa dal database.'
-              : 'Priorita operative, performance clienti e prossime azioni in un unico quadro.'}
+              ? 'Stessa app, dati già compilati: nessuna attesa dal database, perfetta da mostrare in call.'
+              : 'Qui sotto trovi solo ciò che richiede una tua decisione oggi.'}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+
+        <div className="flex flex-wrap items-center gap-2.5">
           <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" size={16} />
+            <Search
+              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary"
+              size={17}
+              aria-hidden
+            />
             <input
-              className="h-10 w-64 rounded-full border border-white/10 bg-background px-9 text-sm outline-none transition focus:border-accent"
+              type="search"
+              aria-label="Cerca clienti o programmi"
               placeholder="Cerca clienti o programmi"
+              className="h-11 w-full rounded-full bg-raised pl-11 pr-4 text-[15px] text-white outline-none transition placeholder:text-text-tertiary focus:shadow-[0_0_0_4px_rgba(10,132,255,0.18)] sm:w-[276px]"
             />
           </div>
-          <Link
-            href={demoMode ? '/dashboard' : '/dashboard?demo=1'}
-            className="rounded-lg border border-white/10 px-4 py-2 text-sm font-bold text-celeste transition hover:bg-white/5"
-          >
-            {demoMode ? 'Dati reali' : 'Modalita demo'}
+          <Link href={demoMode ? '/dashboard' : '/dashboard?demo=1'} className={cn(buttonSecondary, 'h-11 py-0')}>
+            <ShieldCheck size={17} aria-hidden />
+            {demoMode ? 'Torna ai dati reali' : 'Modalità demo'}
           </Link>
         </div>
-      </div>
+      </header>
 
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
-        {kpis.map((kpi) => {
-          const Icon = kpi.icon;
-          return (
-            <Link
-              key={kpi.label}
-              href={kpi.label === 'Clienti attivi' ? '/clienti' : '/dashboard'}
-              className="rounded-xl border border-white/10 bg-[#151920] p-4 transition hover:border-accent/50 hover:bg-card-hover"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-[0.12em] text-text-secondary">
-                  {kpi.label}
-                </span>
-                <Icon className="text-celeste" size={18} />
-              </div>
-              <p className="mt-3 text-3xl font-black text-white">{kpi.value}</p>
-              <p className="mt-1 text-xs text-text-secondary">{kpi.detail}</p>
-            </Link>
-          );
-        })}
-      </div>
+      {/* ---------- Il polso di oggi: ogni segnale ha un solo mestiere ---------- */}
+      <section aria-label="Indicatori di oggi" className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
+        {kpis.map((kpi, i) => (
+          <Link
+            key={kpi.label}
+            href={kpi.href}
+            className={cn(
+              'press block rounded-lg [&>div]:transition-colors [&>div:hover]:bg-raised',
+              KPI_DELAY[i],
+            )}
+          >
+            <KpiCard
+              label={kpi.label}
+              value={kpi.value}
+              delta={kpi.delta}
+              deltaGood={kpi.deltaGood}
+              tone={kpi.tone}
+            />
+          </Link>
+        ))}
+      </section>
 
-      <div className="grid gap-4 xl:grid-cols-[1.45fr_0.95fr]">
-        <section className="rounded-xl border border-white/10 bg-[#151920]">
-          <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
-            <div>
-              <h2 className="font-bold text-white">Atleti in gestione</h2>
-              <p className="text-xs text-text-secondary">Aderenza, readiness e ultimo segnale operativo.</p>
+      <div className="grid gap-4 xl:grid-cols-[1.55fr_1fr]">
+        {/* ---------- IL FARO: la coda di lavoro di oggi ---------- */}
+        <Card beacon className="rise rise-2 overflow-hidden p-0">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-6 pb-4 pt-6">
+            <div className="min-w-0">
+              <h2 className="text-[22px] font-bold leading-tight tracking-[-0.01em] text-white">
+                Richiede attenzione oggi
+              </h2>
+              <p className="mt-1 text-[15px] text-text-secondary">
+                In ordine di urgenza: chi si è fermato, cosa scade, cosa aspetta una risposta.
+              </p>
             </div>
-            <Link href="/clienti" className="flex items-center gap-1 text-xs font-bold text-celeste">
-              Vedi tutti <ArrowUpRight size={14} />
+            <span className="shrink-0 rounded-full bg-raised px-3 py-1.5 text-[13px] font-bold tnum text-white">
+              {triage.length} da sbrigare
+            </span>
+          </div>
+
+          {triageTop.length === 0 ? (
+            <div className="flex flex-col items-center px-6 py-12 text-center">
+              <span className="mb-4 grid h-14 w-14 place-items-center rounded-md bg-mint/15 text-mint">
+                <CheckCircle2 size={26} aria-hidden />
+              </span>
+              <h3 className="text-[17px] font-bold text-white">Tavolo pulito</h3>
+              <p className="mt-1.5 max-w-sm text-[15px] leading-relaxed text-text-secondary">
+                Nessun cliente fermo, nessun check in attesa, nessuna scheda in scadenza. Goditela: è
+                raro.
+              </p>
+            </div>
+          ) : (
+            <ul className="border-t border-line/60">
+              {triageTop.map((item) => {
+                const Icon = item.icon;
+                const tone =
+                  item.tone === 'rose'
+                    ? { tile: 'bg-rose/15 text-rose', chip: 'bg-rose/15 text-rose' }
+                    : { tile: 'bg-amber/15 text-amber', chip: 'bg-amber/15 text-amber' };
+                return (
+                  <li key={item.key} className="border-b border-line/40 last:border-b-0">
+                    <Link
+                      href={item.href}
+                      className="press group flex min-h-[68px] items-center gap-4 px-6 py-3.5 transition hover:bg-raised"
+                    >
+                      <span className={cn('grid h-11 w-11 shrink-0 place-items-center rounded-xs', tone.tile)}>
+                        <Icon size={19} aria-hidden />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[15px] font-bold text-white">{item.title}</span>
+                        <span className="mt-0.5 block truncate text-[13px] text-text-secondary">
+                          {item.detail}
+                        </span>
+                      </span>
+                      <span
+                        className={cn(
+                          'hidden shrink-0 rounded-full px-2.5 py-1 text-[12px] font-bold sm:inline-flex',
+                          tone.chip,
+                        )}
+                      >
+                        {item.tag}
+                      </span>
+                      <ChevronRight
+                        size={18}
+                        aria-hidden
+                        className="shrink-0 text-text-tertiary transition group-hover:text-white"
+                      />
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          <div className="flex flex-wrap items-center gap-1 border-t border-line/60 px-3 py-2">
+            <Link href="/clienti" className={cn(buttonGhost, 'min-h-[44px]')}>
+              Clienti <ArrowUpRight size={15} aria-hidden />
+            </Link>
+            <Link href="/checkin" className={cn(buttonGhost, 'min-h-[44px]')}>
+              Check <ArrowUpRight size={15} aria-hidden />
+            </Link>
+            <Link href="/allenamenti" className={cn(buttonGhost, 'min-h-[44px]')}>
+              Programmi <ArrowUpRight size={15} aria-hidden />
             </Link>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-sm">
-              <thead className="text-left text-xs uppercase tracking-[0.12em] text-text-secondary">
-                <tr className="border-b border-white/10">
-                  <th className="px-5 py-3">Cliente</th>
-                  <th className="px-5 py-3">Stato</th>
-                  <th className="px-5 py-3">Aderenza</th>
-                  <th className="px-5 py-3">Readiness</th>
-                  <th className="px-5 py-3">Ultimo workout</th>
+        </Card>
+
+        {/* ---------- Il ritmo: volume delle ultime 8 settimane ---------- */}
+        <Card className="rise rise-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="text-[17px] font-bold text-white">Ritmo delle ultime 8 settimane</h2>
+              <p className="mt-1 text-[13px] text-text-secondary">Workout chiusi dai clienti attivi.</p>
+            </div>
+            <TrendingUp size={20} className="shrink-0 text-mint" aria-hidden />
+          </div>
+
+          <WeeklyBars values={weeklyWorkouts} />
+
+          <p className="mt-3 text-[13px] font-semibold tnum text-text-secondary">
+            <span className={weekDelta >= 0 ? 'text-mint' : 'text-rose'}>
+              {weekDelta >= 0 ? '+' : ''}
+              {weekDelta}
+            </span>{' '}
+            rispetto alla settimana precedente
+          </p>
+
+          <div className="mt-5 grid grid-cols-2 gap-2.5">
+            <MiniStat label="Aderenza media" value={`${adherence}%`} tone="mint" />
+            <MiniStat label="Readiness media" value={`${readiness}%`} tone="cyan" />
+            <MiniStat label="Retention" value={retention != null ? `${retention}%` : '—'} />
+            <MiniStat label="Check 30 giorni" value={String(checkins30d)} />
+          </div>
+        </Card>
+      </div>
+
+      {/* ---------- Chi si è allenato, chi no ---------- */}
+      <Card className="rise rise-3 overflow-hidden p-0">
+        <div className="flex flex-wrap items-start justify-between gap-3 px-6 pb-4 pt-6">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2.5">
+              <Users size={19} className="shrink-0 text-text-secondary" aria-hidden />
+              <h2 className="text-[17px] font-bold text-white">Chi si è allenato, chi no</h2>
+            </div>
+            <p className="mt-1 text-[13px] text-text-secondary">
+              Aderenza, readiness e ultimo segnale dai tuoi atleti.
+            </p>
+          </div>
+          <Link href="/clienti" className={cn(buttonGhost, 'min-h-[44px] px-0')}>
+            Vedi tutti <ArrowUpRight size={15} aria-hidden />
+          </Link>
+        </div>
+
+        {clients.length > 0 && (
+          <div className="flex flex-wrap gap-2 px-6 pb-4">
+            <RosterChip tone="mint" label="allenati" count={trained} />
+            <RosterChip tone="rose" label="silenti" count={silent} />
+            <RosterChip tone="amber" label="in onboarding" count={onboarding} />
+          </div>
+        )}
+
+        {clients.length === 0 ? (
+          <div className="flex flex-col items-center border-t border-line/60 px-6 py-14 text-center">
+            <span className="mb-4 grid h-[72px] w-[72px] place-items-center rounded-lg bg-raised text-4xl">
+              🏋️
+            </span>
+            <h3 className="text-[22px] font-bold tracking-[-0.01em] text-white">Il roster è vuoto</h3>
+            <p className="mt-2 max-w-md text-[15px] leading-relaxed text-text-secondary">
+              Invita il tuo primo atleta e questa tabella inizierà a raccontarti chi si allena, chi
+              rallenta e chi va ripreso in mano.
+            </p>
+            <div className="mt-6 flex flex-wrap justify-center gap-2">
+              <Link href="/clienti" className={buttonSecondary}>
+                <Plus size={17} aria-hidden />
+                Invita un cliente
+              </Link>
+              <Link href="/dashboard?demo=1" className={cn(buttonGhost, 'min-h-[44px]')}>
+                Guarda la demo <ArrowUpRight size={15} aria-hidden />
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Tabella densa da 768px in su */}
+            <table className="hidden w-full border-t border-line/60 text-left md:table">
+              <thead>
+                <tr className="border-b border-line/60">
+                  <th className="px-6 py-3.5 text-[12px] font-bold uppercase tracking-[0.06em] text-text-secondary">
+                    Cliente
+                  </th>
+                  <th className="px-4 py-3.5 text-[12px] font-bold uppercase tracking-[0.06em] text-text-secondary">
+                    Stato
+                  </th>
+                  <th className="px-4 py-3.5 text-[12px] font-bold uppercase tracking-[0.06em] text-text-secondary">
+                    Aderenza
+                  </th>
+                  <th className="hidden px-4 py-3.5 text-[12px] font-bold uppercase tracking-[0.06em] text-text-secondary lg:table-cell">
+                    Readiness
+                  </th>
+                  <th className="px-6 py-3.5 text-[12px] font-bold uppercase tracking-[0.06em] text-text-secondary">
+                    Ultimo segnale
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {clients.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-5 py-10 text-center text-text-secondary">
-                      Nessun cliente ancora. Attiva la modalita demo o invita il primo cliente.
+                {clients.map((client) => (
+                  <tr
+                    key={client.id}
+                    className="border-b border-line/40 transition last:border-b-0 hover:bg-raised"
+                  >
+                    <td className="px-6 py-4">
+                      <Link
+                        href={demoMode ? '/demo' : `/clienti/${client.id}`}
+                        className="text-[15px] font-bold text-white transition hover:text-accent"
+                      >
+                        {client.name}
+                      </Link>
+                      <p className="mt-0.5 text-[13px] text-text-secondary">{client.goal}</p>
                     </td>
+                    <td className="px-4 py-4">
+                      <ClientStatusBadge status={client.status} />
+                    </td>
+                    <td className="px-4 py-4">
+                      {client.status === 'invited' ? (
+                        <span className="text-[13px] text-text-tertiary">—</span>
+                      ) : (
+                        <MetricBar value={client.adherence} metric="adherence" />
+                      )}
+                    </td>
+                    <td className="hidden px-4 py-4 lg:table-cell">
+                      {client.status === 'invited' ? (
+                        <span className="text-[13px] text-text-tertiary">—</span>
+                      ) : (
+                        <MetricBar value={client.readiness} metric="readiness" />
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-[13px] text-text-secondary">{client.lastWorkout}</td>
                   </tr>
-                ) : (
-                  clients.map((client) => (
-                    <tr key={client.id} className="border-b border-white/5 hover:bg-white/[.03]">
-                      <td className="px-5 py-4">
-                        <Link href={demoMode ? '/demo' : `/clienti/${client.id}`} className="font-bold text-white hover:text-celeste">
-                          {client.name}
-                        </Link>
-                        <p className="text-xs text-text-secondary">{client.goal}</p>
-                      </td>
-                      <td className="px-5 py-4">
-                        <ClientStatusBadge status={client.status} />
-                      </td>
-                      <td className="px-5 py-4">
-                        <MetricBar value={client.adherence} />
-                      </td>
-                      <td className="px-5 py-4">
-                        <MetricBar value={client.readiness} tone={client.readiness < 60 ? 'warning' : 'accent'} />
-                      </td>
-                      <td className="px-5 py-4 text-text-secondary">{client.lastWorkout}</td>
-                    </tr>
-                  ))
-                )}
+                ))}
               </tbody>
             </table>
-          </div>
-        </section>
 
-        <section className="rounded-xl border border-white/10 bg-[#151920] p-5">
-          <div className="flex items-start justify-between">
-            <div>
-              <h2 className="font-bold text-white">Performance 8 settimane</h2>
-              <p className="text-xs text-text-secondary">Workout completati dai clienti attivi.</p>
-            </div>
-            <BarChart3 className="text-celeste" size={22} />
-          </div>
-          <div className="mt-5">
-            <Sparkline values={weeklyWorkouts} color="#4cd7f6" />
-          </div>
-          <div className="mt-6 grid grid-cols-2 gap-3">
-            <MiniStat label="Check 30gg" value={String(checkins30d)} />
-            <MiniStat label="Messaggi" value={String(unreadMessages)} />
-            <MiniStat label="Programmi in scadenza" value={String(programs.length)} />
-            <MiniStat label="Alert rischio" value={String(atRiskClients)} danger={atRiskClients > 0} />
-          </div>
-        </section>
-      </div>
+            {/* Sotto 768px la tabella diventa una lista di card */}
+            <ul className="border-t border-line/60 md:hidden">
+              {clients.map((client) => (
+                <li key={client.id} className="border-b border-line/40 last:border-b-0">
+                  <Link
+                    href={demoMode ? '/demo' : `/clienti/${client.id}`}
+                    className="press block px-5 py-4 transition hover:bg-raised"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-[15px] font-bold text-white">{client.name}</p>
+                        <p className="mt-0.5 truncate text-[13px] text-text-secondary">{client.goal}</p>
+                      </div>
+                      <ClientStatusBadge status={client.status} />
+                    </div>
+                    {client.status !== 'invited' && (
+                      <div className="mt-3 space-y-2">
+                        <LabelledBar label="Aderenza" value={client.adherence} metric="adherence" />
+                        <LabelledBar label="Readiness" value={client.readiness} metric="readiness" />
+                      </div>
+                    )}
+                    <p className="mt-3 text-[13px] text-text-tertiary">{client.lastWorkout}</p>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </Card>
 
-      <div className="grid gap-4 xl:grid-cols-3">
-        <Panel title="Priorita coach" href="/checkin">
-          <div className="space-y-3">
-            {checkins.length === 0 ? (
-              <p className="text-sm text-text-secondary">Nessun check in attesa.</p>
-            ) : (
-              checkins.map((checkin) => (
-                <Link
-                  key={checkin.id}
-                  href={demoMode ? '/demo' : `/checkin/${checkin.id}`}
-                  className="flex items-center justify-between rounded-lg border border-white/10 bg-background/60 px-3 py-3 transition hover:border-accent/50"
-                >
-                  <span>
-                    <span className="block text-sm font-bold text-white">{checkin.clientName}</span>
-                    <span className="block text-xs text-text-secondary">
-                      Settimana {checkin.weekStart} - {checkin.submittedAt}
-                    </span>
-                  </span>
-                  <Priority priority={checkin.priority} />
-                </Link>
-              ))
-            )}
-          </div>
-        </Panel>
-
-        <Panel title="Programmi in scadenza" href="/allenamenti">
-          <div className="space-y-3">
-            {programs.length === 0 ? (
-              <p className="text-sm text-text-secondary">Nessun programma in scadenza.</p>
-            ) : (
-              programs.slice(0, 4).map((program) => (
-                <Link
-                  key={program.id}
-                  href={demoMode ? '/demo' : `/allenamenti/${program.id}`}
-                  className="block rounded-lg border border-white/10 bg-background/60 px-3 py-3 transition hover:border-accent/50"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="font-bold text-white">{program.clientName}</span>
-                    <span className={program.daysLeft <= 2 ? 'text-xs font-bold text-danger' : 'text-xs font-bold text-warning'}>
-                      {program.daysLeft}g
-                    </span>
-                  </div>
-                  <p className="mt-1 text-xs text-text-secondary">{program.name} - {program.phase}</p>
-                </Link>
-              ))
-            )}
-          </div>
-        </Panel>
-
-        <Panel title="Azioni rapide">
-          <div className="grid grid-cols-2 gap-2">
+      {/* ---------- Strumenti: cosa apri adesso, cosa ti annoti ---------- */}
+      <div className="grid gap-4 xl:grid-cols-[1.55fr_1fr]">
+        <Card className="rise rise-4">
+          <h2 className="text-[17px] font-bold text-white">Azioni rapide</h2>
+          <p className="mt-1 text-[13px] text-text-secondary">Le sei cose che apri più spesso.</p>
+          <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
             {QUICK_ACTIONS.map((action) => {
               const Icon = action.icon;
               return (
                 <Link
                   key={action.href + action.label}
                   href={action.href}
-                  className="rounded-lg border border-white/10 bg-background/60 p-3 transition hover:border-accent/50 hover:bg-card-hover"
+                  className="press rounded-sm bg-raised p-4 transition hover:bg-[#252E3E]"
                 >
-                  <Icon className="text-celeste" size={18} />
-                  <p className="mt-2 text-sm font-bold text-white">{action.label}</p>
-                  <p className="mt-1 text-xs text-text-secondary">{action.detail}</p>
+                  <span className="grid h-10 w-10 place-items-center rounded-xs bg-accent/15 text-accent">
+                    <Icon size={18} aria-hidden />
+                  </span>
+                  <p className="mt-3 text-[15px] font-bold text-white">{action.label}</p>
+                  <p className="mt-1 text-[13px] text-text-secondary">{action.detail}</p>
                 </Link>
               );
             })}
           </div>
-        </Panel>
-      </div>
+        </Card>
 
-      {demoMode ? (
-        <div className="rounded-xl border border-[#1e5af0]/40 bg-[#1e5af0]/10 p-5">
-          <div className="flex items-start gap-3">
-            <ShieldCheck className="mt-0.5 text-celeste" size={22} />
-            <div>
-              <h2 className="font-bold text-white">Demo commerciale pronta</h2>
-              <p className="mt-1 text-sm text-text-secondary">{note}</p>
-              <Link href="/demo" className="mt-3 inline-flex items-center gap-1 text-sm font-bold text-celeste">
-                Resta nella demo prodotto <ArrowUpRight size={15} />
-              </Link>
+        {demoMode ? (
+          <Card className="rise rise-4">
+            <div className="flex items-start gap-4">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xs bg-accent/15 text-accent">
+                <ShieldCheck size={20} aria-hidden />
+              </span>
+              <div className="min-w-0">
+                <h2 className="text-[17px] font-bold text-white">Demo commerciale pronta</h2>
+                <p className="mt-1.5 text-[15px] leading-relaxed text-text-secondary">{note}</p>
+                <Link href="/demo" className={cn(buttonGhost, 'mt-2 min-h-[44px] px-0')}>
+                  Resta nella demo prodotto <ArrowUpRight size={15} aria-hidden />
+                </Link>
+              </div>
             </div>
-          </div>
-        </div>
-      ) : (
-        <QuickNotes initialBody={note} />
-      )}
+          </Card>
+        ) : (
+          <QuickNotes initialBody={note} />
+        )}
+      </div>
     </div>
   );
 }
 
-function Panel({
-  title,
-  href,
-  children,
-}: {
-  title: string;
-  href?: string;
-  children: React.ReactNode;
-}) {
+/** Colonne del volume settimanale: l'ultima settimana è piena, le altre in ombra. */
+function WeeklyBars({ values }: { values: number[] }) {
+  const max = Math.max(...values, 1);
+
   return (
-    <section className="rounded-xl border border-white/10 bg-[#151920] p-5">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="font-bold text-white">{title}</h2>
-        {href && (
-          <Link href={href} className="flex items-center gap-1 text-xs font-bold text-celeste">
-            Apri <ArrowUpRight size={14} />
-          </Link>
-        )}
-      </div>
-      {children}
-    </section>
+    <div
+      className="mt-5 flex h-[124px] items-end gap-1.5"
+      role="img"
+      aria-label={`Workout completati nelle ultime 8 settimane: ${values.join(', ')}`}
+    >
+      {values.map((value, i) => {
+        const isLast = i === values.length - 1;
+        return (
+          <div key={i} className="flex min-w-0 flex-1 flex-col items-center gap-2">
+            <div className="flex w-full flex-1 items-end">
+              <div
+                className={cn('w-full rounded-[6px]', isLast ? 'bg-mint' : 'bg-mint/25')}
+                style={{ height: `${Math.max(4, Math.round((value / max) * 100))}%` }}
+              />
+            </div>
+            <span
+              className={cn(
+                'text-[10px] font-bold tnum',
+                isLast ? 'text-white' : 'text-text-tertiary',
+              )}
+            >
+              {isLast ? 'ora' : `-${values.length - 1 - i}`}
+            </span>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
-function MiniStat({ label, value, danger = false }: { label: string; value: string; danger?: boolean }) {
+function MiniStat({
+  label,
+  value,
+  tone = 'neutral',
+}: {
+  label: string;
+  value: string;
+  tone?: 'neutral' | 'mint' | 'cyan' | 'amber';
+}) {
+  const toneText = {
+    neutral: 'text-white',
+    mint: 'text-mint',
+    cyan: 'text-cyan',
+    amber: 'text-amber',
+  }[tone];
+
   return (
-    <div className="rounded-lg border border-white/10 bg-background/60 p-3">
-      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-text-secondary">{label}</p>
-      <p className={danger ? 'mt-1 text-2xl font-black text-danger' : 'mt-1 text-2xl font-black text-white'}>
+    <div className="rounded-xs bg-raised px-3.5 py-3">
+      <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-text-secondary">{label}</p>
+      <p className={cn('font-metric mt-1.5 text-[24px] font-extrabold leading-none tnum', toneText)}>
         {value}
       </p>
     </div>
   );
 }
 
-function MetricBar({ value, tone = 'accent' }: { value: number; tone?: 'accent' | 'warning' }) {
-  const color = tone === 'warning' ? 'bg-warning' : 'bg-celeste';
+function RosterChip({
+  tone,
+  label,
+  count,
+}: {
+  tone: 'mint' | 'rose' | 'amber';
+  label: string;
+  count: number;
+}) {
+  const dot = { mint: 'bg-mint', rose: 'bg-rose', amber: 'bg-amber' }[tone];
+
+  return (
+    <span className="inline-flex items-center gap-2 rounded-full bg-raised px-3 py-1.5 text-[13px] font-semibold text-text-secondary">
+      <span className={cn('h-2 w-2 rounded-full', dot)} aria-hidden />
+      <span className="font-bold tnum text-white">{count}</span> {label}
+    </span>
+  );
+}
+
+/** La barra porta sempre anche il numero: il colore non è mai l'unica informazione. */
+function MetricBar({ value, metric }: { value: number; metric: 'adherence' | 'readiness' }) {
+  const pct = Math.max(0, Math.min(100, value));
+  const color =
+    metric === 'readiness'
+      ? pct < 60
+        ? 'bg-amber'
+        : 'bg-cyan'
+      : pct < 60
+        ? 'bg-rose'
+        : pct < 85
+          ? 'bg-amber'
+          : 'bg-mint';
 
   return (
     <div className="flex items-center gap-3">
-      <div className="h-2 w-24 overflow-hidden rounded-full bg-white/10">
-        <div className={`h-full rounded-full ${color}`} style={{ width: `${Math.max(0, Math.min(100, value))}%` }} />
+      <div className="h-1.5 w-full min-w-[48px] max-w-[104px] overflow-hidden rounded-full bg-[#2A3241]">
+        <div className={cn('h-full rounded-full', color)} style={{ width: `${pct}%` }} />
       </div>
-      <span className="w-9 text-right text-xs font-bold text-white">{value}%</span>
+      <span className="w-10 shrink-0 text-right text-[13px] font-bold tnum text-white">{pct}%</span>
+    </div>
+  );
+}
+
+function LabelledBar({
+  label,
+  value,
+  metric,
+}: {
+  label: string;
+  value: number;
+  metric: 'adherence' | 'readiness';
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="w-[76px] shrink-0 text-[12px] font-bold uppercase tracking-[0.06em] text-text-secondary">
+        {label}
+      </span>
+      <MetricBar value={value} metric={metric} />
     </div>
   );
 }
@@ -610,28 +944,26 @@ function MetricBar({ value, tone = 'accent' }: { value: number; tone?: 'accent' 
 function ClientStatusBadge({ status }: { status: ClientRow['status'] }) {
   if (status === 'risk') {
     return (
-      <span className="inline-flex items-center gap-1 rounded-md border border-danger/25 bg-danger/15 px-2 py-0.5 text-xs font-bold text-danger">
-        <AlertTriangle size={12} /> Rischio
-      </span>
+      <Badge color="danger">
+        <AlertTriangle size={12} className="mr-1.5" aria-hidden />
+        Silente
+      </Badge>
+    );
+  }
+
+  if (status === 'active') {
+    return (
+      <Badge color="success">
+        <CheckCircle2 size={12} className="mr-1.5" aria-hidden />
+        Attivo
+      </Badge>
     );
   }
 
   return (
-    <Badge color={status === 'active' ? 'success' : 'warning'}>
-      {status === 'active' ? 'Attivo' : 'Invitato'}
+    <Badge color="warning">
+      <Plus size={12} className="mr-1.5" aria-hidden />
+      Invitato
     </Badge>
   );
-}
-
-function Priority({ priority }: { priority: CheckinRow['priority'] }) {
-  const className =
-    priority === 'high'
-      ? 'border-danger/25 bg-danger/15 text-danger'
-      : priority === 'medium'
-        ? 'border-warning/25 bg-warning/15 text-warning'
-        : 'border-accent/25 bg-accent/15 text-accent';
-
-  const label = priority === 'high' ? 'Alta' : priority === 'medium' ? 'Media' : 'Bassa';
-
-  return <span className={`rounded-md border px-2 py-0.5 text-xs font-bold ${className}`}>{label}</span>;
 }

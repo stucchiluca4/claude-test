@@ -2,14 +2,15 @@
 
 import { useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { Card, buttonPrimary, inputClass } from '@/components/ui';
+import { Card, buttonPrimary } from '@/components/ui';
+import { cn } from '@/lib/utils';
 import {
   progressionPreview,
   weeklyAverage,
   macrosToKcal,
   type ProgressionMode,
 } from '@wc/shared';
-import { TrendingUp, TrendingDown, Scale, Check } from 'lucide-react';
+import { AlertCircle, Check, CheckCircle2, Scale, TrendingDown, TrendingUp } from 'lucide-react';
 
 interface DayRow {
   id: string;
@@ -41,6 +42,21 @@ const MODES: { key: ProgressionMode; label: string; desc: string; icon: typeof T
     icon: Scale,
   },
 ];
+
+/* Ogni macro ha il suo segnale, identico a quello della griglia settimanale. */
+const MACRO_FIELDS = [
+  { label: 'Proteine', dot: 'bg-accent', text: 'text-accent' },
+  { label: 'Carboidrati', dot: 'bg-amber', text: 'text-amber' },
+  { label: 'Grassi', dot: 'bg-cyan', text: 'text-cyan' },
+] as const;
+
+const columnLabel = 'text-[12px] font-bold uppercase tracking-[0.06em] text-text-secondary';
+
+const numberField =
+  'tnum h-11 w-24 rounded-xs border border-transparent bg-raised px-3 text-center text-[15px] font-bold text-white transition hover:border-white/10 focus:border-accent focus:outline-none';
+
+const selectField =
+  'h-11 rounded-xs border border-transparent bg-raised px-3 text-[15px] font-semibold text-white transition hover:border-white/10 focus:border-accent focus:outline-none';
 
 /**
  * Progressione nutrizionale: parte dalla Settimana 1 e genera
@@ -175,218 +191,337 @@ export function ProgressionWizard({
   const totalDeltaPct =
     baseKcal > 0 ? Math.round(((preview.at(-1)?.kcal ?? baseKcal) / baseKcal - 1) * 1000) / 10 : 0;
 
-  return (
-    <Card className="mt-4">
-      <h3 className="font-semibold mb-1">Crea progressione</h3>
-      <p className="text-sm text-text-secondary mb-5">
-        Parte dalla Settimana 1 e genera automaticamente le settimane successive.
-      </p>
+  const previewRows = preview.filter(
+    (_, i) => i % Math.max(1, cadence) === 0 || i === preview.length - 1
+  );
+  const messageOk = message?.startsWith('✓') ?? false;
+  const unit = incrementType === 'percent' ? '% per applicazione' : 'g per applicazione';
 
-      {/* 1. Modalità */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
-        {MODES.map((m) => (
-          <button
-            key={m.key}
-            onClick={() => setMode(m.key)}
-            className={`text-left rounded-xl border p-4 transition ${
-              mode === m.key ? 'border-accent bg-accent/10' : 'border-border hover:bg-card-hover'
-            }`}
-          >
-            <div className="flex items-center gap-2 font-semibold text-sm mb-1">
-              <m.icon
-                size={16}
-                className={
-                  m.key === 'bulk' ? 'text-accent' : m.key === 'cut' ? 'text-celeste' : 'text-avio'
-                }
-              />
-              {m.label}
-              {mode === m.key && <Check size={16} className="ml-auto text-accent" />}
-            </div>
-            <p className="text-xs text-text-secondary">{m.desc}</p>
-          </button>
-        ))}
+  return (
+    <Card className="rise">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-[17px] font-bold text-white">Crea la progressione</h2>
+          <p className="mt-1 text-[13px] text-text-secondary">
+            Quattro passi: la Settimana 1 resta la base, le successive vengono generate da qui.
+          </p>
+        </div>
+        <span className="tnum shrink-0 rounded-full bg-raised px-3 py-1.5 text-[13px] font-bold text-white">
+          Base: {baseKcal.toLocaleString('it-IT')} kcal
+        </span>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* 2. Impostazioni */}
-        <div>
-          <h4 className="text-sm font-semibold mb-3">
-            Riferimento Settimana 1:{' '}
-            <span className="text-text-secondary font-normal">
-              {baseKcal} kcal · P {base.proteinG} · C {base.carbsG} · G {base.fatG}
-            </span>
-          </h4>
-
-          <div className="flex gap-2 mb-4">
-            {(
-              [
-                ['percent', 'Percentuale (%)'],
-                ['grams', 'Grammi (g)'],
-              ] as const
-            ).map(([k, label]) => (
+      {/* ===== 1. Modalità ===== */}
+      <section aria-label="Modalità della progressione" className="mt-6">
+        <StepHeader n={1} title="Scegli la direzione" hint="Decide il segno degli incrementi." />
+        <div className="mt-3.5 grid grid-cols-1 gap-3 md:grid-cols-3">
+          {MODES.map((m) => {
+            const selected = mode === m.key;
+            return (
               <button
-                key={k}
-                onClick={() => setIncrementType(k)}
-                className={`px-3 py-1.5 rounded-lg text-sm border transition ${
-                  incrementType === k
-                    ? 'border-accent bg-accent/10 font-medium'
-                    : 'border-border text-text-secondary hover:bg-card-hover'
-                }`}
+                key={m.key}
+                onClick={() => setMode(m.key)}
+                aria-pressed={selected}
+                className={cn(
+                  'press rounded-md border p-4 text-left transition',
+                  selected
+                    ? 'border-accent bg-accent/10'
+                    : 'border-transparent bg-raised hover:border-white/10'
+                )}
               >
-                {label}
+                <div className="flex items-center gap-2">
+                  <m.icon
+                    size={17}
+                    className={cn('shrink-0', selected ? 'text-accent' : 'text-text-secondary')}
+                    aria-hidden
+                  />
+                  <span className="text-[15px] font-bold tracking-[0.04em] text-white">{m.label}</span>
+                  {selected && <Check size={16} className="ml-auto shrink-0 text-accent" aria-hidden />}
+                </div>
+                <p className="mt-1.5 text-[13px] leading-snug text-text-secondary">{m.desc}</p>
               </button>
-            ))}
-          </div>
+            );
+          })}
+        </div>
+      </section>
 
-          <div className="space-y-3">
-            {(
-              [
-                ['Proteine', incProtein, setIncProtein],
-                ['Carboidrati', incCarbs, setIncCarbs],
-                ['Grassi', incFat, setIncFat],
-              ] as const
-            ).map(([label, value, setter]) => (
-              <div key={label} className="flex items-center gap-3">
-                <span className="text-sm text-text-secondary w-28">{label}</span>
-                <input
-                  type="number"
-                  min={0}
-                  step={incrementType === 'percent' ? 0.5 : 1}
-                  value={value}
-                  onChange={(e) => (setter as (n: number) => void)(Number(e.target.value))}
-                  className={inputClass + ' w-24'}
-                />
-                <span className="text-sm text-text-secondary">
-                  {incrementType === 'percent' ? '% per applicazione' : 'g per applicazione'}
-                </span>
-              </div>
-            ))}
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-text-secondary w-28">Cadenza</span>
-              <select
-                value={cadence}
-                onChange={(e) => setCadence(Number(e.target.value))}
-                className={inputClass + ' w-40'}
-              >
-                {[1, 2, 3, 4].map((n) => (
-                  <option key={n} value={n}>
-                    ogni {n} settiman{n === 1 ? 'a' : 'e'}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-text-secondary w-28">Durata</span>
-              <input
-                type="number"
-                min={2}
-                max={24}
-                value={duration}
-                onChange={(e) => setDuration(Number(e.target.value))}
-                className={inputClass + ' w-24'}
-              />
-              <span className="text-sm text-text-secondary">settimane</span>
-            </div>
-          </div>
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div>
+          {/* ===== 2. Incrementi ===== */}
+          <section aria-label="Incrementi della progressione">
+            <StepHeader
+              n={2}
+              title="Imposta l’incremento"
+              hint={`Riferimento Settimana 1: P ${base.proteinG} · C ${base.carbsG} · G ${base.fatG} g`}
+            />
 
-          {/* 4. Condizioni */}
-          <h4 className="text-sm font-semibold mt-5 mb-2">Condizioni di applicazione</h4>
-          <div className="space-y-2">
-            {(
-              [
-                ['fixed', 'A cadenza fissa', 'Gli incrementi si applicano in automatico alla cadenza scelta.'],
+            <div
+              role="group"
+              aria-label="Unità dell’incremento"
+              className="mt-3.5 inline-flex gap-1 rounded-full bg-raised p-1"
+            >
+              {(
                 [
-                  'stall',
-                  'Solo se il progresso rallenta',
-                  'Applichi tu gli incrementi quando peso e carichi stallano per 2-3 settimane (consigliato per il cut).',
-                ],
-              ] as const
-            ).map(([k, label, desc]) => (
-              <label
-                key={k}
-                className={`flex gap-3 rounded-lg border p-3 cursor-pointer transition ${
-                  condition === k ? 'border-accent bg-accent/10' : 'border-border'
-                }`}
-              >
+                  ['percent', 'Percentuale'],
+                  ['grams', 'Grammi'],
+                ] as const
+              ).map(([k, label]) => (
+                <button
+                  key={k}
+                  onClick={() => setIncrementType(k)}
+                  aria-pressed={incrementType === k}
+                  className={cn(
+                    'press h-10 rounded-full px-4 text-[13px] font-bold transition',
+                    incrementType === k
+                      ? 'bg-accent text-white'
+                      : 'text-text-secondary hover:text-white'
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-4 space-y-2.5">
+              {(
+                [
+                  [0, incProtein, setIncProtein],
+                  [1, incCarbs, setIncCarbs],
+                  [2, incFat, setIncFat],
+                ] as const
+              ).map(([idx, value, setter]) => {
+                const macro = MACRO_FIELDS[idx];
+                return (
+                  <div key={macro.label} className="flex flex-wrap items-center gap-3">
+                    <label
+                      htmlFor={`inc-${idx}`}
+                      className="flex min-w-[8rem] items-center gap-2 text-[15px] font-semibold text-white"
+                    >
+                      <span className={cn('h-2 w-2 shrink-0 rounded-full', macro.dot)} aria-hidden />
+                      {macro.label}
+                    </label>
+                    <input
+                      id={`inc-${idx}`}
+                      type="number"
+                      min={0}
+                      step={incrementType === 'percent' ? 0.5 : 1}
+                      value={value}
+                      onChange={(e) => (setter as (n: number) => void)(Number(e.target.value))}
+                      className={numberField}
+                    />
+                    <span className="text-[13px] text-text-secondary">{unit}</span>
+                  </div>
+                );
+              })}
+
+              <div className="flex flex-wrap items-center gap-3 pt-1">
+                <label htmlFor="prog-cadence" className="min-w-[8rem] text-[15px] font-semibold text-white">
+                  Cadenza
+                </label>
+                <select
+                  id="prog-cadence"
+                  value={cadence}
+                  onChange={(e) => setCadence(Number(e.target.value))}
+                  className={cn(selectField, 'w-44')}
+                >
+                  {[1, 2, 3, 4].map((n) => (
+                    <option key={n} value={n}>
+                      ogni {n} settiman{n === 1 ? 'a' : 'e'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <label htmlFor="prog-duration" className="min-w-[8rem] text-[15px] font-semibold text-white">
+                  Durata
+                </label>
                 <input
-                  type="radio"
-                  checked={condition === k}
-                  onChange={() => setCondition(k)}
-                  className="mt-0.5 accent-blue-600"
+                  id="prog-duration"
+                  type="number"
+                  min={2}
+                  max={24}
+                  value={duration}
+                  onChange={(e) => setDuration(Number(e.target.value))}
+                  className={numberField}
                 />
-                <span className="text-sm">
-                  <b>{label}</b>
-                  <span className="block text-xs text-text-secondary mt-0.5">{desc}</span>
-                </span>
-              </label>
-            ))}
-          </div>
+                <span className="text-[13px] text-text-secondary">settimane totali</span>
+              </div>
+            </div>
+          </section>
+
+          {/* ===== 3. Condizioni ===== */}
+          <section aria-label="Condizioni di applicazione" className="mt-6">
+            <StepHeader n={3} title="Quando si applica" hint="A calendario o solo quando serve." />
+            <div className="mt-3.5 space-y-2">
+              {(
+                [
+                  ['fixed', 'A cadenza fissa', 'Gli incrementi si applicano in automatico alla cadenza scelta.'],
+                  [
+                    'stall',
+                    'Solo se il progresso rallenta',
+                    'Applichi tu gli incrementi quando peso e carichi stallano per 2-3 settimane (consigliato per il cut).',
+                  ],
+                ] as const
+              ).map(([k, label, desc]) => (
+                <label
+                  key={k}
+                  className={cn(
+                    'flex cursor-pointer gap-3 rounded-md border p-3.5 transition',
+                    condition === k
+                      ? 'border-accent bg-accent/10'
+                      : 'border-transparent bg-raised hover:border-white/10'
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="progression-condition"
+                    checked={condition === k}
+                    onChange={() => setCondition(k)}
+                    className="mt-1 h-4 w-4 shrink-0 accent-accent"
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-[15px] font-bold text-white">{label}</span>
+                    <span className="mt-0.5 block text-[13px] leading-snug text-text-secondary">
+                      {desc}
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </section>
         </div>
 
-        {/* 3. Anteprima */}
-        <div>
-          <h4 className="text-sm font-semibold mb-3">Anteprima progressione</h4>
-          <div className="border border-border rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
+        {/* ===== 4. Anteprima ===== */}
+        <section aria-label="Anteprima della progressione">
+          <StepHeader n={4} title="Controlla l’anteprima" hint="Le settimane in cui qualcosa cambia." />
+
+          <div className="mt-3.5 overflow-x-auto rounded-md bg-raised">
+            <table className="w-full min-w-[26rem] text-left">
               <thead>
-                <tr className="text-left text-text-secondary border-b border-border text-xs">
-                  <th className="px-3 py-2 font-medium">Settimana</th>
-                  <th className="px-3 py-2 font-medium">Kcal</th>
-                  <th className="px-3 py-2 font-medium">P (g)</th>
-                  <th className="px-3 py-2 font-medium">C (g)</th>
-                  <th className="px-3 py-2 font-medium">G (g)</th>
+                <tr className="border-b border-line/60">
+                  <th className={cn(columnLabel, 'px-4 py-3')}>Sett.</th>
+                  <th className={cn(columnLabel, 'px-3 py-3 text-right')}>Kcal</th>
+                  {MACRO_FIELDS.map((m) => (
+                    <th key={m.label} className={cn(columnLabel, 'px-3 py-3 text-right')}>
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className={cn('h-2 w-2 shrink-0 rounded-full', m.dot)} aria-hidden />
+                        {m.label.charAt(0)} (g)
+                      </span>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {preview
-                  .filter((_, i) => i % Math.max(1, cadence) === 0 || i === preview.length - 1)
-                  .map((w) => (
-                    <tr key={w.week} className="border-b border-border last:border-0 tabular-nums">
-                      <td className="px-3 py-1.5">
-                        {w.week}
-                        {w.week === 1 && <span className="text-text-secondary"> (base)</span>}
+                {previewRows.map((w) => {
+                  const delta = w.kcal - baseKcal;
+                  return (
+                    <tr key={w.week} className="border-b border-line/40 last:border-b-0">
+                      <td className="px-4 py-3">
+                        <span className="tnum inline-flex h-8 min-w-[2rem] items-center justify-center rounded-full bg-card px-2 text-[15px] font-bold text-white">
+                          {w.week}
+                        </span>
+                        {w.week === 1 && (
+                          <span className="ml-2 text-[12px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
+                            base
+                          </span>
+                        )}
                       </td>
-                      <td className="px-3 py-1.5 font-medium">{w.kcal}</td>
-                      <td className="px-3 py-1.5">{w.proteinG}</td>
-                      <td className="px-3 py-1.5">{w.carbsG}</td>
-                      <td className="px-3 py-1.5">{w.fatG}</td>
+                      <td className="px-3 py-3 text-right">
+                        <span className="font-metric tnum text-[20px] font-extrabold text-white">
+                          {w.kcal.toLocaleString('it-IT')}
+                        </span>
+                        {delta !== 0 && (
+                          <span className="tnum block text-[12px] font-semibold text-text-secondary">
+                            {delta > 0 ? '+' : ''}
+                            {delta.toLocaleString('it-IT')}
+                          </span>
+                        )}
+                      </td>
+                      <td className="tnum px-3 py-3 text-right text-[15px] font-semibold text-white">
+                        {w.proteinG}
+                      </td>
+                      <td className="tnum px-3 py-3 text-right text-[15px] font-semibold text-white">
+                        {w.carbsG}
+                      </td>
+                      <td className="tnum px-3 py-3 text-right text-[15px] font-semibold text-white">
+                        {w.fatG}
+                      </td>
                     </tr>
-                  ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
-          <p className="text-xs mt-2 text-text-secondary">
-            Variazione totale a fine progressione:{' '}
-            <b className={`tabular-nums ${totalDeltaPct >= 0 ? 'text-accent' : 'text-celeste'}`}>
+
+          <p className="tnum mt-3 text-[13px] text-text-secondary">
+            Variazione a fine progressione:{' '}
+            <strong className="font-bold text-white">
               {totalDeltaPct > 0 ? '+' : ''}
-              {totalDeltaPct}% kcal
-            </b>
+              {totalDeltaPct}% di kcal
+            </strong>{' '}
+            rispetto alla Settimana 1.
           </p>
 
           <button
             onClick={apply}
             disabled={applying || week1.length === 0}
-            className={buttonPrimary + ' w-full mt-4 inline-flex items-center justify-center gap-1.5'}
+            className={cn(buttonPrimary, 'mt-4 min-h-[48px] w-full')}
           >
             {applying ? (
               'Applicazione…'
             ) : (
               <>
-                <Check size={16} /> Salva e applica al piano
+                <Check size={17} aria-hidden />
+                Salva e applica al piano
               </>
             )}
           </button>
+
           {message && (
-            <p className={`text-sm mt-2 ${message.startsWith('✓') ? 'text-success' : 'text-danger'}`}>
-              {message}
+            <p
+              role="status"
+              className={cn(
+                'mt-2.5 flex items-start gap-2 rounded-xs bg-raised px-3.5 py-3 text-[13px] leading-snug',
+                messageOk ? 'text-mint' : 'text-rose'
+              )}
+            >
+              {messageOk ? (
+                <CheckCircle2 size={15} className="mt-0.5 shrink-0" aria-hidden />
+              ) : (
+                <AlertCircle size={15} className="mt-0.5 shrink-0" aria-hidden />
+              )}
+              {message.replace(/^✓\s*/, '')}
             </p>
           )}
-          <p className="text-xs text-text-secondary mt-3">
+
+          <p className="mt-3 text-[13px] leading-relaxed text-text-secondary">
             Ogni settimana replica la rotazione ON/OFF della Settimana 1, scalata secondo la
-            progressione. Potrai comunque ritoccare ogni singolo giorno dalla tabella.
+            progressione. Potrai comunque ritoccare ogni singolo giorno dalla griglia qui sopra.
           </p>
-        </div>
+        </section>
       </div>
     </Card>
+  );
+}
+
+/** Passo del percorso: una pillola numerata, un titolo, una riga di contesto. */
+function StepHeader({ n, title, hint }: { n: number; title: string; hint?: string }) {
+  return (
+    <div className="flex items-start gap-3">
+      <span
+        aria-hidden
+        className="tnum grid h-8 w-8 shrink-0 place-items-center rounded-full bg-raised text-[15px] font-bold text-white"
+      >
+        {n}
+      </span>
+      <div className="min-w-0">
+        <h3 className="text-[15px] font-bold text-white">
+          <span className="sr-only">Passo {n}: </span>
+          {title}
+        </h3>
+        {hint && <p className="tnum mt-0.5 text-[13px] text-text-secondary">{hint}</p>}
+      </div>
+    </div>
   );
 }

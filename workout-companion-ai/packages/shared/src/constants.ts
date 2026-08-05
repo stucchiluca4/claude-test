@@ -132,10 +132,8 @@ export const COLORS = {
   rose: '#FF375F',                  // record personali e azioni distruttive
   violet: '#BF5AF2',                // tutto ciò che è generato dall'AI
   cyan: '#64D2FF',                  // recupero, sonno, dati del corpo
-  avio: '#3E8BFF',                  // blu medio per barre e grafici
 
   // --- Alias semantici storici (mantengono compatibile il codice esistente) ---
-  celeste: '#64D2FF',
   success: '#32D74B',
   warning: '#FF9F0A',
   danger: '#FF375F',

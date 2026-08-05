@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { PageHeader } from '@/components/ui';
+import { Badge, PageHeader } from '@/components/ui';
 import { OffersManager, type Offer } from './offers-manager';
 
 const DEMO_OFFERS: Offer[] = [
@@ -51,7 +51,8 @@ export default async function ListinoPage({ searchParams }: { searchParams: Prom
       <div>
         <PageHeader
           title="Listino Coaching Online"
-          subtitle="Stessa sezione listino, compilata con offerte demo."
+          subtitle="Stesso listino, compilato con offerte di esempio: pronto da mostrare in call."
+          actions={<Badge color="accent">Dati demo</Badge>}
         />
         <OffersManager offers={DEMO_OFFERS} />
       </div>
@@ -75,7 +76,7 @@ export default async function ListinoPage({ searchParams }: { searchParams: Prom
     <div>
       <PageHeader
         title="Listino Coaching Online"
-        subtitle="Gestisci i tuoi piani di coaching e i relativi prezzi."
+        subtitle="Costruisci i pacchetti che vendi — prezzo, durata e ritmo dei check. Pubblica solo quelli pronti."
       />
       <OffersManager offers={(offers ?? []) as Offer[]} />
     </div>
