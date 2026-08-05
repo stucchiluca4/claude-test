@@ -143,5 +143,11 @@ export const COLORS = {
   // --- Testo ---
   textPrimary: '#FFFFFF',           // numeri e testo primario, sempre pieno
   textSecondary: '#9BA6B8',         // testo secondario (7.8:1 sul fondo)
-  textTertiary: '#6B7688',          // etichette e disattivato, mai sotto 15px
+  textTertiary: '#7C8698',          // etichette e unità (5.0:1 su card: passa AA)
+
+  // --- Macro: dati categoriali, NON segnali. Scala neutra per densità, così
+  //     non rubano significato ai sei segnali (La Regola dei Macro Neutri). ---
+  macroProtein: '#FFFFFF',
+  macroCarbs: '#9BA6B8',
+  macroFat: '#7C8698',
 } as const;

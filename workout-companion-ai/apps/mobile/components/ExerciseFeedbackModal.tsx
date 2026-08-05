@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Animated,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -14,6 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FEEDBACK_SCALES } from '@wc/shared';
+import { prefersReducedMotion, spring as reduceAware } from '../lib/a11y';
 import { colors, concentric, radius, spacing, sharedStyles, type } from '../lib/theme';
 import { DotScale } from './DotScale';
 import { GlassSurface } from './Glass';
@@ -74,6 +76,69 @@ function ScaleRow({
 }
 
 /**
+ * La molla del foglio: il sistema non anima mai con curve lineari.
+ * Le soglie di quiete tagliano la coda impercettibile del rimbalzo, così alla
+ * chiusura il foglio si smonta appena il movimento è finito davvero invece di
+ * restare lì, invisibile, a mangiarsi i tocchi.
+ */
+const sheetSpring = (toValue: 0 | 1) => ({
+  toValue,
+  useNativeDriver: true,
+  restDisplacementThreshold: 0.01,
+  restSpeedThreshold: 0.01,
+  ...reduceAware({ damping: 22, stiffness: 180, mass: 1 }),
+});
+
+/**
+ * Ingresso e uscita del foglio a molla (DESIGN.md § movimento): il fondo si
+ * dissolve, il foglio sale da 28px e passa da scala 0.98 a 1. Alla chiusura
+ * il percorso è invertito e `onClose` scatta solo a movimento finito, così il
+ * foglio non sparisce di colpo. Con "riduci movimento" attivo si chiude subito.
+ */
+function useSheetEnter(visible: boolean, onClose: () => void) {
+  const [mounted, setMounted] = useState(visible);
+  // Si parte sempre da fuori: anche se il foglio nasce già aperto, entra a molla.
+  const enter = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      setMounted(true);
+      Animated.spring(enter, sheetSpring(1)).start();
+      return;
+    }
+    // Chiusura decisa da fuori: prima il percorso inverso, poi smonto il foglio.
+    if (prefersReducedMotion()) {
+      enter.setValue(0);
+      setMounted(false);
+      return;
+    }
+    Animated.spring(enter, sheetSpring(0)).start(({ finished }) => {
+      if (finished) setMounted(false);
+    });
+  }, [visible, enter]);
+
+  // Chiusura chiesta dall'utente: il movimento inverso precede `onClose`.
+  const requestClose = useCallback(() => {
+    if (prefersReducedMotion()) {
+      onClose();
+      return;
+    }
+    Animated.spring(enter, sheetSpring(0)).start(({ finished }) => {
+      if (finished) onClose();
+    });
+  }, [enter, onClose]);
+
+  return {
+    /** Il Modal resta montato finché l'uscita non è finita. */
+    mounted,
+    requestClose,
+    fade: enter.interpolate({ inputRange: [0, 1], outputRange: [0, 1], extrapolate: 'clamp' }),
+    translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [28, 0] }),
+    scale: enter.interpolate({ inputRange: [0, 1], outputRange: [0.98, 1] }),
+  };
+}
+
+/**
  * Foglio che raccoglie il feedback dell'atleta su un esercizio: RPE,
  * difficoltà, energia, dolore (scale 1-10) e una nota libera.
  *
@@ -93,6 +158,8 @@ export function ExerciseFeedbackModal({ visible, exerciseName, initial, saving, 
   const { height } = useWindowDimensions();
   // Il pozzo di ferro scorre: il foglio non supera mai i due terzi dello schermo.
   const wellMaxHeight = Math.round(height * 0.52);
+  // Il foglio entra ed esce a molla: niente scivolata lineare di sistema.
+  const { mounted, requestClose, fade, translateY, scale } = useSheetEnter(visible, onClose);
 
   // Ogni apertura ricarica i valori già salvati (o parte pulita).
   useEffect(() => {
@@ -108,106 +175,111 @@ export function ExerciseFeedbackModal({ visible, exerciseName, initial, saving, 
     rpe == null && difficulty == null && energy == null && pain == null && notes.trim() === '';
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={mounted} transparent animationType="none" onRequestClose={requestClose}>
       <View style={styles.overlay}>
-        <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Chiudi il foglio" />
+        {/* Il vuoto dietro il foglio: si accende e si spegne in dissolvenza. */}
+        <Animated.View style={[styles.backdrop, { opacity: fade }]}>
+          <Pressable style={styles.backdropHit} onPress={requestClose} accessibilityLabel="Chiudi il foglio" />
+        </Animated.View>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <GlassSurface
-            cornerRadius={radius.xl}
-            lift="sheet"
-            padding={spacing.lg}
-            style={[styles.sheet, { marginBottom: Math.max(insets.bottom, spacing.md) }]}
-          >
-            <View style={styles.handle} />
-
-            {/* VETRO — testata: solo comandi e un titolo corto. */}
-            <View style={styles.head}>
-              <View style={styles.headText}>
-                <Text style={type.label}>Com'è andato</Text>
-                <Text style={type.title} numberOfLines={2}>
-                  {exerciseName}
-                </Text>
-              </View>
-              <Press
-                onPress={onClose}
-                style={styles.glassBtn}
-                accessibilityLabel="Chiudi senza salvare"
-              >
-                <Ionicons name="close" size={22} color={colors.textPrimary} />
-              </Press>
-            </View>
-
-            {/* FERRO — qui si legge e si tocca: superficie opaca, mai velata. */}
-            <ScrollView
-              style={[styles.well, { maxHeight: wellMaxHeight }]}
-              contentContainerStyle={styles.wellBody}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
+          <Animated.View style={{ transform: [{ translateY }, { scale }] }}>
+            <GlassSurface
+              cornerRadius={radius.xl}
+              lift="sheet"
+              padding={spacing.lg}
+              style={[styles.sheet, { marginBottom: Math.max(insets.bottom, spacing.md) }]}
             >
-              <ScaleRow
-                icon="flame"
-                tint={colors.amber}
-                wash="rgba(255,159,10,0.14)"
-                label={FEEDBACK_SCALES.rpe.label}
-                bands={FEEDBACK_SCALES.rpe.bands}
-                value={rpe}
-                onChange={setRpe}
-              />
-              <ScaleRow
-                icon="speedometer"
-                tint={colors.amber}
-                wash="rgba(255,159,10,0.14)"
-                label={FEEDBACK_SCALES.difficulty.label}
-                bands={FEEDBACK_SCALES.difficulty.bands}
-                value={difficulty}
-                onChange={setDifficulty}
-              />
-              <ScaleRow
-                icon="flash"
-                tint={colors.mint}
-                wash="rgba(50,215,75,0.14)"
-                label={FEEDBACK_SCALES.energy.label}
-                bands={FEEDBACK_SCALES.energy.bands}
-                value={energy}
-                onChange={setEnergy}
-              />
-              <ScaleRow
-                icon="bandage"
-                tint={colors.rose}
-                wash="rgba(255,55,95,0.14)"
-                label={FEEDBACK_SCALES.pain.label}
-                bands={FEEDBACK_SCALES.pain.bands}
-                value={pain}
-                onChange={setPain}
-              />
+              <View style={styles.handle} />
 
-              <View style={styles.hair} />
-
-              <View style={styles.notesBlock}>
-                <Text style={type.label}>Nota per il coach</Text>
-                <TextInput
-                  style={[sharedStyles.input, styles.notes]}
-                  value={notes}
-                  onChangeText={setNotes}
-                  placeholder="Facoltativa: sensazioni, dolori, tecnica…"
-                  placeholderTextColor={colors.textTertiary}
-                  multiline
-                />
+              {/* VETRO — testata: solo comandi e un titolo corto. */}
+              <View style={styles.head}>
+                <View style={styles.headText}>
+                  <Text style={type.label}>Com'è andato</Text>
+                  <Text style={type.title} numberOfLines={2}>
+                    {exerciseName}
+                  </Text>
+                </View>
+                <Press
+                  onPress={requestClose}
+                  style={styles.glassBtn}
+                  accessibilityLabel="Chiudi senza salvare"
+                >
+                  <Ionicons name="close" size={22} color={colors.textPrimary} />
+                </Press>
               </View>
-            </ScrollView>
 
-            {/* VETRO — barra d'azione, sempre sotto il pollice. */}
-            <View style={styles.foot}>
-              <PrimaryButton
-                label="Salva feedback"
-                loading={saving}
-                onPress={() => onSave({ rpe, difficulty, energy, pain, notes: notes.trim() })}
-              />
-              <Press onPress={onClose} style={styles.skip} accessibilityLabel="Chiudi il foglio">
-                <Text style={styles.skipText}>{nothingFilled ? 'Salta' : 'Chiudi senza salvare'}</Text>
-              </Press>
-            </View>
-          </GlassSurface>
+              {/* FERRO — qui si legge e si tocca: superficie opaca, mai velata. */}
+              <ScrollView
+                style={[styles.well, { maxHeight: wellMaxHeight }]}
+                contentContainerStyle={styles.wellBody}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                <ScaleRow
+                  icon="flame"
+                  tint={colors.amber}
+                  wash="rgba(255,159,10,0.14)"
+                  label={FEEDBACK_SCALES.rpe.label}
+                  bands={FEEDBACK_SCALES.rpe.bands}
+                  value={rpe}
+                  onChange={setRpe}
+                />
+                <ScaleRow
+                  icon="speedometer"
+                  tint={colors.amber}
+                  wash="rgba(255,159,10,0.14)"
+                  label={FEEDBACK_SCALES.difficulty.label}
+                  bands={FEEDBACK_SCALES.difficulty.bands}
+                  value={difficulty}
+                  onChange={setDifficulty}
+                />
+                <ScaleRow
+                  icon="flash"
+                  tint={colors.mint}
+                  wash="rgba(50,215,75,0.14)"
+                  label={FEEDBACK_SCALES.energy.label}
+                  bands={FEEDBACK_SCALES.energy.bands}
+                  value={energy}
+                  onChange={setEnergy}
+                />
+                <ScaleRow
+                  icon="bandage"
+                  tint={colors.rose}
+                  wash="rgba(255,55,95,0.14)"
+                  label={FEEDBACK_SCALES.pain.label}
+                  bands={FEEDBACK_SCALES.pain.bands}
+                  value={pain}
+                  onChange={setPain}
+                />
+
+                <View style={styles.hair} />
+
+                <View style={styles.notesBlock}>
+                  <Text style={type.label}>Nota per il coach</Text>
+                  <TextInput
+                    style={[sharedStyles.input, styles.notes]}
+                    value={notes}
+                    onChangeText={setNotes}
+                    placeholder="Facoltativa: sensazioni, dolori, tecnica…"
+                    placeholderTextColor={colors.textTertiary}
+                    multiline
+                  />
+                </View>
+              </ScrollView>
+
+              {/* VETRO — barra d'azione, sempre sotto il pollice. */}
+              <View style={styles.foot}>
+                <PrimaryButton
+                  label="Salva feedback"
+                  loading={saving}
+                  onPress={() => onSave({ rpe, difficulty, energy, pain, notes: notes.trim() })}
+                />
+                <Press onPress={requestClose} style={styles.skip} accessibilityLabel="Chiudi il foglio">
+                  <Text style={styles.skipText}>{nothingFilled ? 'Salta' : 'Chiudi senza salvare'}</Text>
+                </Press>
+              </View>
+            </GlassSurface>
+          </Animated.View>
         </KeyboardAvoidingView>
       </View>
     </Modal>
@@ -218,8 +290,6 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    // Il vuoto: è il contrasto su cui il vetro prende luce.
-    backgroundColor: 'rgba(6,8,13,0.74)',
   },
   backdrop: {
     position: 'absolute',
@@ -227,6 +297,11 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    // Il vuoto: è il contrasto su cui il vetro prende luce.
+    backgroundColor: 'rgba(6,8,13,0.74)',
+  },
+  backdropHit: {
+    flex: 1,
   },
   sheet: {
     marginHorizontal: spacing.md,

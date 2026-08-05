@@ -890,6 +890,9 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   stopwatch: {
+    // Cronometro di seduta: taglio arrotondato come ogni numero, e tabulare
+    // (fontVariant applicato al punto d'uso) così le cifre non ballano.
+    fontFamily: type.metric.fontFamily,
     color: colors.textPrimary,
     fontSize: 22,
     fontWeight: '800',

@@ -14,6 +14,7 @@ import {
   sharedStyles,
   tabular,
   type,
+  wash,
 } from '../lib/theme';
 import { localDateString, parseNum, showError } from '../lib/utils';
 import { getActiveCoachClient, getBiofeedbackByDate, getUserId, upsertDailyBiofeedback } from '../lib/queries';
@@ -21,13 +22,7 @@ import { Card } from '../components/Card';
 import { GlassSurface } from '../components/Glass';
 import { Press } from '../components/Press';
 import { PrimaryButton } from '../components/PrimaryButton';
-
-/** Veli dei segnali: colore al 12%, solo dietro le icone. */
-const WASH = {
-  cyan: 'rgba(100,210,255,0.12)',
-  blue: 'rgba(10,132,255,0.12)',
-  neutral: 'rgba(255,255,255,0.06)',
-} as const;
+import { SectionHead } from '../components/SectionHead';
 
 /** Un'icona per ogni provider: niente emoji sui controlli. */
 const PROVIDER_ICON: Partial<Record<HealthSource, keyof typeof Ionicons.glyphMap>> = {
@@ -44,28 +39,6 @@ const PROVIDER_ICON: Partial<Record<HealthSource, keyof typeof Ionicons.glyphMap
   coros: 'compass',
   strava: 'bicycle',
 };
-
-/** Testata di sezione: icona del segnale + etichetta. Il colore non viaggia mai da solo. */
-function SectionHead({
-  icon,
-  label,
-  tint,
-  wash,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  tint: string;
-  wash: string;
-}) {
-  return (
-    <View style={styles.head}>
-      <View style={[styles.headIcon, { backgroundColor: wash }]}>
-        <Ionicons name={icon} size={18} color={tint} />
-      </View>
-      <Text style={[type.label, styles.headLabel]}>{label}</Text>
-    </View>
-  );
-}
 
 /** Campo numerico su FERRO: cifra grande e tabulare, unità di misura a destra. */
 function NumberField({
@@ -176,7 +149,7 @@ export default function SaluteScreen() {
       >
         {/* IL FARO: i dati di oggi, l'unica cosa che si compila in questa schermata. */}
         <Card beacon={colors.cyan} style={shadow.beacon(colors.cyan)}>
-          <SectionHead icon="create" tint={colors.cyan} wash={WASH.cyan} label="Oggi, a mano" />
+          <SectionHead icon="create" tint={colors.cyan} title="Oggi, a mano" />
           {coachClientId ? (
             <View style={styles.fieldRow}>
               <NumberField label="Passi" value={steps} onChange={setSteps} placeholder="8500" />
@@ -208,8 +181,7 @@ export default function SaluteScreen() {
           <SectionHead
             icon="sync"
             tint={colors.textSecondary}
-            wash={WASH.neutral}
-            label="Connetti un'app o un dispositivo"
+            title="Connetti un'app o un dispositivo"
           />
           <Text style={styles.note}>
             La sincronizzazione automatica arriverà con l'app installata dagli store. Per ora puoi
@@ -360,22 +332,6 @@ const styles = StyleSheet.create({
   },
 
   // --- FERRO: sezioni ---
-  head: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    marginBottom: spacing.xs,
-  },
-  headIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: radius.xs,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headLabel: {
-    flex: 1,
-  },
   body: {
     color: colors.textPrimary,
     fontSize: 17,
@@ -441,12 +397,13 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: radius.xs,
-    backgroundColor: WASH.neutral,
+    // Velo neutro: bianco al 6%, l'unico che non porta un segnale.
+    backgroundColor: wash(colors.textPrimary, 0.06),
     alignItems: 'center',
     justifyContent: 'center',
   },
   providerIconOn: {
-    backgroundColor: WASH.blue,
+    backgroundColor: wash(colors.accent, 0.12),
   },
   providerLabel: {
     flex: 1,
@@ -462,8 +419,8 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
   },
   badgeOn: {
-    borderColor: 'rgba(10,132,255,0.45)',
-    backgroundColor: WASH.blue,
+    borderColor: wash(colors.accent, 0.45),
+    backgroundColor: wash(colors.accent, 0.12),
   },
   badgeSoon: {
     borderColor: colors.border,

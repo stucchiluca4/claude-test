@@ -40,6 +40,7 @@ import { GlassSurface } from '../../components/Glass';
 import { MetricBlock } from '../../components/MetricBlock';
 import { Press } from '../../components/Press';
 import { PrimaryButton } from '../../components/PrimaryButton';
+import { SectionHead } from '../../components/SectionHead';
 import { EmptyState, LoadingState } from '../../components/States';
 
 type ScaleKey =
@@ -49,13 +50,6 @@ type ScaleKey =
   | 'muscle_soreness'
   | 'joint_stress'
   | 'recovery';
-
-/** Veli dei segnali: colore al 12%, solo dietro le icone di sezione. */
-const WASH = {
-  cyan: 'rgba(100,210,255,0.12)',
-  amber: 'rgba(255,159,10,0.12)',
-  neutral: 'rgba(255,255,255,0.06)',
-} as const;
 
 /**
  * Ogni scala porta il segnale del suo significato: ciano per il corpo che
@@ -103,28 +97,6 @@ function italianDateLabel(d: Date): string {
     .split(' ')
     .map((w) => (w ? w.charAt(0).toUpperCase() + w.slice(1) : w))
     .join(' ');
-}
-
-/** Testata di sezione: icona del segnale + etichetta. Il colore non viaggia mai da solo. */
-function SectionHead({
-  icon,
-  label,
-  tint,
-  wash,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  tint: string;
-  wash: string;
-}) {
-  return (
-    <View style={styles.head}>
-      <View style={[styles.headIcon, { backgroundColor: wash }]}>
-        <Ionicons name={icon} size={18} color={tint} />
-      </View>
-      <Text style={[type.label, styles.headLabel]}>{label}</Text>
-    </View>
-  );
 }
 
 /** Campo numerico su FERRO: cifra grande e tabulare, unità di misura a destra. */
@@ -404,8 +376,7 @@ export default function BiofeedbackOggiScreen() {
               <SectionHead
                 icon="information-circle"
                 tint={colors.textSecondary}
-                wash={WASH.neutral}
-                label="Perché è importante"
+                title="Perché è importante"
               />
               <Text style={styles.note}>
                 Le tue risposte ci aiutano ad adattare il programma e migliorare performance e
@@ -414,7 +385,7 @@ export default function BiofeedbackOggiScreen() {
             </Card>
 
             <Card>
-              <SectionHead icon="pulse" tint={colors.cyan} wash={WASH.cyan} label="Stato generale" />
+              <SectionHead icon="pulse" tint={colors.cyan} title="Stato generale" />
               <View style={styles.scaleGroup}>
                 {SCALES.map(({ key, label, bands, tint }) => (
                   <View key={key} style={styles.scaleBlock}>
@@ -441,7 +412,7 @@ export default function BiofeedbackOggiScreen() {
             </Card>
 
             <Card>
-              <SectionHead icon="nutrition" tint={colors.amber} wash={WASH.amber} label="Nutrizione" />
+              <SectionHead icon="nutrition" tint={colors.amber} title="Nutrizione" />
               <View style={styles.fieldRow}>
                 <NumberField
                   grow
@@ -474,7 +445,7 @@ export default function BiofeedbackOggiScreen() {
             </Card>
 
             <Card>
-              <SectionHead icon="footsteps" tint={colors.cyan} wash={WASH.cyan} label="Altre metriche" />
+              <SectionHead icon="footsteps" tint={colors.cyan} title="Altre metriche" />
               <View style={styles.fieldRow}>
                 <NumberField
                   grow
@@ -509,12 +480,7 @@ export default function BiofeedbackOggiScreen() {
             </Card>
 
             <Card>
-              <SectionHead
-                icon="create"
-                tint={colors.textSecondary}
-                wash={WASH.neutral}
-                label="Note libere"
-              />
+              <SectionHead icon="create" tint={colors.textSecondary} title="Note libere" />
               <TextInput
                 style={styles.notes}
                 value={notes}
@@ -686,22 +652,6 @@ const styles = StyleSheet.create({
   },
 
   // --- FERRO: sezioni ---
-  head: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    marginBottom: spacing.xs,
-  },
-  headIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: radius.xs,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headLabel: {
-    flex: 1,
-  },
   note: {
     color: colors.textSecondary,
     fontSize: 17,

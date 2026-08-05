@@ -1,7 +1,7 @@
 import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SET_TYPES } from '@wc/shared';
 import type { ExerciseSet } from '@wc/shared';
-import { colors, concentric, radius, spacing, tabular } from '../lib/theme';
+import { colors, concentric, radius, spacing, tabular, type } from '../lib/theme';
 import { Press } from './Press';
 
 export interface SetEntry {
@@ -173,19 +173,22 @@ const styles = StyleSheet.create({
   },
   input: {
     width: '100%',
+    fontFamily: type.metricXs.fontFamily,
     color: colors.textPrimary,
     fontSize: 26,
     fontWeight: '800',
     letterSpacing: -0.5,
     textAlign: 'center',
-    paddingVertical: 2,
+    // Bersaglio pieno: è il campo più toccato del prodotto, con le mani sudate.
+    minHeight: 48,
+    paddingVertical: 10,
   },
   inputSmall: {
     fontSize: 20,
   },
   unit: {
-    color: colors.textTertiary,
-    fontSize: 11,
+    color: colors.textSecondary,
+    fontSize: 12,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.4,

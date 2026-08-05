@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
-import { colors, radius, spacing, tabular } from '../lib/theme';
+import { colors, radius, spacing, tabular, type } from '../lib/theme';
 import { formatClock } from '../lib/utils';
+import { spring as reduceAware } from '../lib/a11y';
 import { tapSuccess } from '../lib/haptics';
 import { GlassSurface } from './Glass';
 import { Press } from './Press';
@@ -35,7 +36,11 @@ export function RestTimer({ seconds, resetToken, onFinish, onSkip }: Props) {
 
   useEffect(() => {
     enter.setValue(0);
-    Animated.spring(enter, { toValue: 1, damping: 20, stiffness: 140, mass: 1, useNativeDriver: true }).start();
+    Animated.spring(enter, {
+      toValue: 1,
+      useNativeDriver: true,
+      ...reduceAware({ damping: 20, stiffness: 140, mass: 1 }),
+    }).start();
   }, [resetToken, enter]);
 
   useEffect(() => {
@@ -113,6 +118,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.7,
   },
   clock: {
+    // Il numero più guardato del prodotto: taglio arrotondato come le metriche.
+    fontFamily: type.metric.fontFamily,
     color: colors.textPrimary,
     fontSize: 44,
     fontWeight: '800',

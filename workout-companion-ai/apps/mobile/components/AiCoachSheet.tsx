@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -14,6 +15,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { prefersReducedMotion, spring as reduceAware } from '../lib/a11y';
 import { supabase } from '../lib/supabase';
 import { colors, concentric, radius, spacing, sharedStyles, type } from '../lib/theme';
 import { GlassSurface } from './Glass';
@@ -71,6 +73,69 @@ function AskButton({
 }
 
 /**
+ * La molla del foglio: il sistema non anima mai con curve lineari.
+ * Le soglie di quiete tagliano la coda impercettibile del rimbalzo, così alla
+ * chiusura il foglio si smonta appena il movimento è finito davvero invece di
+ * restare lì, invisibile, a mangiarsi i tocchi.
+ */
+const sheetSpring = (toValue: 0 | 1) => ({
+  toValue,
+  useNativeDriver: true,
+  restDisplacementThreshold: 0.01,
+  restSpeedThreshold: 0.01,
+  ...reduceAware({ damping: 22, stiffness: 180, mass: 1 }),
+});
+
+/**
+ * Ingresso e uscita del foglio a molla (DESIGN.md § movimento): il fondo si
+ * dissolve, il foglio sale da 28px e passa da scala 0.98 a 1. Alla chiusura
+ * il percorso è invertito e `onClose` scatta solo a movimento finito, così il
+ * foglio non sparisce di colpo. Con "riduci movimento" attivo si chiude subito.
+ */
+function useSheetEnter(visible: boolean, onClose: () => void) {
+  const [mounted, setMounted] = useState(visible);
+  // Si parte sempre da fuori: anche se il foglio nasce già aperto, entra a molla.
+  const enter = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      setMounted(true);
+      Animated.spring(enter, sheetSpring(1)).start();
+      return;
+    }
+    // Chiusura decisa da fuori: prima il percorso inverso, poi smonto il foglio.
+    if (prefersReducedMotion()) {
+      enter.setValue(0);
+      setMounted(false);
+      return;
+    }
+    Animated.spring(enter, sheetSpring(0)).start(({ finished }) => {
+      if (finished) setMounted(false);
+    });
+  }, [visible, enter]);
+
+  // Chiusura chiesta dall'utente: il movimento inverso precede `onClose`.
+  const requestClose = useCallback(() => {
+    if (prefersReducedMotion()) {
+      onClose();
+      return;
+    }
+    Animated.spring(enter, sheetSpring(0)).start(({ finished }) => {
+      if (finished) onClose();
+    });
+  }, [enter, onClose]);
+
+  return {
+    /** Il Modal resta montato finché l'uscita non è finita. */
+    mounted,
+    requestClose,
+    fade: enter.interpolate({ inputRange: [0, 1], outputRange: [0, 1], extrapolate: 'clamp' }),
+    translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [28, 0] }),
+    scale: enter.interpolate({ inputRange: [0, 1], outputRange: [0.98, 1] }),
+  };
+}
+
+/**
  * Assistente AI legato a un esercizio: la funzione server aggiunge
  * automaticamente esercizio corrente, serie prescritte, ultime esecuzioni,
  * feedback precedenti e recupero. L'atleta scrive (o sceglie) la domanda.
@@ -88,6 +153,8 @@ export function AiCoachSheet({ visible, exerciseId, workoutExerciseId, exerciseN
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const wellMaxHeight = Math.round(height * 0.46);
+  // Il foglio entra ed esce a molla: niente scivolata lineare di sistema.
+  const { mounted, requestClose, fade, translateY, scale } = useSheetEnter(visible, onClose);
 
   useEffect(() => {
     if (visible) {
@@ -122,107 +189,112 @@ export function AiCoachSheet({ visible, exerciseId, workoutExerciseId, exerciseN
   }
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={mounted} transparent animationType="none" onRequestClose={requestClose}>
       <View style={styles.overlay}>
-        <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Chiudi il foglio" />
+        {/* Il vuoto dietro il foglio: si accende e si spegne in dissolvenza. */}
+        <Animated.View style={[styles.backdrop, { opacity: fade }]}>
+          <Pressable style={styles.backdropHit} onPress={requestClose} accessibilityLabel="Chiudi il foglio" />
+        </Animated.View>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <GlassSurface
-            cornerRadius={radius.xl}
-            lift="sheet"
-            padding={spacing.lg}
-            style={[styles.sheet, { marginBottom: Math.max(insets.bottom, spacing.md) }]}
-          >
-            <View style={styles.handle} />
-
-            {/* VETRO — testata: l'identità viola dice chi risponde. */}
-            <View style={styles.head}>
-              <View style={styles.mark}>
-                <Ionicons name="sparkles" size={20} color={colors.violet} />
-              </View>
-              <View style={styles.headText}>
-                <Text style={[type.label, styles.eyebrow]}>Coach AI</Text>
-                <Text style={type.title} numberOfLines={2}>
-                  {exerciseName}
-                </Text>
-              </View>
-              <Press onPress={onClose} style={styles.glassBtn} accessibilityLabel="Chiudi il coach AI">
-                <Ionicons name="close" size={22} color={colors.textPrimary} />
-              </Press>
-            </View>
-
-            {/* FERRO — tutto ciò che si legge sta qui sopra, opaco. */}
-            <ScrollView
-              style={[styles.well, { maxHeight: wellMaxHeight }]}
-              contentContainerStyle={styles.wellBody}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
+          <Animated.View style={{ transform: [{ translateY }, { scale }] }}>
+            <GlassSurface
+              cornerRadius={radius.xl}
+              lift="sheet"
+              padding={spacing.lg}
+              style={[styles.sheet, { marginBottom: Math.max(insets.bottom, spacing.md) }]}
             >
-              {answer ? (
-                // Faro unico del foglio: bordo viola attorno alla risposta appena generata.
-                <View style={styles.answer}>
-                  <View style={styles.answerHead}>
-                    <Ionicons name="sparkles" size={15} color={colors.violet} />
-                    <Text style={[type.label, styles.eyebrow]}>Risposta del coach AI</Text>
-                  </View>
-                  <Text style={type.body}>{answer}</Text>
-                </View>
-              ) : loading ? (
-                <View style={styles.thinking}>
-                  <ActivityIndicator color={colors.violet} />
-                  <Text style={[type.body, styles.thinkingText]}>Il coach sta pensando…</Text>
-                </View>
-              ) : (
-                <>
-                  <Text style={type.label}>Domande frequenti</Text>
-                  <View style={styles.chips}>
-                    {SUGGESTIONS.map((s) => (
-                      <Press
-                        key={s}
-                        onPress={() => ask(s)}
-                        scaleTo={0.98}
-                        style={styles.chip}
-                        accessibilityLabel={s}
-                      >
-                        <Text style={[type.body, styles.chipText]}>{s}</Text>
-                        <Ionicons name="arrow-forward" size={18} color={colors.violet} />
-                      </Press>
-                    ))}
-                  </View>
-                </>
-              )}
+              <View style={styles.handle} />
 
-              {error ? (
-                <View style={styles.error}>
-                  <Ionicons name="alert-circle" size={20} color={colors.rose} />
-                  <Text style={[type.body, styles.errorText]}>{error}</Text>
+              {/* VETRO — testata: l'identità viola dice chi risponde. */}
+              <View style={styles.head}>
+                <View style={styles.mark}>
+                  <Ionicons name="sparkles" size={20} color={colors.violet} />
                 </View>
-              ) : null}
-
-              <View style={styles.disclaimer}>
-                <Ionicons name="information-circle-outline" size={16} color={colors.textTertiary} />
-                <Text style={styles.disclaimerText}>
-                  L'AI è un supporto: per dolori o infortuni parla sempre col tuo coach o un medico.
-                </Text>
+                <View style={styles.headText}>
+                  <Text style={[type.label, styles.eyebrow]}>Coach AI</Text>
+                  <Text style={type.title} numberOfLines={2}>
+                    {exerciseName}
+                  </Text>
+                </View>
+                <Press onPress={requestClose} style={styles.glassBtn} accessibilityLabel="Chiudi il coach AI">
+                  <Ionicons name="close" size={22} color={colors.textPrimary} />
+                </Press>
               </View>
-            </ScrollView>
 
-            {/* VETRO — composer: il campo resta opaco, così si legge mentre scrivi. */}
-            <View style={styles.foot}>
-              <TextInput
-                style={[sharedStyles.input, styles.input]}
-                value={question}
-                onChangeText={setQuestion}
-                placeholder="Scrivi la tua domanda al coach AI…"
-                placeholderTextColor={colors.textTertiary}
-                multiline
-              />
-              <AskButton
-                label={answer ? 'Chiedi ancora' : 'Chiedi al coach AI'}
-                loading={loading}
-                onPress={() => ask(question)}
-              />
-            </View>
-          </GlassSurface>
+              {/* FERRO — tutto ciò che si legge sta qui sopra, opaco. */}
+              <ScrollView
+                style={[styles.well, { maxHeight: wellMaxHeight }]}
+                contentContainerStyle={styles.wellBody}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                {answer ? (
+                  // Faro unico del foglio: bordo viola attorno alla risposta appena generata.
+                  <View style={styles.answer}>
+                    <View style={styles.answerHead}>
+                      <Ionicons name="sparkles" size={15} color={colors.violet} />
+                      <Text style={[type.label, styles.eyebrow]}>Risposta del coach AI</Text>
+                    </View>
+                    <Text style={type.body}>{answer}</Text>
+                  </View>
+                ) : loading ? (
+                  <View style={styles.thinking}>
+                    <ActivityIndicator color={colors.violet} />
+                    <Text style={[type.body, styles.thinkingText]}>Il coach sta pensando…</Text>
+                  </View>
+                ) : (
+                  <>
+                    <Text style={type.label}>Domande frequenti</Text>
+                    <View style={styles.chips}>
+                      {SUGGESTIONS.map((s) => (
+                        <Press
+                          key={s}
+                          onPress={() => ask(s)}
+                          scaleTo={0.98}
+                          style={styles.chip}
+                          accessibilityLabel={s}
+                        >
+                          <Text style={[type.body, styles.chipText]}>{s}</Text>
+                          <Ionicons name="arrow-forward" size={18} color={colors.violet} />
+                        </Press>
+                      ))}
+                    </View>
+                  </>
+                )}
+
+                {error ? (
+                  <View style={styles.error}>
+                    <Ionicons name="alert-circle" size={20} color={colors.rose} />
+                    <Text style={[type.body, styles.errorText]}>{error}</Text>
+                  </View>
+                ) : null}
+
+                <View style={styles.disclaimer}>
+                  <Ionicons name="information-circle-outline" size={16} color={colors.textTertiary} />
+                  <Text style={styles.disclaimerText}>
+                    L'AI è un supporto: per dolori o infortuni parla sempre col tuo coach o un medico.
+                  </Text>
+                </View>
+              </ScrollView>
+
+              {/* VETRO — composer: il campo resta opaco, così si legge mentre scrivi. */}
+              <View style={styles.foot}>
+                <TextInput
+                  style={[sharedStyles.input, styles.input]}
+                  value={question}
+                  onChangeText={setQuestion}
+                  placeholder="Scrivi la tua domanda al coach AI…"
+                  placeholderTextColor={colors.textTertiary}
+                  multiline
+                />
+                <AskButton
+                  label={answer ? 'Chiedi ancora' : 'Chiedi al coach AI'}
+                  loading={loading}
+                  onPress={() => ask(question)}
+                />
+              </View>
+            </GlassSurface>
+          </Animated.View>
         </KeyboardAvoidingView>
       </View>
     </Modal>
@@ -233,7 +305,6 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(6,8,13,0.74)',
   },
   backdrop: {
     position: 'absolute',
@@ -241,6 +312,11 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    // Il vuoto: è il contrasto su cui il vetro prende luce.
+    backgroundColor: 'rgba(6,8,13,0.74)',
+  },
+  backdropHit: {
+    flex: 1,
   },
   sheet: {
     marginHorizontal: spacing.md,

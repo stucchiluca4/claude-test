@@ -1,8 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Modal, ScrollView, StyleSheet, Switch, Text, View, useWindowDimensions } from 'react-native';
+import {
+  Animated,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { TIMER_MODES, type TimerMode } from '@wc/shared';
+import { prefersReducedMotion, spring as reduceAware } from '../lib/a11y';
 import { colors, radius, spacing, sharedStyles, tabular, type } from '../lib/theme';
 import { formatClock } from '../lib/utils';
 import { playCue } from '../lib/cues';
@@ -96,6 +106,69 @@ function ToggleRow({
   );
 }
 
+/**
+ * La molla del pannello: il sistema non anima mai con curve lineari.
+ * Le soglie di quiete tagliano la coda impercettibile del rimbalzo, così alla
+ * chiusura il pannello si smonta appena il movimento è finito davvero invece di
+ * restare lì, invisibile, a mangiarsi i tocchi.
+ */
+const sheetSpring = (toValue: 0 | 1) => ({
+  toValue,
+  useNativeDriver: true,
+  restDisplacementThreshold: 0.01,
+  restSpeedThreshold: 0.01,
+  ...reduceAware({ damping: 22, stiffness: 180, mass: 1 }),
+});
+
+/**
+ * Ingresso e uscita del pannello a molla (DESIGN.md § movimento): il fondo si
+ * dissolve, il pannello sale da 28px e passa da scala 0.98 a 1. Alla chiusura
+ * il percorso è invertito e `onClose` scatta solo a movimento finito, così il
+ * pannello non sparisce di colpo. Con "riduci movimento" attivo si chiude subito.
+ */
+function useSheetEnter(visible: boolean, onClose: () => void) {
+  const [mounted, setMounted] = useState(visible);
+  // Si parte sempre da fuori: anche se nasce già aperto, il pannello entra a molla.
+  const enter = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      setMounted(true);
+      Animated.spring(enter, sheetSpring(1)).start();
+      return;
+    }
+    // Chiusura decisa da fuori: prima il percorso inverso, poi smonto il pannello.
+    if (prefersReducedMotion()) {
+      enter.setValue(0);
+      setMounted(false);
+      return;
+    }
+    Animated.spring(enter, sheetSpring(0)).start(({ finished }) => {
+      if (finished) setMounted(false);
+    });
+  }, [visible, enter]);
+
+  // Chiusura chiesta dall'utente: il movimento inverso precede `onClose`.
+  const requestClose = useCallback(() => {
+    if (prefersReducedMotion()) {
+      onClose();
+      return;
+    }
+    Animated.spring(enter, sheetSpring(0)).start(({ finished }) => {
+      if (finished) onClose();
+    });
+  }, [enter, onClose]);
+
+  return {
+    /** Il Modal resta montato finché l'uscita non è finita. */
+    mounted,
+    requestClose,
+    fade: enter.interpolate({ inputRange: [0, 1], outputRange: [0, 1], extrapolate: 'clamp' }),
+    translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [28, 0] }),
+    scale: enter.interpolate({ inputRange: [0, 1], outputRange: [0.98, 1] }),
+  };
+}
+
 export function AdvancedTimer({ visible, onClose, onAutoNext }: Props) {
   const [phase, setPhase] = useState<'setup' | 'run'>('setup');
   const [mode, setMode] = useState<TimerMode>('countdown');
@@ -121,6 +194,9 @@ export function AdvancedTimer({ visible, onClose, onAutoNext }: Props) {
   const [barH, setBarH] = useState(88);
   const { width, height } = useWindowDimensions();
 
+  // Il pannello entra ed esce a molla: niente scivolata lineare di sistema.
+  const { mounted, requestClose, fade, translateY, scale } = useSheetEnter(visible, onClose);
+
   const resetEngine = useCallback(() => {
     baseMsRef.current = 0;
     startEpochRef.current = null;
@@ -132,13 +208,14 @@ export function AdvancedTimer({ visible, onClose, onAutoNext }: Props) {
     setRunning(false);
   }, []);
 
-  // Reset completo alla chiusura/riapertura.
+  // Reset completo alla chiusura/riapertura: aspetta la fine dell'uscita, così
+  // il pannello non torna al setup davanti agli occhi mentre scende.
   useEffect(() => {
-    if (!visible) {
+    if (!mounted) {
       resetEngine();
       setPhase('setup');
     }
-  }, [visible, resetEngine]);
+  }, [mounted, resetEngine]);
 
   // Tick del motore mentre è in esecuzione.
   useEffect(() => {
@@ -274,211 +351,217 @@ export function AdvancedTimer({ visible, onClose, onAutoNext }: Props) {
   const ringSize = Math.round(Math.min(width - spacing.xl * 2, height * 0.42, 340));
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <SafeAreaView style={sharedStyles.screen} edges={['top', 'bottom']}>
-        <View style={styles.flex}>
-          {phase === 'setup' ? (
-            <ScrollView
-              contentContainerStyle={[
-                styles.setup,
-                { paddingTop: headerH + spacing.xxl, paddingBottom: barH + spacing.xxl },
-              ]}
-              showsVerticalScrollIndicator={false}
-            >
-              <Text style={type.label}>Modalità</Text>
-              <View style={styles.modeGrid}>
-                {MODE_LIST.map((m) => {
-                  const active = mode === m.key;
-                  return (
-                    <Press
-                      key={m.key}
-                      style={[styles.modeChip, active && styles.modeChipActive]}
-                      onPress={() => setMode(m.key)}
-                      accessibilityLabel={m.label}
-                    >
-                      <Ionicons
-                        name={MODE_ICON[m.key]}
-                        size={20}
-                        color={active ? colors.accent : colors.textSecondary}
-                      />
-                      <Text style={[styles.modeLabel, active && styles.modeLabelActive]} numberOfLines={1}>
-                        {m.label}
+    <Modal visible={mounted} transparent animationType="none" onRequestClose={requestClose}>
+      {/* Il vuoto dietro il pannello: si accende in dissolvenza mentre sale. */}
+      <Animated.View style={[StyleSheet.absoluteFill, styles.void, { opacity: fade }]} pointerEvents="none" />
+      <Animated.View
+        style={[styles.flex, { opacity: fade, transform: [{ translateY }, { scale }] }]}
+      >
+        <SafeAreaView style={sharedStyles.screen} edges={['top', 'bottom']}>
+          <View style={styles.flex}>
+            {phase === 'setup' ? (
+              <ScrollView
+                contentContainerStyle={[
+                  styles.setup,
+                  { paddingTop: headerH + spacing.xxl, paddingBottom: barH + spacing.xxl },
+                ]}
+                showsVerticalScrollIndicator={false}
+              >
+                <Text style={type.label}>Modalità</Text>
+                <View style={styles.modeGrid}>
+                  {MODE_LIST.map((m) => {
+                    const active = mode === m.key;
+                    return (
+                      <Press
+                        key={m.key}
+                        style={[styles.modeChip, active && styles.modeChipActive]}
+                        onPress={() => setMode(m.key)}
+                        accessibilityLabel={m.label}
+                      >
+                        <Ionicons
+                          name={MODE_ICON[m.key]}
+                          size={20}
+                          color={active ? colors.accent : colors.textSecondary}
+                        />
+                        <Text style={[styles.modeLabel, active && styles.modeLabelActive]} numberOfLines={1}>
+                          {m.label}
+                        </Text>
+                      </Press>
+                    );
+                  })}
+                </View>
+                <Text style={styles.hint}>{TIMER_MODES[mode].hint}</Text>
+
+                {dial ? (
+                  <Card>
+                    <Text style={type.label}>{dial.label}</Text>
+                    <View style={styles.dialRow}>
+                      <Press
+                        style={styles.dialBtn}
+                        onPress={() => dial.onChange(clamp(dial.value - dial.step, dial.min, dial.max))}
+                        accessibilityLabel={`Diminuisci ${dial.label}`}
+                      >
+                        <Ionicons name="remove" size={26} color={colors.accent} />
+                      </Press>
+                      <Text
+                        style={[type.metric, tabular, styles.dialValue]}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                      >
+                        {formatClock(dial.value)}
                       </Text>
-                    </Press>
-                  );
-                })}
-              </View>
-              <Text style={styles.hint}>{TIMER_MODES[mode].hint}</Text>
+                      <Press
+                        style={styles.dialBtn}
+                        onPress={() => dial.onChange(clamp(dial.value + dial.step, dial.min, dial.max))}
+                        accessibilityLabel={`Aumenta ${dial.label}`}
+                      >
+                        <Ionicons name="add" size={26} color={colors.accent} />
+                      </Press>
+                    </View>
 
-              {dial ? (
+                    {mode === 'emom' ? (
+                      <>
+                        <View style={styles.hair} />
+                        <Stepper
+                          label="Round"
+                          value={rounds}
+                          onChange={setRounds}
+                          step={1}
+                          min={1}
+                          max={60}
+                          format={(v) => String(v)}
+                        />
+                      </>
+                    ) : null}
+                  </Card>
+                ) : null}
+
                 <Card>
-                  <Text style={type.label}>{dial.label}</Text>
-                  <View style={styles.dialRow}>
-                    <Press
-                      style={styles.dialBtn}
-                      onPress={() => dial.onChange(clamp(dial.value - dial.step, dial.min, dial.max))}
-                      accessibilityLabel={`Diminuisci ${dial.label}`}
-                    >
-                      <Ionicons name="remove" size={26} color={colors.accent} />
-                    </Press>
-                    <Text
-                      style={[type.metric, tabular, styles.dialValue]}
-                      numberOfLines={1}
-                      adjustsFontSizeToFit
-                    >
-                      {formatClock(dial.value)}
-                    </Text>
-                    <Press
-                      style={styles.dialBtn}
-                      onPress={() => dial.onChange(clamp(dial.value + dial.step, dial.min, dial.max))}
-                      accessibilityLabel={`Aumenta ${dial.label}`}
-                    >
-                      <Ionicons name="add" size={26} color={colors.accent} />
-                    </Press>
-                  </View>
-
-                  {mode === 'emom' ? (
+                  <ToggleRow icon="volume-high" label="Suono" value={sound} onValueChange={setSound} />
+                  <View style={styles.hair} />
+                  <ToggleRow icon="phone-portrait" label="Vibrazione" value={vibrate} onValueChange={setVibrate} />
+                  {mode === 'countdown' || mode === 'hold' || mode === 'emom' ? (
                     <>
                       <View style={styles.hair} />
-                      <Stepper
-                        label="Round"
-                        value={rounds}
-                        onChange={setRounds}
-                        step={1}
-                        min={1}
-                        max={60}
-                        format={(v) => String(v)}
+                      <ToggleRow
+                        icon="play-forward"
+                        label="Passa all'esercizio successivo alla fine"
+                        value={autoNext}
+                        onValueChange={setAutoNext}
                       />
                     </>
                   ) : null}
                 </Card>
-              ) : null}
-
-              <Card>
-                <ToggleRow icon="volume-high" label="Suono" value={sound} onValueChange={setSound} />
-                <View style={styles.hair} />
-                <ToggleRow icon="phone-portrait" label="Vibrazione" value={vibrate} onValueChange={setVibrate} />
-                {mode === 'countdown' || mode === 'hold' || mode === 'emom' ? (
-                  <>
-                    <View style={styles.hair} />
-                    <ToggleRow
-                      icon="play-forward"
-                      label="Passa all'esercizio successivo alla fine"
-                      value={autoNext}
-                      onValueChange={setAutoNext}
-                    />
-                  </>
-                ) : null}
-              </Card>
-            </ScrollView>
-          ) : (
-            // FERRO a tutto schermo: sotto il numero non c'è mai vetro.
-            <View style={[styles.run, { paddingTop: headerH + spacing.lg, paddingBottom: barH + spacing.lg }]}>
-              <View style={styles.runCaption}>
-                <Ionicons name={MODE_ICON[mode]} size={16} color={tint} />
-                <Text style={[styles.runCaptionText, { color: tint }]} numberOfLines={1}>
-                  {caption}
-                </Text>
-              </View>
-
-              {hasRing ? (
-                <ActivityRing progress={fraction} color={tint} size={ringSize} strokeWidth={14}>
-                  <View style={{ width: ringSize - 76 }}>
-                    <Text
-                      style={[type.metric, tabular, styles.bigClock]}
-                      numberOfLines={1}
-                      adjustsFontSizeToFit
-                    >
-                      {big}
-                    </Text>
-                  </View>
-                </ActivityRing>
-              ) : (
-                <Text style={[type.metric, tabular, styles.bigClock]} numberOfLines={1} adjustsFontSizeToFit>
-                  {big}
-                </Text>
-              )}
-            </View>
-          )}
-
-          {/* VETRO 1 — testata ancorata: il contenuto le scorre sotto. */}
-          <View
-            style={styles.headerAnchor}
-            pointerEvents="box-none"
-            onLayout={(e) => setHeaderH(e.nativeEvent.layout.height)}
-          >
-            <GlassSurface cornerRadius={radius.xl} padding={spacing.md}>
-              <View style={styles.headerRow}>
-                <View style={styles.headerText}>
-                  <Text style={styles.headerTitle}>Timer</Text>
-                  <Text style={styles.headerSub} numberOfLines={1}>
-                    {phase === 'run'
-                      ? running
-                        ? 'In corso'
-                        : 'In pausa'
-                      : TIMER_MODES[mode].label}
+              </ScrollView>
+            ) : (
+              // FERRO a tutto schermo: sotto il numero non c'è mai vetro.
+              <View style={[styles.run, { paddingTop: headerH + spacing.lg, paddingBottom: barH + spacing.lg }]}>
+                <View style={styles.runCaption}>
+                  <Ionicons name={MODE_ICON[mode]} size={16} color={tint} />
+                  <Text style={[styles.runCaptionText, { color: tint }]} numberOfLines={1}>
+                    {caption}
                   </Text>
                 </View>
-                <Press onPress={onClose} style={styles.glassBtn} accessibilityLabel="Chiudi il timer">
-                  <Ionicons name="close" size={22} color={colors.textPrimary} />
-                </Press>
+
+                {hasRing ? (
+                  <ActivityRing progress={fraction} color={tint} size={ringSize} strokeWidth={14}>
+                    <View style={{ width: ringSize - 76 }}>
+                      <Text
+                        style={[type.metric, tabular, styles.bigClock]}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                      >
+                        {big}
+                      </Text>
+                    </View>
+                  </ActivityRing>
+                ) : (
+                  <Text style={[type.metric, tabular, styles.bigClock]} numberOfLines={1} adjustsFontSizeToFit>
+                    {big}
+                  </Text>
+                )}
               </View>
-            </GlassSurface>
-          </View>
+            )}
 
-          {/* VETRO 2 — i comandi stanno in basso, sotto il pollice. */}
-          <View
-            style={styles.barAnchor}
-            pointerEvents="box-none"
-            onLayout={(e) => setBarH(e.nativeEvent.layout.height)}
-          >
-            <GlassSurface cornerRadius={radius.xl} padding={spacing.md}>
-              {phase === 'setup' ? (
-                <PrimaryButton label="AVVIA" onPress={start} />
-              ) : (
-                <View style={styles.bar}>
-                  {mode === 'amrap' ? (
-                    <Press
-                      onPress={() => setAmrapRounds((r) => r + 1)}
-                      haptic="success"
-                      style={styles.roundBtn}
-                      accessibilityLabel="Segna un round completato"
-                    >
-                      <Ionicons name="add-circle" size={22} color={colors.amber} />
-                      <Text style={styles.roundBtnText}>ROUND</Text>
-                      <Text style={[styles.roundBtnCount, tabular]}>{amrapRounds}</Text>
-                    </Press>
-                  ) : null}
-
-                  <View style={styles.controls}>
-                    <PrimaryButton
-                      label={running ? 'PAUSA' : 'RIPRENDI'}
-                      onPress={togglePause}
-                      variant={running ? 'ghost' : 'primary'}
-                      style={running ? [styles.control, styles.ghostFill] : styles.control}
-                    />
-                    <PrimaryButton
-                      label="RIAVVIA"
-                      onPress={restart}
-                      variant="ghost"
-                      style={[styles.control, styles.ghostFill]}
-                    />
+            {/* VETRO 1 — testata ancorata: il contenuto le scorre sotto. */}
+            <View
+              style={styles.headerAnchor}
+              pointerEvents="box-none"
+              onLayout={(e) => setHeaderH(e.nativeEvent.layout.height)}
+            >
+              <GlassSurface cornerRadius={radius.xl} padding={spacing.md}>
+                <View style={styles.headerRow}>
+                  <View style={styles.headerText}>
+                    <Text style={styles.headerTitle}>Timer</Text>
+                    <Text style={styles.headerSub} numberOfLines={1}>
+                      {phase === 'run'
+                        ? running
+                          ? 'In corso'
+                          : 'In pausa'
+                        : TIMER_MODES[mode].label}
+                    </Text>
                   </View>
-
-                  <Press
-                    onPress={() => setPhase('setup')}
-                    style={styles.backToSetup}
-                    accessibilityLabel="Cambia timer"
-                  >
-                    <Ionicons name="chevron-back" size={16} color={colors.textSecondary} />
-                    <Text style={styles.backToSetupText}>Cambia timer</Text>
+                  <Press onPress={requestClose} style={styles.glassBtn} accessibilityLabel="Chiudi il timer">
+                    <Ionicons name="close" size={22} color={colors.textPrimary} />
                   </Press>
                 </View>
-              )}
-            </GlassSurface>
+              </GlassSurface>
+            </View>
+
+            {/* VETRO 2 — i comandi stanno in basso, sotto il pollice. */}
+            <View
+              style={styles.barAnchor}
+              pointerEvents="box-none"
+              onLayout={(e) => setBarH(e.nativeEvent.layout.height)}
+            >
+              <GlassSurface cornerRadius={radius.xl} padding={spacing.md}>
+                {phase === 'setup' ? (
+                  <PrimaryButton label="AVVIA" onPress={start} />
+                ) : (
+                  <View style={styles.bar}>
+                    {mode === 'amrap' ? (
+                      <Press
+                        onPress={() => setAmrapRounds((r) => r + 1)}
+                        haptic="success"
+                        style={styles.roundBtn}
+                        accessibilityLabel="Segna un round completato"
+                      >
+                        <Ionicons name="add-circle" size={22} color={colors.amber} />
+                        <Text style={styles.roundBtnText}>ROUND</Text>
+                        <Text style={[styles.roundBtnCount, tabular]}>{amrapRounds}</Text>
+                      </Press>
+                    ) : null}
+
+                    <View style={styles.controls}>
+                      <PrimaryButton
+                        label={running ? 'PAUSA' : 'RIPRENDI'}
+                        onPress={togglePause}
+                        variant={running ? 'ghost' : 'primary'}
+                        style={running ? [styles.control, styles.ghostFill] : styles.control}
+                      />
+                      <PrimaryButton
+                        label="RIAVVIA"
+                        onPress={restart}
+                        variant="ghost"
+                        style={[styles.control, styles.ghostFill]}
+                      />
+                    </View>
+
+                    <Press
+                      onPress={() => setPhase('setup')}
+                      style={styles.backToSetup}
+                      accessibilityLabel="Cambia timer"
+                    >
+                      <Ionicons name="chevron-back" size={16} color={colors.textSecondary} />
+                      <Text style={styles.backToSetupText}>Cambia timer</Text>
+                    </Press>
+                  </View>
+                )}
+              </GlassSurface>
+            </View>
           </View>
-        </View>
-      </SafeAreaView>
+        </SafeAreaView>
+      </Animated.View>
     </Modal>
   );
 }
@@ -486,6 +569,10 @@ export function AdvancedTimer({ visible, onClose, onAutoNext }: Props) {
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
+  },
+  // Il fondo su cui il pannello sale: il nero-blu dietro ogni cosa.
+  void: {
+    backgroundColor: colors.void,
   },
 
   // --- VETRO: testata ---

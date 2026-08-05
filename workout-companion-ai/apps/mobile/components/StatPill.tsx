@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, concentric, radius, spacing, tabular } from '../lib/theme';
+import { colors, concentric, radius, spacing, tabular, type } from '../lib/theme';
 
 interface Props {
   label: string;
@@ -32,6 +32,8 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   value: {
+    // Taglio arrotondato come ogni numero del sistema; resta tabulare.
+    fontFamily: type.metricXs.fontFamily,
     fontSize: 24,
     fontWeight: '800',
     letterSpacing: -0.4,

@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, spacing, tabular } from '../lib/theme';
+import { colors, spacing, tabular, type } from '../lib/theme';
 
 export interface BarDatum {
   label: string;
@@ -22,7 +22,8 @@ interface Props {
  */
 export function BarChart({ data, color = colors.accent, height = 132, showValues = true }: Props) {
   const max = Math.max(1, ...data.map((d) => d.value));
-  const plot = height - 18;
+  // Spazio riservato al valore sopra la barra (15 di testo + 4 di distacco).
+  const plot = height - 19;
 
   return (
     <View style={styles.wrap}>
@@ -86,12 +87,15 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   value: {
+    // Numero: taglio arrotondato, 12px e Nebbia per restare leggibile.
+    fontFamily: type.metricXs.fontFamily,
     color: colors.textSecondary,
-    fontSize: 11,
+    fontSize: 12,
+    lineHeight: 15,
     fontWeight: '800',
   },
   valueSpacer: {
-    height: 13,
+    height: 15,
   },
   labels: {
     flexDirection: 'row',
@@ -100,8 +104,9 @@ const styles = StyleSheet.create({
   label: {
     flex: 1,
     textAlign: 'center',
-    color: colors.textTertiary,
-    fontSize: 11,
+    // Etichetta dell'asse: 12px in Nebbia, non più in Fumo (troppo debole).
+    color: colors.textSecondary,
+    fontSize: 12,
     fontWeight: '600',
   },
 });

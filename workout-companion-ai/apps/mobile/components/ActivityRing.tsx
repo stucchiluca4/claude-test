@@ -2,6 +2,7 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
 import Svg, { Circle, G } from 'react-native-svg';
 import { colors } from '../lib/theme';
+import { spring as reduceAware } from '../lib/a11y';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -26,12 +27,11 @@ export function ActivityRing({ progress, color = colors.accent, size = 92, strok
   const anim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    // Con "riduci movimento" l'anello arriva subito al valore finale.
     Animated.spring(anim, {
       toValue: clamped,
-      damping: 20,
-      stiffness: 140,
-      mass: 1,
       useNativeDriver: false,
+      ...reduceAware({ damping: 20, stiffness: 140, mass: 1 }),
     }).start();
   }, [clamped, anim]);
 

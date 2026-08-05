@@ -283,7 +283,8 @@ export default function HomeScreen() {
   const score = readinessScore(data.todayBiofeedback);
   const readinessTone = readiness ? READINESS_TONE[readiness.level] : colors.mint;
 
-  // Il FARO della schermata: la card dell'allenamento, e nient'altro.
+  // Il NUMERO DOMINANTE della Home è la prontezza (unico 64px, sopra la piega).
+  // Il FARO della schermata resta la card dell'allenamento, e nient'altro.
   const workoutTone = data.todayWorkout ? (data.todayWorkoutDone ? colors.mint : colors.accent) : null;
   const workoutDuration = data.todayWorkout?.estimated_duration_min;
 
@@ -293,9 +294,9 @@ export default function HomeScreen() {
         contentContainerStyle={sharedStyles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
       >
-        {/* Saluto compatto: il palcoscenico è dell'allenamento, non del nome. */}
+        {/* Saluto e data su una riga sola: il palcoscenico è della prontezza, non del nome. */}
         <View style={styles.header}>
-          <Text style={styles.greeting}>
+          <Text style={styles.greeting} numberOfLines={1}>
             Ciao{data.firstName ? `, ${data.firstName}` : ''}!
           </Text>
           <Text style={type.label}>{dateLabel}</Text>
@@ -309,7 +310,30 @@ export default function HomeScreen() {
           />
         ) : (
           <>
-            {/* IL BLOCCO DOMINANTE: cosa si fa oggi e il bottone per iniziarlo. */}
+            {/* IL NUMERO DOMINANTE: la prontezza, alta e sopra la piega, letta in tre secondi. */}
+            {readiness && score != null ? (
+              <Card title="Prontezza di oggi">
+                <MetricBlock
+                  value={score.toFixed(1).replace('.', ',')}
+                  unit="/10"
+                  color={readinessTone}
+                  trailing={
+                    <ActivityRing progress={score / 10} color={readinessTone} size={88} strokeWidth={12}>
+                      <Ionicons name={READINESS_ICON[readiness.level]} size={30} color={readinessTone} />
+                    </ActivityRing>
+                  }
+                />
+                <View style={styles.noteBlock}>
+                  <View style={[styles.toneDot, { backgroundColor: readinessTone }]} />
+                  <View style={styles.noteBody}>
+                    <Text style={[styles.readinessLabel, { color: readinessTone }]}>{readiness.label}</Text>
+                    <Text style={styles.noteText}>{readiness.advice}</Text>
+                  </View>
+                </View>
+              </Card>
+            ) : null}
+
+            {/* IL FARO: cosa si fa oggi e l'azione primaria, a tutta larghezza. */}
             <Card
               title="Allenamento di oggi"
               beacon={workoutTone ?? undefined}
@@ -364,28 +388,6 @@ export default function HomeScreen() {
               )}
             </Card>
 
-            {readiness && score != null ? (
-              <Card title="Prontezza di oggi">
-                <MetricBlock
-                  value={score.toFixed(1).replace('.', ',')}
-                  unit="/10"
-                  color={readinessTone}
-                  trailing={
-                    <ActivityRing progress={score / 10} color={readinessTone} size={88} strokeWidth={12}>
-                      <Ionicons name={READINESS_ICON[readiness.level]} size={30} color={readinessTone} />
-                    </ActivityRing>
-                  }
-                />
-                <View style={styles.noteBlock}>
-                  <View style={[styles.toneDot, { backgroundColor: readinessTone }]} />
-                  <View style={styles.noteBody}>
-                    <Text style={[styles.readinessLabel, { color: readinessTone }]}>{readiness.label}</Text>
-                    <Text style={styles.noteText}>{readiness.advice}</Text>
-                  </View>
-                </View>
-              </Card>
-            ) : null}
-
             <Card title="Check biofeedback di oggi">
               {data.todayBiofeedback ? (
                 <View style={styles.biofeedbackRow}>
@@ -415,15 +417,26 @@ export default function HomeScreen() {
             <Card title="Nutrizione di oggi">
               {data.nutritionDay ? (
                 <>
-                  <MetricBlock
-                    value={data.nutritionDay.kcal.toLocaleString('it-IT')}
-                    unit="kcal"
-                    caption="Obiettivo del giorno"
-                  />
+                  {/* Le kcal sono un dato di supporto: scendono a metricSm, il 64px
+                      resta alla sola prontezza (un solo numero dominante per schermata). */}
+                  <View style={styles.kcalBlock}>
+                    <View style={styles.kcalRow}>
+                      <Text style={[styles.kcalValue, tabular]}>
+                        {data.nutritionDay.kcal.toLocaleString('it-IT')}
+                      </Text>
+                      <Text style={styles.kcalUnit}>kcal</Text>
+                    </View>
+                    <Text style={styles.kcalCaption}>Obiettivo del giorno</Text>
+                  </View>
+                  {/* I macro sono dati categoriali, non segnali: scala neutra, mai i colori-segnale. */}
                   <View style={styles.pillRow}>
-                    <StatPill label="Proteine" value={`${data.nutritionDay.protein_g}g`} color={colors.accent} />
-                    <StatPill label="Carbo" value={`${data.nutritionDay.carbs_g}g`} color={colors.avio} />
-                    <StatPill label="Grassi" value={`${data.nutritionDay.fat_g}g`} color={colors.celeste} />
+                    <StatPill
+                      label="Proteine"
+                      value={`${data.nutritionDay.protein_g}g`}
+                      color={colors.macroProtein}
+                    />
+                    <StatPill label="Carbo" value={`${data.nutritionDay.carbs_g}g`} color={colors.macroCarbs} />
+                    <StatPill label="Grassi" value={`${data.nutritionDay.fat_g}g`} color={colors.macroFat} />
                   </View>
                 </>
               ) : (
@@ -516,10 +529,14 @@ const innerRadius = concentric(radius.lg, spacing.lg);
 
 const styles = StyleSheet.create({
   header: {
-    gap: spacing.xs,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
   },
   greeting: {
     ...type.title,
+    flexShrink: 1,
   },
   fullWidth: {
     alignSelf: 'stretch',
@@ -641,6 +658,27 @@ const styles = StyleSheet.create({
   pillRow: {
     flexDirection: 'row',
     gap: spacing.sm,
+  },
+  /** Metrica di supporto delle kcal: 34px, mai in gara con la prontezza. */
+  kcalBlock: {
+    gap: spacing.xs,
+  },
+  kcalRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: spacing.sm,
+  },
+  kcalValue: {
+    ...type.metricSm,
+  },
+  kcalUnit: {
+    ...type.callout,
+    color: colors.textSecondary,
+    fontWeight: '700',
+    marginBottom: 5,
+  },
+  kcalCaption: {
+    ...type.muted,
   },
   weightRow: {
     flexDirection: 'row',

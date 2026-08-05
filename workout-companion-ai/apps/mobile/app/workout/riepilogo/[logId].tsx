@@ -6,14 +6,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { recoveryPrediction, workoutKcal, workoutScore } from '@wc/shared';
 import type { PersonalRecord, RecordType, WorkoutLog } from '@wc/shared';
 import { supabase } from '../../../lib/supabase';
-import { colors, concentric, radius, shadow, spacing, sharedStyles, tabular, type } from '../../../lib/theme';
+import { colors, concentric, radius, shadow, spacing, sharedStyles, tabular, type, wash } from '../../../lib/theme';
 import { localDateString, showError } from '../../../lib/utils';
 import { getActiveCoachClient, getExerciseFeedbackForLog, getUserId } from '../../../lib/queries';
 import { ActivityRing } from '../../../components/ActivityRing';
 import { Card } from '../../../components/Card';
 import { GlassSurface } from '../../../components/Glass';
-import { MetricBlock } from '../../../components/MetricBlock';
 import { PrimaryButton } from '../../../components/PrimaryButton';
+import { SectionHead } from '../../../components/SectionHead';
 import { StatPill } from '../../../components/StatPill';
 import { LoadingState } from '../../../components/States';
 
@@ -23,14 +23,6 @@ const RECORD_LABELS: Record<RecordType, string> = {
   max_volume: 'Miglior volume serie',
   estimated_1rm: '1RM stimato',
 };
-
-/** Veli dei segnali: colore al 12-14%, solo dietro le icone di sezione. */
-const WASH = {
-  mint: 'rgba(50,215,75,0.12)',
-  rose: 'rgba(255,55,95,0.12)',
-  cyan: 'rgba(100,210,255,0.12)',
-  violet: 'rgba(191,90,242,0.14)',
-} as const;
 
 /** Ore massime della previsione di recupero: riempiono l'anello ciano. */
 const RECOVERY_MAX_HOURS = 72;
@@ -52,28 +44,6 @@ interface SummaryData {
 
 function throwIf(error: { message: string } | null): void {
   if (error) throw new Error(error.message);
-}
-
-/** Testata di sezione: icona del segnale + etichetta. Il colore non viaggia mai da solo. */
-function SectionHead({
-  icon,
-  label,
-  tint,
-  wash,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  tint: string;
-  wash: string;
-}) {
-  return (
-    <View style={styles.head}>
-      <View style={[styles.headIcon, { backgroundColor: wash }]}>
-        <Ionicons name={icon} size={18} color={tint} />
-      </View>
-      <Text style={[type.label, styles.headLabel]}>{label}</Text>
-    </View>
-  );
 }
 
 /**
@@ -334,8 +304,7 @@ export default function WorkoutSummaryScreen() {
           <SectionHead
             icon="trophy"
             tint={colors.rose}
-            wash={WASH.rose}
-            label={hasPr ? `Nuovi record · ${data.prs.length}` : 'Record personali'}
+            title={hasPr ? `Nuovi record · ${data.prs.length}` : 'Record personali'}
           />
           {hasPr ? (
             data.prs.map((pr) => (
@@ -362,28 +331,29 @@ export default function WorkoutSummaryScreen() {
         </Card>
 
         <Card>
-          <SectionHead icon="battery-charging" tint={colors.cyan} wash={WASH.cyan} label="Recupero previsto" />
-          <MetricBlock
-            value={String(recovery.hours)}
-            unit="ore"
-            color={colors.cyan}
-            trailing={
-              <ActivityRing
-                progress={recovery.hours / RECOVERY_MAX_HOURS}
-                color={colors.cyan}
-                size={84}
-                strokeWidth={11}
-              >
-                <Ionicons name="moon" size={28} color={colors.cyan} />
-              </ActivityRing>
-            }
-          />
+          <SectionHead icon="battery-charging" tint={colors.cyan} title="Recupero previsto" />
+          {/* Le ore di recupero sono un dato di supporto: scendono a metricSm, perché
+              il solo numero dominante della schermata è il punteggio dentro il faro. */}
+          <View style={styles.recoveryRow}>
+            <View style={styles.recoveryNumber}>
+              <Text style={[styles.recoveryValue, tabular]}>{recovery.hours}</Text>
+              <Text style={styles.recoveryUnit}>ore</Text>
+            </View>
+            <ActivityRing
+              progress={recovery.hours / RECOVERY_MAX_HOURS}
+              color={colors.cyan}
+              size={84}
+              strokeWidth={11}
+            >
+              <Ionicons name="moon" size={28} color={colors.cyan} />
+            </ActivityRing>
+          </View>
           <Text style={styles.note}>{recovery.label}</Text>
         </Card>
 
         {/* Viola: se è viola, l'ha scritto il motore. Ma il testo resta su ferro. */}
         <Card>
-          <SectionHead icon="sparkles" tint={colors.violet} wash={WASH.violet} label="Il recap del coach AI" />
+          <SectionHead icon="sparkles" tint={colors.violet} title="Il recap del coach AI" />
           {aiLoading ? (
             <View style={styles.aiRow}>
               <ActivityIndicator color={colors.violet} />
@@ -409,9 +379,10 @@ export default function WorkoutSummaryScreen() {
         onLayout={(e) => setBarH(e.nativeEvent.layout.height)}
       >
         <GlassSurface cornerRadius={radius.xl} padding={spacing.md}>
+          {/* Pura navigazione: blu azione. La menta resta riservata a "fatto". */}
           <PrimaryButton
             label="TORNA ALLA HOME"
-            variant="success"
+            variant="primary"
             onPress={() => router.replace('/(tabs)')}
           />
         </GlassSurface>
@@ -435,7 +406,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: WASH.mint,
+    backgroundColor: wash(colors.mint, 0.12),
     borderRadius: radius.sm,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
@@ -464,7 +435,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'center',
     gap: spacing.sm,
-    backgroundColor: WASH.rose,
+    backgroundColor: wash(colors.rose, 0.12),
     borderRadius: radius.sm,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
@@ -489,22 +460,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
   },
-  head: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    marginBottom: spacing.xs,
-  },
-  headIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: radius.xs,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headLabel: {
-    flex: 1,
-  },
   prRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -518,7 +473,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: radius.xs,
-    backgroundColor: WASH.rose,
+    backgroundColor: wash(colors.rose, 0.12),
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -542,6 +497,29 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '800',
     letterSpacing: -0.2,
+  },
+  /** Recupero: numero di supporto (34px) affiancato al suo anello ciano. */
+  recoveryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.lg,
+  },
+  recoveryNumber: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: spacing.sm,
+  },
+  recoveryValue: {
+    ...type.metricSm,
+    color: colors.cyan,
+  },
+  recoveryUnit: {
+    ...type.callout,
+    color: colors.textSecondary,
+    fontWeight: '700',
+    marginBottom: 5,
   },
   note: {
     color: colors.textSecondary,

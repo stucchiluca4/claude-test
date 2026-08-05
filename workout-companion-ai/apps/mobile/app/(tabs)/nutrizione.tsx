@@ -171,26 +171,28 @@ export default function NutrizioneScreen() {
               {hasMeals ? <Text style={styles.coverageNote}>Copertura dell'obiettivo con i pasti pianificati</Text> : null}
             </Card>
 
+            {/* I macro sono dati categoriali, non segnali: scala neutra per densità
+                (bianco → nebbia → fumo), così non rubano il mestiere ai sei segnali. */}
             <Card title="Macro del giorno">
               <MacroBar
                 label="Proteine"
                 grams={day.protein_g}
                 fraction={macroKcal > 0 ? (day.protein_g * 4) / macroKcal : 0}
-                color={colors.accent}
+                color={colors.macroProtein}
                 showShare
               />
               <MacroBar
                 label="Carboidrati"
                 grams={day.carbs_g}
                 fraction={macroKcal > 0 ? (day.carbs_g * 4) / macroKcal : 0}
-                color={colors.avio}
+                color={colors.macroCarbs}
                 showShare
               />
               <MacroBar
                 label="Grassi"
                 grams={day.fat_g}
                 fraction={macroKcal > 0 ? (day.fat_g * 9) / macroKcal : 0}
-                color={colors.celeste}
+                color={colors.macroFat}
                 showShare
               />
             </Card>

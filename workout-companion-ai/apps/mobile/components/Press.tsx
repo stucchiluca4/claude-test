@@ -1,6 +1,7 @@
 import { useRef, type ReactNode } from 'react';
 import { Animated, Pressable, type StyleProp, type ViewStyle } from 'react-native';
 import { motion } from '../lib/theme';
+import { spring as reduceAware } from '../lib/a11y';
 import { tapLight, tapMedium, tapSuccess } from '../lib/haptics';
 
 interface Props {
@@ -34,7 +35,8 @@ export function Press({
   const scale = useRef(new Animated.Value(1)).current;
 
   const spring = (to: number) => {
-    Animated.spring(scale, { toValue: to, ...motion.spring }).start();
+    // Rispetta la preferenza di sistema "riduci movimento".
+    Animated.spring(scale, { toValue: to, ...reduceAware(motion.spring) }).start();
   };
 
   return (

@@ -31,6 +31,7 @@ import { DotScale } from '../../components/DotScale';
 import { GlassSurface } from '../../components/Glass';
 import { Press } from '../../components/Press';
 import { PrimaryButton } from '../../components/PrimaryButton';
+import { SectionHead } from '../../components/SectionHead';
 import { EmptyState, LoadingState } from '../../components/States';
 
 type ScaleKey =
@@ -43,12 +44,6 @@ type ScaleKey =
   | 'recovery'
   | 'training_adherence'
   | 'nutrition_adherence';
-
-/** Veli dei segnali: colore al 12%, solo dietro le icone di sezione. */
-const WASH = {
-  cyan: 'rgba(100,210,255,0.12)',
-  neutral: 'rgba(255,255,255,0.06)',
-} as const;
 
 /**
  * Ogni scala porta il segnale del suo significato: ciano per il corpo che
@@ -72,28 +67,6 @@ function italianDayMonth(dateStr: string): string {
     day: 'numeric',
     month: 'long',
   });
-}
-
-/** Testata di sezione: icona del segnale + etichetta. Il colore non viaggia mai da solo. */
-function SectionHead({
-  icon,
-  label,
-  tint,
-  wash,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  tint: string;
-  wash: string;
-}) {
-  return (
-    <View style={styles.head}>
-      <View style={[styles.headIcon, { backgroundColor: wash }]}>
-        <Ionicons name={icon} size={18} color={tint} />
-      </View>
-      <Text style={[type.label, styles.headLabel]}>{label}</Text>
-    </View>
-  );
 }
 
 /** Campo numerico su FERRO: cifra grande e tabulare, unità di misura a destra. */
@@ -264,8 +237,7 @@ export default function NuovoCheckinScreen() {
               <SectionHead
                 icon="pulse"
                 tint={colors.cyan}
-                wash={WASH.cyan}
-                label={`Come è andata · ${answered}/${SCALES.length}`}
+                title={`Come è andata · ${answered}/${SCALES.length}`}
               />
               <View style={styles.scaleGroup}>
                 {SCALES.map(({ key, label, tint }) => (
@@ -281,7 +253,7 @@ export default function NuovoCheckinScreen() {
             </Card>
 
             <Card>
-              <SectionHead icon="footsteps" tint={colors.cyan} wash={WASH.cyan} label="Passi" />
+              <SectionHead icon="footsteps" tint={colors.cyan} title="Passi" />
               <NumberField
                 label="Passi medi al giorno"
                 value={steps}
@@ -291,12 +263,7 @@ export default function NuovoCheckinScreen() {
             </Card>
 
             <Card>
-              <SectionHead
-                icon="create"
-                tint={colors.textSecondary}
-                wash={WASH.neutral}
-                label="Note per il coach"
-              />
+              <SectionHead icon="create" tint={colors.textSecondary} title="Note per il coach" />
               <TextInput
                 style={styles.notes}
                 value={notes}
@@ -414,22 +381,6 @@ const styles = StyleSheet.create({
   },
 
   // --- FERRO: sezioni ---
-  head: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    marginBottom: spacing.xs,
-  },
-  headIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: radius.xs,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headLabel: {
-    flex: 1,
-  },
   note: {
     color: colors.textSecondary,
     fontSize: 17,

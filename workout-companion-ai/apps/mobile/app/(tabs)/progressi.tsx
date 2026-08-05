@@ -38,12 +38,14 @@ const RECORD_LABELS: Record<RecordType, string> = {
 
 /**
  * Colore e icona dell'insight in base alla gravità: il colore non viaggia mai
- * da solo (ambra = attenzione, menta = fatto bene, ciano = informazione).
+ * da solo (ambra = attenzione, menta = fatto bene, viola = prodotto dal motore).
+ * L'informativo prende il viola dell'AI e non il ciano, che resta riservato ai
+ * dati del corpo — nella stessa schermata il ciano è già il peso medio.
  */
 const INSIGHT_TONE: Record<Insight['severity'], { color: string; icon: keyof typeof Ionicons.glyphMap }> = {
   warning: { color: colors.amber, icon: 'alert-circle' },
   positive: { color: colors.mint, icon: 'checkmark-circle' },
-  info: { color: colors.cyan, icon: 'information-circle' },
+  info: { color: colors.violet, icon: 'information-circle' },
 };
 
 interface StrengthSeries {
@@ -413,7 +415,9 @@ export default function ProgressiScreen() {
               {data.strength.exerciseName}
             </Text>
             <Text style={styles.cardSub}>1RM stimato per seduta (kg).</Text>
-            <BarChart data={data.strength.points} color={colors.rose} />
+            {/* Serie temporale di carico: è sforzo, non un record — quindi ambra.
+                Il rosa resta riservato ai record personali e alle azioni distruttive. */}
+            <BarChart data={data.strength.points} color={colors.amber} />
           </Card>
         ) : null}
 

@@ -45,6 +45,7 @@ export function DotScale({ label, value, onChange, emoji, bands, tint = colors.a
               onPress={() => onChange(n)}
               haptic="light"
               scaleTo={0.9}
+              hitSlop={8}
               style={[styles.segment, active && { backgroundColor: tint }]}
               accessibilityLabel={`${label}: ${n} su 10`}
             >
@@ -84,7 +85,8 @@ const styles = StyleSheet.create({
   },
   segment: {
     flex: 1,
-    height: 38,
+    // Bersaglio pieno da 48pt: si colpisce col pollice senza guardare.
+    height: 48,
     borderRadius: radius.xs,
     backgroundColor: colors.raised,
   },
