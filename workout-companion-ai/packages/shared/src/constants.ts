@@ -118,10 +118,12 @@ export const COLORS = {
   line: '#2A3241',                  // alias esplicito di `border`
 
   // --- Vetro: il livello dei controlli ---
-  glassTint: 'rgba(22,28,38,0.62)', // tinta sotto la sfocatura
-  glassBorder: 'rgba(255,255,255,0.08)',
-  glassEdge: 'rgba(255,255,255,0.30)', // luce speculare sul bordo alto
-  cardGlass: 'rgba(22,28,38,0.62)',    // compatibilità: usare glassTint
+  // Tinta volutamente bassa: il colore del campo luminoso deve ATTRAVERSARE il
+  // vetro. Con una tinta densa la superficie legge come grigio piatto.
+  glassTint: 'rgba(20,26,36,0.44)',
+  glassBorder: 'rgba(255,255,255,0.14)',
+  glassEdge: 'rgba(255,255,255,0.55)', // luce speculare sul bordo alto
+  cardGlass: 'rgba(20,26,36,0.44)',    // compatibilità: usare glassTint
 
   // --- Segnali: il colore porta significato, non decorazione ---
   accent: '#0A84FF',                // Blu Segnale — azione, stato attivo

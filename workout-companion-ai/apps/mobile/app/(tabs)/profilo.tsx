@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabase';
 import { colors, concentric, radius, spacing, sharedStyles, tabular, type } from '../../lib/theme';
 import { showError } from '../../lib/utils';
 import { getUserId } from '../../lib/queries';
+import { Appear, appearDelay } from '../../components/Appear';
 import { Card } from '../../components/Card';
 import { Press } from '../../components/Press';
 import { PrimaryButton } from '../../components/PrimaryButton';
@@ -157,8 +158,9 @@ export default function ProfiloScreen() {
         contentContainerStyle={sharedStyles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
       >
-        {/* L'identità è il titolo della schermata: compare una volta, in alto. */}
-        <View style={styles.hero}>
+        {/* L'identità è il titolo della schermata: compare una volta, in alto.
+            Cascata d'entrata: rientra a ogni ritorno sulla scheda. */}
+        <Appear delay={appearDelay(0)} style={styles.hero} replayOnFocus>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{initials}</Text>
           </View>
@@ -179,55 +181,64 @@ export default function ProfiloScreen() {
               ) : null}
             </View>
           </View>
-        </View>
+        </Appear>
 
-        <Card title="I tuoi numeri">
-          <View style={styles.pillRow}>
-            <StatPill label="Allenamenti" value={String(data.totalWorkouts)} color={colors.mint} />
-            <StatPill label="Tonnellate" value={tons.toLocaleString('it-IT')} color={colors.amber} />
-          </View>
-          <View style={styles.volumeRow}>
-            <Text style={type.label}>Volume totale sollevato</Text>
-            <Text style={styles.volumeValue}>
-              {Math.round(data.totalVolumeKg).toLocaleString('it-IT')} kg
-            </Text>
-          </View>
-        </Card>
-
-        <Card title="Salute e dispositivi">
-          <Press
-            style={styles.row}
-            onPress={() => router.push('/salute')}
-            accessibilityLabel="Integrazioni salute"
-          >
-            <View style={[styles.rowIcon, styles.rowIconBody]}>
-              <Ionicons name="pulse" size={20} color={colors.cyan} />
+        <Appear delay={appearDelay(1)} replayOnFocus>
+          <Card title="I tuoi numeri">
+            <View style={styles.pillRow}>
+              <StatPill label="Allenamenti" value={String(data.totalWorkouts)} color={colors.mint} />
+              <StatPill label="Tonnellate" value={tons.toLocaleString('it-IT')} color={colors.amber} />
             </View>
-            <Text style={styles.rowLabel}>Integrazioni salute</Text>
-            <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
-          </Press>
-        </Card>
+            <View style={styles.volumeRow}>
+              <Text style={type.label}>Volume totale sollevato</Text>
+              <Text style={styles.volumeValue}>
+                {Math.round(data.totalVolumeKg).toLocaleString('it-IT')} kg
+              </Text>
+            </View>
+          </Card>
+        </Appear>
 
-        <Card title="Impostazioni">
-          <View style={styles.rowGroup}>
-            {SETTINGS_ROWS.map((item) => (
-              <Press
-                key={item.label}
-                style={styles.row}
-                onPress={() => Alert.alert(item.label, 'Disponibile in un prossimo aggiornamento.')}
-                accessibilityLabel={item.label}
-              >
-                <View style={styles.rowIcon}>
-                  <Ionicons name={item.icon} size={20} color={colors.textSecondary} />
-                </View>
-                <Text style={styles.rowLabel}>{item.label}</Text>
-                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
-              </Press>
-            ))}
-          </View>
-        </Card>
+        <Appear delay={appearDelay(2)} replayOnFocus>
+          <Card title="Salute e dispositivi">
+            <Press
+              style={styles.row}
+              onPress={() => router.push('/salute')}
+              accessibilityLabel="Integrazioni salute"
+            >
+              <View style={[styles.rowIcon, styles.rowIconBody]}>
+                <Ionicons name="pulse" size={20} color={colors.cyan} />
+              </View>
+              <Text style={styles.rowLabel}>Integrazioni salute</Text>
+              <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+            </Press>
+          </Card>
+        </Appear>
 
-        <PrimaryButton label="ESCI" variant="danger" onPress={confirmLogout} loading={signingOut} />
+        <Appear delay={appearDelay(3)} replayOnFocus>
+          <Card title="Impostazioni">
+            <View style={styles.rowGroup}>
+              {SETTINGS_ROWS.map((item) => (
+                <Press
+                  key={item.label}
+                  style={styles.row}
+                  onPress={() => Alert.alert(item.label, 'Disponibile in un prossimo aggiornamento.')}
+                  accessibilityLabel={item.label}
+                >
+                  <View style={styles.rowIcon}>
+                    <Ionicons name={item.icon} size={20} color={colors.textSecondary} />
+                  </View>
+                  <Text style={styles.rowLabel}>{item.label}</Text>
+                  <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+                </Press>
+              ))}
+            </View>
+          </Card>
+        </Appear>
+
+        {/* Ultimo gradino della cascata: l'uscita entra per ultima. */}
+        <Appear delay={appearDelay(4)} replayOnFocus>
+          <PrimaryButton label="ESCI" variant="danger" onPress={confirmLogout} loading={signingOut} />
+        </Appear>
       </ScrollView>
     </SafeAreaView>
   );

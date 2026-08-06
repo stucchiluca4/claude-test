@@ -23,6 +23,30 @@
   --glass-edge: rgba(255, 255, 255, 0.55);
   --signal-blue: #0a84ff;
   --ease-out-glass: cubic-bezier(0.22, 1, 0.36, 1);
+  --nav-h: 74px;
+}
+
+/* ------------------------------------------------------------
+   SCORRIMENTO A SEZIONI — ogni passata apre una schermata intera
+   e si ferma all'inizio della sezione, così le scritte non
+   restano mai tagliate a metà. Vale solo sulle pagine che lo
+   dichiarano con `.snap-page` (la dashboard scorre normalmente).
+   ------------------------------------------------------------ */
+html:has(.snap-page) {
+  scroll-snap-type: y proximity;
+  scroll-padding-top: var(--nav-h);
+  scroll-behavior: smooth;
+}
+.snap-section {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+/* Testata FISSA e OPACA: il contenuto le scorre sotto senza trasparire. */
+.nav-solid {
+  background: #0a0e15;
+  border-bottom: 1px solid var(--iron-line);
+  box-shadow: 0 10px 30px -20px rgba(0, 0, 0, 0.95);
 }
 
 body {
@@ -206,9 +230,18 @@ body {
     filter 0.7s var(--ease-out-glass);
   will-change: opacity, transform;
 }
+/* In attesa: l'elemento sta dalla parte da cui deve arrivare. Risalendo la
+   pagina rientra dall'alto, scendendo rientra dal basso: il movimento segue
+   sempre il verso dello scorrimento, in entrambe le direzioni. */
 .reveal-rise { transform: translate3d(0, 28px, 0); }
+.reveal-rise[data-from='above'] { transform: translate3d(0, -28px, 0); }
+
 .reveal-pop { transform: scale(0.94) translate3d(0, 14px, 0); filter: blur(6px); }
+.reveal-pop[data-from='above'] { transform: scale(0.94) translate3d(0, -14px, 0); }
+
 .reveal-slide { transform: translate3d(-26px, 0, 0); }
+.reveal-slide[data-from='above'] { transform: translate3d(26px, 0, 0); }
+
 .reveal[data-shown='true'] {
   opacity: 1;
   transform: none;
@@ -247,6 +280,7 @@ body {
 .press:active { transform: scale(0.96); }
 
 @media (prefers-reduced-motion: reduce) {
+  html:has(.snap-page) { scroll-snap-type: none; scroll-behavior: auto; }
   .reveal { opacity: 1 !important; transform: none !important; filter: none !important; }
   .aurora-blob, .glass-chrome::after { animation: none !important; }
   .rise, .rise-1, .rise-2, .rise-3, .rise-4, .rise-5, .section-enter { animation: none !important; }

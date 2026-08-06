@@ -291,12 +291,16 @@ export default function ProgressiScreen() {
           contentContainerStyle={sharedStyles.content}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
         >
-          <Text style={sharedStyles.screenTitle}>Progressi</Text>
-          <EmptyState
-            emoji="📈"
-            title="Ancora nessun dato"
-            message="Completa il tuo primo allenamento e qui vedrai volume, record, streak e la progressione della forza. Tira su un po' di ferro! 💪"
-          />
+          <Appear delay={appearDelay(0)} replayOnFocus>
+            <Text style={sharedStyles.screenTitle}>Progressi</Text>
+          </Appear>
+          <Appear delay={appearDelay(1)} replayOnFocus>
+            <EmptyState
+              emoji="📈"
+              title="Ancora nessun dato"
+              message="Completa il tuo primo allenamento e qui vedrai volume, record, streak e la progressione della forza. Tira su un po' di ferro! 💪"
+            />
+          </Appear>
         </ScrollView>
       </SafeAreaView>
     );
@@ -321,15 +325,17 @@ export default function ProgressiScreen() {
         contentContainerStyle={sharedStyles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
       >
-        <View style={styles.header}>
+        {/* La testata apre la cascata: tornando sulla scheda rientra per prima. */}
+        <Appear delay={appearDelay(0)} replayOnFocus style={styles.header}>
           <Text style={sharedStyles.screenTitle}>Progressi</Text>
           <Text style={[type.label, tabular]}>Ultime {data.buckets.length} settimane</Text>
-        </View>
+        </Appear>
 
         {/* IL BLOCCO DOMINANTE: tutto il ferro spostato, con l'anello dello streak accanto.
             È l'unico faro della schermata (ambra = sforzo accumulato).
-            Da qui parte la cascata d'entrata: 0/60/120/180 ms. */}
-        <Appear delay={appearDelay(0)}>
+            Cascata d'entrata 0/60/120/180 ms, ripetuta a ogni ritorno sulla scheda:
+            prima la testata, poi il dominante, poi i KPI e infine i grafici. */}
+        <Appear delay={appearDelay(1)} replayOnFocus>
           <Card beacon={colors.amber} style={shadow.beacon(colors.amber)}>
             <MetricBlock
               value={tonsLabel}
@@ -351,12 +357,14 @@ export default function ProgressiScreen() {
           </Card>
         </Appear>
 
-        {/* KPI di supporto: due righe pulite, un colore per ogni significato. */}
-        <Appear delay={appearDelay(1)} style={styles.pillRow}>
+        {/* KPI di supporto: due righe pulite, un colore per ogni significato.
+            Entrano insieme perché sono un unico blocco di lettura, e comunque
+            prima dei grafici. */}
+        <Appear delay={appearDelay(2)} replayOnFocus style={styles.pillRow}>
           <StatPill label="Allenamenti" value={String(data.totalWorkouts)} color={colors.mint} />
           <StatPill label="Freq./sett." value={String(data.frequency)} />
         </Appear>
-        <Appear delay={appearDelay(2)} style={styles.pillRow}>
+        <Appear delay={appearDelay(2)} replayOnFocus style={styles.pillRow}>
           <StatPill
             label="Peso medio"
             value={data.avgWeight != null ? `${data.avgWeight} kg` : '—'}
@@ -366,7 +374,7 @@ export default function ProgressiScreen() {
         </Appear>
 
         {data.insights.length > 0 ? (
-          <Appear delay={appearDelay(3)}>
+          <Appear delay={appearDelay(3)} replayOnFocus>
             <Card>
               <View style={styles.cardHead}>
                 <Ionicons name="sparkles" size={18} color={colors.violet} />
@@ -390,7 +398,8 @@ export default function ProgressiScreen() {
           </Appear>
         ) : null}
 
-        <Appear delay={appearDelay(4)}>
+        {/* I grafici chiudono la cascata: entrano dopo i KPI, alla coda dei 180 ms. */}
+        <Appear delay={appearDelay(4)} replayOnFocus>
           <Card title="Volume settimanale">
             <BarChart data={volumeBars} color={colors.amber} height={152} />
             {data.trendPct != null ? (
@@ -412,7 +421,7 @@ export default function ProgressiScreen() {
           </Card>
         </Appear>
 
-        <Appear delay={appearDelay(5)}>
+        <Appear delay={appearDelay(5)} replayOnFocus>
           <Card title="Attività settimanale">
             <Text style={styles.cardSub}>Allenamenti completati, settimana per settimana.</Text>
             <BarChart data={freqBars} color={colors.mint} height={112} />
@@ -420,7 +429,7 @@ export default function ProgressiScreen() {
         </Appear>
 
         {data.strength ? (
-          <Appear delay={appearDelay(6)}>
+          <Appear delay={appearDelay(6)} replayOnFocus>
             <Card title="Progressione forza">
               <Text style={styles.cardTitleStrong} numberOfLines={2}>
                 {data.strength.exerciseName}
@@ -433,7 +442,8 @@ export default function ProgressiScreen() {
           </Appear>
         ) : null}
 
-        <Appear delay={appearDelay(7)}>
+        {/* La lista dei record entra come blocco unico: mai riga per riga. */}
+        <Appear delay={appearDelay(7)} replayOnFocus>
           <Card title="Record personali">
             {data.prs.length > 0 ? (
               <View style={styles.prList}>

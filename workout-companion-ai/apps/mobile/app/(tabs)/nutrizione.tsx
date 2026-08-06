@@ -10,6 +10,7 @@ import { showError } from '../../lib/utils';
 import { getActiveCoachClient, getTodayNutritionDay, getUserId } from '../../lib/queries';
 import { demoNutrition, isDemo } from '../../lib/demo';
 import { ActivityRing } from '../../components/ActivityRing';
+import { Appear, appearDelay } from '../../components/Appear';
 import { Card } from '../../components/Card';
 import { MacroBar } from '../../components/MacroBar';
 import { MetricBlock } from '../../components/MetricBlock';
@@ -122,7 +123,8 @@ export default function NutrizioneScreen() {
         contentContainerStyle={sharedStyles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
       >
-        <View style={styles.header}>
+        {/* Cascata d'entrata: rientra a ogni ritorno sulla scheda. */}
+        <Appear delay={appearDelay(0)} style={styles.header} replayOnFocus>
           <Text style={sharedStyles.screenTitle}>Nutrizione</Text>
           {day ? (
             <View style={styles.dayChip}>
@@ -132,79 +134,93 @@ export default function NutrizioneScreen() {
               </Text>
             </View>
           ) : null}
-        </View>
+        </Appear>
 
         {!data.hasCoach ? (
-          <EmptyState
-            emoji="🤝"
-            title="Nessun coach collegato"
-            message="Quando il tuo coach ti aggiungerà, qui troverai il piano nutrizionale con calorie, macro e pasti del giorno."
-          />
+          <Appear delay={appearDelay(1)} replayOnFocus>
+            <EmptyState
+              emoji="🤝"
+              title="Nessun coach collegato"
+              message="Quando il tuo coach ti aggiungerà, qui troverai il piano nutrizionale con calorie, macro e pasti del giorno."
+            />
+          </Appear>
         ) : !day ? (
-          <EmptyState
-            emoji="🥗"
-            title="Nessun piano per oggi"
-            message="Il tuo coach lo sta preparando. Appena pronto, qui vedrai obiettivo calorico, macro e pasti."
-          />
+          <Appear delay={appearDelay(1)} replayOnFocus>
+            <EmptyState
+              emoji="🥗"
+              title="Nessun piano per oggi"
+              message="Il tuo coach lo sta preparando. Appena pronto, qui vedrai obiettivo calorico, macro e pasti."
+            />
+          </Appear>
         ) : (
           <>
             {/* IL BLOCCO DOMINANTE: le calorie del giorno, leggibili in tre secondi. */}
-            <Card title="Obiettivo di oggi">
-              <MetricBlock
-                value={day.kcal.toLocaleString('it-IT')}
-                unit="kcal"
-                caption={
-                  hasMeals
-                    ? `Nei pasti: ${Math.round(plannedKcal).toLocaleString('it-IT')} kcal`
-                    : 'Obiettivo calorico del giorno'
-                }
-                trailing={
-                  hasMeals ? (
-                    <ActivityRing progress={coverage} color={coverageTone} size={88} strokeWidth={12}>
-                      <Text style={[styles.ringValue, tabular, { color: coverageTone }]}>
-                        {Math.round(coverage * 100)}%
-                      </Text>
-                    </ActivityRing>
-                  ) : undefined
-                }
-              />
-              {hasMeals ? <Text style={styles.coverageNote}>Copertura dell'obiettivo con i pasti pianificati</Text> : null}
-            </Card>
+            <Appear delay={appearDelay(1)} replayOnFocus>
+              <Card title="Obiettivo di oggi">
+                <MetricBlock
+                  value={day.kcal.toLocaleString('it-IT')}
+                  unit="kcal"
+                  caption={
+                    hasMeals
+                      ? `Nei pasti: ${Math.round(plannedKcal).toLocaleString('it-IT')} kcal`
+                      : 'Obiettivo calorico del giorno'
+                  }
+                  trailing={
+                    hasMeals ? (
+                      <ActivityRing progress={coverage} color={coverageTone} size={88} strokeWidth={12}>
+                        <Text style={[styles.ringValue, tabular, { color: coverageTone }]}>
+                          {Math.round(coverage * 100)}%
+                        </Text>
+                      </ActivityRing>
+                    ) : undefined
+                  }
+                />
+                {hasMeals ? (
+                  <Text style={styles.coverageNote}>Copertura dell'obiettivo con i pasti pianificati</Text>
+                ) : null}
+              </Card>
+            </Appear>
 
             {/* I macro sono dati categoriali, non segnali: scala neutra per densità
                 (bianco → nebbia → fumo), così non rubano il mestiere ai sei segnali. */}
-            <Card title="Macro del giorno">
-              <MacroBar
-                label="Proteine"
-                grams={day.protein_g}
-                fraction={macroKcal > 0 ? (day.protein_g * 4) / macroKcal : 0}
-                color={colors.macroProtein}
-                showShare
-              />
-              <MacroBar
-                label="Carboidrati"
-                grams={day.carbs_g}
-                fraction={macroKcal > 0 ? (day.carbs_g * 4) / macroKcal : 0}
-                color={colors.macroCarbs}
-                showShare
-              />
-              <MacroBar
-                label="Grassi"
-                grams={day.fat_g}
-                fraction={macroKcal > 0 ? (day.fat_g * 9) / macroKcal : 0}
-                color={colors.macroFat}
-                showShare
-              />
-            </Card>
+            <Appear delay={appearDelay(2)} replayOnFocus>
+              <Card title="Macro del giorno">
+                <MacroBar
+                  label="Proteine"
+                  grams={day.protein_g}
+                  fraction={macroKcal > 0 ? (day.protein_g * 4) / macroKcal : 0}
+                  color={colors.macroProtein}
+                  showShare
+                />
+                <MacroBar
+                  label="Carboidrati"
+                  grams={day.carbs_g}
+                  fraction={macroKcal > 0 ? (day.carbs_g * 4) / macroKcal : 0}
+                  color={colors.macroCarbs}
+                  showShare
+                />
+                <MacroBar
+                  label="Grassi"
+                  grams={day.fat_g}
+                  fraction={macroKcal > 0 ? (day.fat_g * 9) / macroKcal : 0}
+                  color={colors.macroFat}
+                  showShare
+                />
+              </Card>
+            </Appear>
 
             {!hasMeals ? (
-              <EmptyState
-                emoji="🍽️"
-                title="Pasti non ancora dettagliati"
-                message="Per oggi segui i macro qui sopra: quando il coach inserirà i pasti, li troverai elencati qui."
-              />
+              <Appear delay={appearDelay(3)} replayOnFocus>
+                <EmptyState
+                  emoji="🍽️"
+                  title="Pasti non ancora dettagliati"
+                  message="Per oggi segui i macro qui sopra: quando il coach inserirà i pasti, li troverai elencati qui."
+                />
+              </Appear>
             ) : (
-              <View style={styles.section}>
+              // Entra l'elenco dei pasti come blocco: le card interne non si
+              // muovono una per una, altrimenti la cascata diventa attesa.
+              <Appear delay={appearDelay(3)} style={styles.section} replayOnFocus>
                 <Text style={type.label}>Pasti del giorno</Text>
                 {data.meals.map((meal) => (
                   <Card key={meal.id}>
@@ -248,7 +264,7 @@ export default function NutrizioneScreen() {
                     )}
                   </Card>
                 ))}
-              </View>
+              </Appear>
             )}
           </>
         )}

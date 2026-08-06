@@ -1,5 +1,14 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,11 +27,18 @@ import {
 } from '../lib/theme';
 import { localDateString, parseNum, showError } from '../lib/utils';
 import { getActiveCoachClient, getBiofeedbackByDate, getUserId, upsertDailyBiofeedback } from '../lib/queries';
+import { Appear, appearDelay } from '../components/Appear';
 import { Card } from '../components/Card';
 import { GlassSurface } from '../components/Glass';
 import { Press } from '../components/Press';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { SectionHead } from '../components/SectionHead';
+
+/** Corsa di scorrimento entro cui il vetro si accende del tutto (px). */
+const GLASS_RANGE = 120;
+
+/** Scatto minimo sotto il quale non vale la pena ridisegnare il vetro. */
+const GLASS_STEP = 0.05;
 
 /** Un'icona per ogni provider: niente emoji sui controlli. */
 const PROVIDER_ICON: Partial<Record<HealthSource, keyof typeof Ionicons.glyphMap>> = {
@@ -87,6 +103,24 @@ export default function SaluteScreen() {
   // Altezze dei due livelli in vetro: il ferro scorre sotto senza finirci dietro.
   const [headerH, setHeaderH] = useState(84);
   const [barH, setBarH] = useState(96);
+  // Quanto contenuto sta passando sotto il vetro (0 fermo, 1 dopo ~120px).
+  const [glassActivity, setGlassActivity] = useState(0);
+  const glassActivityRef = useRef(0);
+
+  /**
+   * Accende testata e barra in base a quanto contenuto gli è passato sotto: da 0
+   * a 1 nei primi 120px, con scatti di 0.05 così non si ridisegna a ogni frame.
+   */
+  const onContentScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const y = e.nativeEvent.contentOffset.y;
+    const next = Math.max(0, Math.min(1, y / GLASS_RANGE));
+    const current = glassActivityRef.current;
+    if (next === current) return;
+    const settled = next === 0 || next === 1;
+    if (!settled && Math.abs(next - current) < GLASS_STEP) return;
+    glassActivityRef.current = next;
+    setGlassActivity(next);
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -146,88 +180,96 @@ export default function SaluteScreen() {
         ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        onScroll={onContentScroll}
+        scrollEventThrottle={16}
       >
         {/* IL FARO: i dati di oggi, l'unica cosa che si compila in questa schermata. */}
-        <Card beacon={colors.cyan} style={shadow.beacon(colors.cyan)}>
-          <SectionHead icon="create" tint={colors.cyan} title="Oggi, a mano" />
-          {coachClientId ? (
-            <View style={styles.fieldRow}>
-              <NumberField label="Passi" value={steps} onChange={setSteps} placeholder="8500" />
-              <NumberField
-                label="Sonno"
-                value={sleep}
-                onChange={setSleep}
-                placeholder="7,5"
-                unit="h"
-                decimal
-              />
-              <NumberField
-                label="Peso"
-                value={weight}
-                onChange={setWeight}
-                placeholder="72,5"
-                unit="kg"
-                decimal
-              />
-            </View>
-          ) : (
-            <Text style={styles.body}>
-              Collega un coach per registrare i tuoi dati di salute giornalieri.
+        <Appear delay={appearDelay(0)}>
+          <Card beacon={colors.cyan} style={shadow.beacon(colors.cyan)}>
+            <SectionHead icon="create" tint={colors.cyan} title="Oggi, a mano" />
+            {coachClientId ? (
+              <View style={styles.fieldRow}>
+                <NumberField label="Passi" value={steps} onChange={setSteps} placeholder="8500" />
+                <NumberField
+                  label="Sonno"
+                  value={sleep}
+                  onChange={setSleep}
+                  placeholder="7,5"
+                  unit="h"
+                  decimal
+                />
+                <NumberField
+                  label="Peso"
+                  value={weight}
+                  onChange={setWeight}
+                  placeholder="72,5"
+                  unit="kg"
+                  decimal
+                />
+              </View>
+            ) : (
+              <Text style={styles.body}>
+                Collega un coach per registrare i tuoi dati di salute giornalieri.
+              </Text>
+            )}
+          </Card>
+        </Appear>
+
+        {/* Entra dopo il faro: la lista dei provider è il secondo gradino. */}
+        <Appear delay={appearDelay(1)}>
+          <Card>
+            <SectionHead
+              icon="sync"
+              tint={colors.textSecondary}
+              title="Connetti un'app o un dispositivo"
+            />
+            <Text style={styles.note}>
+              La sincronizzazione automatica arriverà con l'app installata dagli store. Per ora puoi
+              inserire i dati a mano qui sopra.
             </Text>
-          )}
-        </Card>
 
-        <Card>
-          <SectionHead
-            icon="sync"
-            tint={colors.textSecondary}
-            title="Connetti un'app o un dispositivo"
-          />
-          <Text style={styles.note}>
-            La sincronizzazione automatica arriverà con l'app installata dagli store. Per ora puoi
-            inserire i dati a mano qui sopra.
-          </Text>
-
-          <View style={styles.providerList}>
-            {providers.map((p) => (
-              <Press
-                key={p.id}
-                haptic="light"
-                style={styles.providerRow}
-                accessibilityLabel={p.label}
-                onPress={() =>
-                  Alert.alert(
-                    p.label,
-                    p.available
-                      ? 'Collegamento disponibile.'
-                      : 'Disponibile a breve: la connessione automatica richiede l\'app installata dallo store (build nativa).',
-                  )
-                }
-              >
-                <View style={[styles.providerIcon, p.available && styles.providerIconOn]}>
-                  <Ionicons
-                    name={PROVIDER_ICON[p.id] ?? 'pulse'}
-                    size={20}
-                    color={p.available ? colors.accent : colors.textSecondary}
-                  />
-                </View>
-                <Text style={styles.providerLabel} numberOfLines={1}>
-                  {p.label}
-                </Text>
-                <View style={[styles.badge, p.available ? styles.badgeOn : styles.badgeSoon]}>
-                  <Text
-                    style={[
-                      styles.badgeText,
-                      { color: p.available ? colors.accent : colors.textSecondary },
-                    ]}
-                  >
-                    {p.available ? 'Disponibile' : 'Presto'}
+            {/* La lista si muove come un blocco solo: nessuna riga anima da sola. */}
+            <View style={styles.providerList}>
+              {providers.map((p) => (
+                <Press
+                  key={p.id}
+                  haptic="light"
+                  style={styles.providerRow}
+                  accessibilityLabel={p.label}
+                  onPress={() =>
+                    Alert.alert(
+                      p.label,
+                      p.available
+                        ? 'Collegamento disponibile.'
+                        : 'Disponibile a breve: la connessione automatica richiede l\'app installata dallo store (build nativa).',
+                    )
+                  }
+                >
+                  <View style={[styles.providerIcon, p.available && styles.providerIconOn]}>
+                    <Ionicons
+                      name={PROVIDER_ICON[p.id] ?? 'pulse'}
+                      size={20}
+                      color={p.available ? colors.accent : colors.textSecondary}
+                    />
+                  </View>
+                  <Text style={styles.providerLabel} numberOfLines={1}>
+                    {p.label}
                   </Text>
-                </View>
-              </Press>
-            ))}
-          </View>
-        </Card>
+                  <View style={[styles.badge, p.available ? styles.badgeOn : styles.badgeSoon]}>
+                    <Text
+                      style={[
+                        styles.badgeText,
+                        { color: p.available ? colors.accent : colors.textSecondary },
+                      ]}
+                    >
+                      {p.available ? 'Disponibile' : 'Presto'}
+                    </Text>
+                  </View>
+                </Press>
+              ))}
+            </View>
+          </Card>
+        </Appear>
       </ScrollView>
 
       {/* VETRO 1 — testata compatta ancorata. */}
@@ -236,7 +278,8 @@ export default function SaluteScreen() {
         pointerEvents="box-none"
         onLayout={(e) => setHeaderH(e.nativeEvent.layout.height)}
       >
-        <GlassSurface cornerRadius={radius.xl} padding={spacing.md}>
+        {/* Il vetro si accende solo quando il contenuto gli scorre sotto. */}
+        <GlassSurface cornerRadius={radius.xl} padding={spacing.md} activity={glassActivity}>
           <View style={styles.headerRow}>
             <Press
               style={styles.glassBtn}
@@ -264,7 +307,7 @@ export default function SaluteScreen() {
           pointerEvents="box-none"
           onLayout={(e) => setBarH(e.nativeEvent.layout.height)}
         >
-          <GlassSurface cornerRadius={radius.xl} padding={spacing.md}>
+          <GlassSurface cornerRadius={radius.xl} padding={spacing.md} activity={glassActivity}>
             <PrimaryButton
               label={saved ? 'SALVATO' : 'SALVA I DATI DI OGGI'}
               variant={saved ? 'success' : 'primary'}

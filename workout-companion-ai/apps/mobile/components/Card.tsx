@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
-import { colors, radius, spacing, type } from '../lib/theme';
+import { radius, spacing, type } from '../lib/theme';
 
 interface Props {
   title?: string;
@@ -32,7 +32,9 @@ export function Card({ title, children, style, beacon }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.card,
+    // Ferro al 92%: opaco quanto basta per la lettura, ma il campo luminoso
+    // sottostante lo tinge appena — la superficie resta viva.
+    backgroundColor: 'rgba(21,26,36,0.92)',
     borderRadius: radius.lg,
     padding: spacing.xl,
     gap: spacing.md,

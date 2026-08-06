@@ -290,7 +290,11 @@ export default function WorkoutSummaryScreen() {
         onScroll={onContentScroll}
         scrollEventThrottle={16}
       >
-        {/* Entrata a cascata: il riepilogo si compone dall'alto, 0/60/120/180 ms. */}
+        {/* Entrata a cascata in quattro tempi (0/60/120/180 ms): prima l'anello
+            del punteggio col suo titolo, poi i numeri, poi i record, e infine
+            recupero e recap AI.
+            Schermata di dettaglio: l'entrata avviene UNA VOLTA sola all'apertura,
+            senza replayOnFocus — quello vive solo nelle schermate a scheda. */}
         <Appear delay={appearDelay(0)} style={styles.hero}>
           <View style={styles.doneChip}>
             <Ionicons name="checkmark-circle" size={17} color={colors.mint} />
@@ -299,8 +303,10 @@ export default function WorkoutSummaryScreen() {
           <Text style={[sharedStyles.screenTitle, styles.heroTitle]}>{data.workoutName}</Text>
         </Appear>
 
-        {/* IL FARO: il punteggio della seduta, letto in tre secondi dall'anello. */}
-        <Appear delay={appearDelay(1)}>
+        {/* IL FARO: il punteggio della seduta, letto in tre secondi dall'anello.
+            Apre la cascata insieme al titolo: chip, nome e anello sono un solo
+            momento di celebrazione, non tre entrate separate. */}
+        <Appear delay={appearDelay(0)}>
           <Card title="Punteggio seduta" beacon={tone} style={shadow.beacon(tone)}>
             <View style={styles.ringWrap}>
               <ActivityRing progress={score / 100} color={tone} size={212} strokeWidth={16}>
@@ -324,8 +330,10 @@ export default function WorkoutSummaryScreen() {
           </Card>
         </Appear>
 
-        {/* I numeri di supporto: piccoli, tabulari, mai in gara col punteggio. */}
-        <Appear delay={appearDelay(2)} style={styles.section}>
+        {/* I numeri di supporto: piccoli, tabulari, mai in gara col punteggio.
+            Secondo tempo della cascata: entrano come blocco unico, non pillola
+            per pillola. */}
+        <Appear delay={appearDelay(1)} style={styles.section}>
           <Text style={type.label}>I numeri della seduta</Text>
           <View style={styles.pillRow}>
             <StatPill label="Durata" value={`${durationMin}′`} />
@@ -339,7 +347,8 @@ export default function WorkoutSummaryScreen() {
           </View>
         </Appear>
 
-        <Appear delay={appearDelay(3)}>
+        {/* Terzo tempo: i record. L'intera lista entra come un blocco solo. */}
+        <Appear delay={appearDelay(2)}>
           <Card>
             <SectionHead
               icon="trophy"
@@ -371,7 +380,8 @@ export default function WorkoutSummaryScreen() {
           </Card>
         </Appear>
 
-        <Appear delay={appearDelay(4)}>
+        {/* Quarto e ultimo tempo (180 ms): recupero e recap AI chiudono insieme. */}
+        <Appear delay={appearDelay(3)}>
           <Card>
             <SectionHead icon="battery-charging" tint={colors.cyan} title="Recupero previsto" />
             {/* Le ore di recupero sono un dato di supporto: scendono a metricSm, perché
@@ -395,7 +405,7 @@ export default function WorkoutSummaryScreen() {
         </Appear>
 
         {/* Viola: se è viola, l'ha scritto il motore. Ma il testo resta su ferro. */}
-        <Appear delay={appearDelay(5)}>
+        <Appear delay={appearDelay(4)}>
           <Card>
             <SectionHead icon="sparkles" tint={colors.violet} title="Il recap del coach AI" />
             {aiLoading ? (

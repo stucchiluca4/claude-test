@@ -29,9 +29,12 @@ interface RevealProps {
 }
 
 /**
- * Entrata guidata dallo SCORRIMENTO: l'elemento resta invisibile finché non
- * entra nel campo visivo, poi sale e si mette a fuoco. Una volta entrato non
- * torna indietro — lo scorrimento non deve far lampeggiare la pagina.
+ * Entrata guidata dallo SCORRIMENTO, viva in ENTRAMBE le direzioni.
+ *
+ * L'elemento entra quando compare e si ritira quando esce, così l'animazione
+ * c'è sia scendendo sia risalendo, senza dover ricaricare la pagina.
+ * Ricorda anche DA DOVE è uscito: se è sopra rientra scendendo, se è sotto
+ * rientra salendo — il movimento segue sempre il verso dello scorrimento.
  */
 export function Reveal({
   children,
@@ -43,6 +46,7 @@ export function Reveal({
 }: RevealProps) {
   const ref = useRef<HTMLElement | null>(null);
   const [shown, setShown] = useState(false);
+  const [from, setFrom] = useState<'below' | 'above'>('below');
   const reduced = useReducedMotion();
 
   useEffect(() => {
@@ -52,14 +56,18 @@ export function Reveal({
     }
     const el = ref.current;
     if (!el) return;
+
     const io = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
           setShown(true);
-          io.disconnect();
+          return;
         }
+        // Fuori campo: si rimette in attesa, memorizzando da che parte è uscito.
+        setFrom(entry.boundingClientRect.top < 0 ? 'above' : 'below');
+        setShown(false);
       },
-      { threshold: amount, rootMargin: '0px 0px -8% 0px' },
+      { threshold: amount, rootMargin: '-4% 0px -8% 0px' },
     );
     io.observe(el);
     return () => io.disconnect();
@@ -69,6 +77,7 @@ export function Reveal({
     <Tag
       ref={ref as never}
       data-shown={shown ? 'true' : 'false'}
+      data-from={from}
       style={{ transitionDelay: `${delay}ms` }}
       className={cn('reveal', `reveal-${variant}`, className)}
     >

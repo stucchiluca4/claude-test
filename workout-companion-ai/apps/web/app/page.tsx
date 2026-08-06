@@ -260,10 +260,12 @@ export default function Home() {
   return (
     // `overflow-x-clip` (non hidden): trattiene gli strati che sbordano senza
     // creare un contenitore di scorrimento, così la testata resta ancorata.
-    <div className="min-h-screen overflow-x-clip">
-      {/* VETRO — la testata è un controllo che galleggia sul contenuto che scorre */}
-      <header className="sticky top-0 z-50 px-3 pt-3 sm:px-5 sm:pt-4">
-        <GlassBar className="mx-auto flex max-w-[1240px] items-center gap-3 px-3 py-2.5 sm:px-4">
+    // `snap-page` accende lo scorrimento a sezioni definito in globals.css.
+    <div className="snap-page min-h-screen overflow-x-clip">
+      {/* Testata FISSA e OPACA: resta ferma e non lascia trasparire il contenuto
+          che le scorre sotto, così i titoli non si leggono mai attraverso. */}
+      <header className="nav-solid fixed inset-x-0 top-0 z-50">
+        <div className="mx-auto flex h-[var(--nav-h)] max-w-[1240px] items-center gap-3 px-4 sm:px-5">
           <Link
             href="/"
             className="press flex min-h-[44px] items-center gap-2.5 rounded-full pr-2"
@@ -305,13 +307,14 @@ export default function Home() {
               Inizia gratis
             </Link>
           </div>
-        </GlassBar>
+        </div>
       </header>
 
-      <main>
+      {/* Lo spazio della testata fissa: il contenuto parte sotto, non dietro. */}
+      <main className="pt-[var(--nav-h)]">
         {/* ============================================================ HERO
             Scena stratificata: fondo in parallasse → ferro → vetro che sborda. */}
-        <section className="relative isolate mx-auto grid max-w-[1240px] items-center gap-16 px-5 pb-28 pt-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,548px)] lg:gap-14 lg:pb-36 lg:pt-24">
+        <section className="snap-section relative isolate mx-auto grid max-w-[1240px] items-center gap-16 px-5 pb-28 pt-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,548px)] lg:gap-14 lg:pb-36 lg:pt-24">
           {/* Strato 1 — il reticolo scorre più lento del testo: il fondo prende profondità */}
           <Parallax
             speed={0.12}
@@ -526,7 +529,7 @@ export default function Home() {
 
         {/* ====================================================== MECCANISMO
             Sezione DENSA: cinque tessere che entrano a cascata. */}
-        <section id="meccanismo" className="border-t border-line bg-void/40">
+        <section id="meccanismo" className="snap-section border-t border-line bg-void/40">
           <div className="mx-auto max-w-[1240px] px-5 py-20 lg:py-24">
             <Reveal variant="rise">
               <SectionLabel>Il meccanismo</SectionLabel>
@@ -563,7 +566,7 @@ export default function Home() {
 
         {/* =========================================================== TRACKER
             Sezione ARIOSA: due colonne larghe, molto respiro verticale. */}
-        <section id="tracker" className="border-t border-line">
+        <section id="tracker" className="snap-section border-t border-line">
           <div className="mx-auto grid max-w-[1240px] items-center gap-14 px-5 py-24 lg:grid-cols-2 lg:gap-20 lg:py-36">
             <Reveal variant="pop" delay={70} className="order-2 lg:order-1">
               <Card>
@@ -654,7 +657,7 @@ export default function Home() {
 
         {/* ========================================================== FEEDBACK
             Sezione DENSA: la card delle quattro scale è fitta di numeri. */}
-        <section className="border-t border-line bg-void/40">
+        <section className="snap-section border-t border-line bg-void/40">
           <div className="mx-auto grid max-w-[1240px] items-center gap-12 px-5 py-20 lg:grid-cols-2 lg:gap-16 lg:py-24">
             <Reveal variant="rise">
               <SectionLabel>Feedback per esercizio</SectionLabel>
@@ -735,7 +738,7 @@ export default function Home() {
 
         {/* =========================================================== ANALISI
             Sezione DENSA: quattro KPI a cascata più due card di grafici. */}
-        <section id="analisi" className="border-t border-line">
+        <section id="analisi" className="snap-section border-t border-line">
           <div className="mx-auto max-w-[1240px] px-5 py-20 lg:py-24">
             <Reveal variant="pop" className="max-w-[62ch]">
               <SectionLabel>Analisi</SectionLabel>
@@ -863,7 +866,7 @@ export default function Home() {
 
         {/* ================================================================ AI
             Sezione ARIOSA: poche cose, molto spazio, una sola risposta lunga. */}
-        <section className="border-t border-line bg-void/40">
+        <section className="snap-section border-t border-line bg-void/40">
           <div className="mx-auto grid max-w-[1240px] items-center gap-14 px-5 py-24 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1fr)] lg:gap-20 lg:py-36">
             <Reveal variant="rise">
               <span className="inline-flex items-center gap-2 rounded-full bg-violet/15 px-3 py-1.5 text-[13px] font-bold text-violet">
@@ -929,7 +932,7 @@ export default function Home() {
 
         {/* =========================================================== PORTALE
             Sezione DENSA: otto tessere, cascata per riga (non otto ritardi in fila). */}
-        <section id="portale" className="border-t border-line">
+        <section id="portale" className="snap-section border-t border-line">
           <div className="mx-auto max-w-[1240px] px-5 py-20 lg:py-24">
             <Reveal variant="pop" className="max-w-[62ch]">
               <SectionLabel>Il resto del portale</SectionLabel>
@@ -963,10 +966,10 @@ export default function Home() {
         {/* ========================================================== CHIUSURA
             Sezione ARIOSA e chiusura ANCORATA: la barra in vetro resta col
             pollice mentre l'ultima sezione scorre, poi si posa sul ferro. */}
-        <section className="border-t border-line bg-void/40">
+        <section className="snap-section border-t border-line bg-void/40">
           <div className="mx-auto max-w-[1240px] px-5 py-24 lg:py-32">
             <Reveal variant="rise">
-              <Card className="flex flex-col items-center px-6 pb-28 pt-16 text-center">
+              <Card className="flex flex-col items-center px-6 pb-16 pt-16 text-center">
                 <SectionLabel>Provalo adesso</SectionLabel>
                 <h2 className="mt-4 max-w-[16ch] text-[clamp(32px,4.4vw,52px)] font-extrabold leading-[1.03] tracking-[-0.03em] text-white">
                   Aprila e guardala lavorare.
@@ -976,34 +979,31 @@ export default function Home() {
                   coach da una parte, l’esperienza dell’atleta dall’altra. Cinque minuti bastano per
                   capire se è il tuo modo di lavorare.
                 </p>
+                {/* I due comandi vivono DENTRO il riquadro: niente sovrapposizioni
+                    che ne taglierebbero il bordo. Sul telefono si impilano a piena
+                    larghezza (pollice), da sm in su tornano affiancati. */}
+                <div className="mt-10 flex w-full max-w-[560px] flex-col items-stretch gap-3 sm:flex-row sm:justify-center">
+                  <Link href="/demo" className={`${buttonPrimary} h-[56px] px-7`}>
+                    Prova la demo coach
+                    <ArrowRight size={18} aria-hidden="true" />
+                  </Link>
+                  <Link
+                    href="/atleta-demo"
+                    className="press inline-flex h-[56px] items-center justify-center gap-2 rounded-full bg-white/[0.08] px-6 text-[15px] font-semibold text-white transition hover:bg-white/[0.14]"
+                  >
+                    Vedi l’app atleta
+                  </Link>
+                </div>
+
                 <Link
                   href="/registrati"
-                  className="press mt-7 inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-4 text-[15px] font-semibold text-accent transition hover:text-accent-hover"
+                  className="press mt-6 inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-4 text-[15px] font-semibold text-accent transition hover:text-accent-hover"
                 >
                   Oppure crea subito il tuo account
                   <ArrowRight size={16} aria-hidden="true" />
                 </Link>
               </Card>
             </Reveal>
-
-            {/* VETRO — barra d'azione ancorata in basso: galleggia sul ferro
-                mentre la sezione scorre e si posa dove finisce il contenuto. */}
-            <div className="sticky bottom-5 z-30 -mt-[68px] px-1 sm:px-4">
-              {/* Sul telefono i due comandi si impilano a piena larghezza (pollice),
-                  da sm in su tornano affiancati. */}
-              <GlassBar className="mx-auto flex max-w-[640px] flex-col items-stretch gap-2.5 px-3 py-3 sm:flex-row sm:items-center sm:justify-center">
-                <Link href="/demo" className={`${buttonPrimary} h-[52px] px-7`}>
-                  Prova la demo coach
-                  <ArrowRight size={18} />
-                </Link>
-                <Link
-                  href="/atleta-demo"
-                  className="press inline-flex h-[52px] items-center justify-center gap-2 rounded-full bg-white/[0.08] px-6 text-[15px] font-semibold text-white transition hover:bg-white/[0.14]"
-                >
-                  Vedi l’app atleta
-                </Link>
-              </GlassBar>
-            </div>
           </div>
         </section>
       </main>

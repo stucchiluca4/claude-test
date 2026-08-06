@@ -6,6 +6,7 @@ import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { isDemo } from '../lib/demo';
 import { colors, sharedStyles } from '../lib/theme';
+import { Aurora } from '../components/Aurora';
 
 export default function RootLayout() {
   // undefined = sessione non ancora letta dallo storage
@@ -37,23 +38,29 @@ export default function RootLayout() {
     // Primo fotogramma dell'app: fondo di ferro e barra di stato chiara,
     // così l'avvio non sfarfalla in bianco prima di mostrare l'accesso.
     return (
-      <View style={[sharedStyles.screen, sharedStyles.center]}>
-        <StatusBar style="light" />
-        <ActivityIndicator size="large" color={colors.accent} />
+      <View style={sharedStyles.screen}>
+        <Aurora />
+        <View style={sharedStyles.center}>
+          <StatusBar style="light" />
+          <ActivityIndicator size="large" color={colors.accent} />
+        </View>
       </View>
     );
   }
 
   return (
     <View style={sharedStyles.screen}>
+      {/* Il campo luminoso sta sotto ogni schermata: è ciò che il vetro rifrange. */}
+      <Aurora />
       <StatusBar style="light" />
       <Stack
         screenOptions={{
           headerShown: false,
-          // Il fondo di ogni schermata è il ferro: nessuna cucitura tra le transizioni.
-          contentStyle: { backgroundColor: colors.background },
-          animation: 'fade',
-          animationDuration: 220,
+          // Trasparente: le schermate galleggiano sul campo luminoso invece di
+          // coprirlo con un fondo pieno.
+          contentStyle: { backgroundColor: 'transparent' },
+          animation: 'slide_from_right',
+          animationDuration: 280,
         }}
       />
     </View>

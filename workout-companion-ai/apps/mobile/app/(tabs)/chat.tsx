@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -8,6 +8,8 @@ import {
   Text,
   TextInput,
   View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +18,7 @@ import { supabase } from '../../lib/supabase';
 import { colors, concentric, radius, spacing, sharedStyles, tabular, type } from '../../lib/theme';
 import { showError } from '../../lib/utils';
 import { getActiveCoachClient, getUserId } from '../../lib/queries';
+import { Appear, appearDelay } from '../../components/Appear';
 import { GlassSurface } from '../../components/Glass';
 import { Press } from '../../components/Press';
 import { EmptyState, LoadingState } from '../../components/States';
@@ -25,6 +28,12 @@ const TAB_BAR_HEIGHT = 66;
 
 /** Messaggi dello stesso mittente entro 5 minuti formano un gruppo. */
 const GROUP_WINDOW_MS = 5 * 60 * 1000;
+
+/** Corsa di scorrimento entro cui il vetro si accende del tutto (px). */
+const GLASS_RANGE = 120;
+
+/** Scatto minimo sotto il quale non vale la pena ridisegnare il vetro. */
+const GLASS_STEP = 0.05;
 
 /** Stato della relazione col coach: al colore si affianca sempre l'etichetta. */
 const STATUS_META: Record<ClientStatus, { label: string; tone: string }> = {
@@ -69,10 +78,30 @@ export default function ChatScreen() {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  // Quanto conversazione sta passando sotto il vetro (0 ferma, 1 dopo ~120px).
+  const [glassActivity, setGlassActivity] = useState(0);
+  const glassActivityRef = useRef(0);
   const insets = useSafeAreaInsets();
 
   // Ingombro della barra schede flottante: la barra d'invio le resta sopra.
   const tabBarSpace = TAB_BAR_HEIGHT + Math.max(insets.bottom, spacing.md) + spacing.md;
+
+  /**
+   * Accende il vetro della barra d'invio in base a quanti messaggi le sono
+   * scorsi sotto. La lista è invertita: offset 0 è l'ultimo messaggio, appena
+   * sopra la barra; salendo verso i più vecchi il materiale si intensifica.
+   * Throttle a scatti di 0.05 così lo stato non si aggiorna a ogni frame.
+   */
+  const onListScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const y = e.nativeEvent.contentOffset.y;
+    const next = Math.max(0, Math.min(1, y / GLASS_RANGE));
+    const current = glassActivityRef.current;
+    if (next === current) return;
+    const settled = next === 0 || next === 1;
+    if (!settled && Math.abs(next - current) < GLASS_STEP) return;
+    glassActivityRef.current = next;
+    setGlassActivity(next);
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -175,7 +204,7 @@ export default function ChatScreen() {
     return (
       <SafeAreaView style={sharedStyles.screen} edges={['top']}>
         {/* Testata in FERRO: opaca, perché porta l'identità della conversazione. */}
-        <View style={styles.header}>
+        <Appear delay={appearDelay(0)} style={styles.header} replayOnFocus>
           <View style={styles.avatar}>
             <Ionicons name="chatbubble-ellipses" size={22} color={colors.textSecondary} />
           </View>
@@ -183,14 +212,18 @@ export default function ChatScreen() {
             <Text style={styles.headerTitle}>Chat</Text>
             <Text style={sharedStyles.muted}>Nessun coach collegato</Text>
           </View>
-        </View>
-        <View style={[sharedStyles.center, { paddingBottom: tabBarSpace }]}>
+        </Appear>
+        <Appear
+          delay={appearDelay(1)}
+          style={[sharedStyles.center, { paddingBottom: tabBarSpace }]}
+          replayOnFocus
+        >
           <EmptyState
             emoji="🤝"
             title="Ancora nessun coach"
             message="Appena il tuo coach ti aggiungerà potrai scrivergli da qui: dubbi, sensazioni, aggiustamenti."
           />
-        </View>
+        </Appear>
       </SafeAreaView>
     );
   }
@@ -208,7 +241,7 @@ export default function ChatScreen() {
         keyboardVerticalOffset={Platform.OS === 'ios' ? -tabBarSpace : 0}
       >
         {/* Testata in FERRO: chi c'è dall'altra parte e in che stato è. */}
-        <View style={styles.header}>
+        <Appear delay={appearDelay(0)} style={styles.header} replayOnFocus>
           <View style={[styles.avatar, styles.avatarActive]}>
             <Ionicons name="person" size={22} color={colors.accent} />
           </View>
@@ -219,80 +252,89 @@ export default function ChatScreen() {
               <Text style={sharedStyles.muted}>{status.label}</Text>
             </View>
           </View>
-        </View>
+        </Appear>
 
-        <FlatList
-          data={messages}
-          inverted
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
-          ListEmptyComponent={
-            // La FlatList inverted raddrizza da sé l'empty state, purché il suo
-            // nodo radice accetti la prop `style` (qui una View).
-            <View style={styles.emptyBox}>
-              <EmptyState
-                emoji="💬"
-                title="Rompi il ghiaccio"
-                message="Nessun messaggio ancora. Scrivi al tuo coach: come stai andando, come ti senti, cosa non torna."
-              />
-            </View>
-          }
-          renderItem={({ item, index }) => {
-            const mine = item.sender_id === uid;
-            // Lista invertita: index+1 è il messaggio più vecchio, index-1 il più recente.
-            const older = messages[index + 1];
-            const newer = messages[index - 1];
-            const startsGroup = !linked(older, item);
-            const endsGroup = !linked(newer, item);
-            const showDay = !older || !sameDay(older.created_at, item.created_at);
+        {/* Entra la conversazione intera, non il singolo messaggio: le bolle
+            restano ferme mentre la lista sale. */}
+        <Appear delay={appearDelay(1)} style={styles.flex} replayOnFocus>
+          <FlatList
+            data={messages}
+            inverted
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.listContent}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+            onScroll={onListScroll}
+            scrollEventThrottle={16}
+            ListEmptyComponent={
+              // La FlatList inverted raddrizza da sé l'empty state, purché il suo
+              // nodo radice accetti la prop `style` (qui una View).
+              <View style={styles.emptyBox}>
+                <EmptyState
+                  emoji="💬"
+                  title="Rompi il ghiaccio"
+                  message="Nessun messaggio ancora. Scrivi al tuo coach: come stai andando, come ti senti, cosa non torna."
+                />
+              </View>
+            }
+            renderItem={({ item, index }) => {
+              const mine = item.sender_id === uid;
+              // Lista invertita: index+1 è il messaggio più vecchio, index-1 il più recente.
+              const older = messages[index + 1];
+              const newer = messages[index - 1];
+              const startsGroup = !linked(older, item);
+              const endsGroup = !linked(newer, item);
+              const showDay = !older || !sameDay(older.created_at, item.created_at);
 
-            return (
-              <View style={startsGroup ? styles.groupStart : undefined}>
-                {showDay ? (
-                  <View style={styles.dayRow}>
-                    <View style={styles.dayChip}>
-                      <Text style={styles.dayText}>{dayLabel(item.created_at)}</Text>
-                    </View>
-                  </View>
-                ) : null}
-
-                <View
-                  style={[
-                    styles.bubble,
-                    mine ? styles.bubbleMine : styles.bubbleCoach,
-                    // L'angolo interno si stringe quando il messaggio continua il gruppo.
-                    !startsGroup && (mine ? styles.stackedMine : styles.stackedCoach),
-                  ]}
-                >
-                  <Text style={styles.bubbleText}>{item.body ?? ''}</Text>
-                  {endsGroup ? (
-                    <View style={styles.metaRow}>
-                      <Text style={[styles.bubbleTime, mine ? styles.timeMine : styles.timeCoach]}>
-                        {new Date(item.created_at).toLocaleTimeString('it-IT', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </Text>
-                      {mine ? (
-                        <Ionicons
-                          name={item.status === 'read' ? 'checkmark-done' : 'checkmark'}
-                          size={14}
-                          color="rgba(255,255,255,0.75)"
-                        />
-                      ) : null}
+              return (
+                <View style={startsGroup ? styles.groupStart : undefined}>
+                  {showDay ? (
+                    <View style={styles.dayRow}>
+                      <View style={styles.dayChip}>
+                        <Text style={styles.dayText}>{dayLabel(item.created_at)}</Text>
+                      </View>
                     </View>
                   ) : null}
-                </View>
-              </View>
-            );
-          }}
-        />
 
-        {/* VETRO — barra d'invio ancorata: è un controllo, non contenuto. */}
+                  <View
+                    style={[
+                      styles.bubble,
+                      mine ? styles.bubbleMine : styles.bubbleCoach,
+                      // L'angolo interno si stringe quando il messaggio continua il gruppo.
+                      !startsGroup && (mine ? styles.stackedMine : styles.stackedCoach),
+                    ]}
+                  >
+                    <Text style={styles.bubbleText}>{item.body ?? ''}</Text>
+                    {endsGroup ? (
+                      <View style={styles.metaRow}>
+                        <Text style={[styles.bubbleTime, mine ? styles.timeMine : styles.timeCoach]}>
+                          {new Date(item.created_at).toLocaleTimeString('it-IT', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </Text>
+                        {mine ? (
+                          <Ionicons
+                            name={item.status === 'read' ? 'checkmark-done' : 'checkmark'}
+                            size={14}
+                            color="rgba(255,255,255,0.75)"
+                          />
+                        ) : null}
+                      </View>
+                    ) : null}
+                  </View>
+                </View>
+              );
+            }}
+          />
+        </Appear>
+
+        {/* VETRO — barra d'invio ancorata: è un controllo, non contenuto, e
+            resta FUORI da Appear: un comando sempre a portata di pollice non
+            può rientrare a ogni cambio di scheda. Il materiale si accende con
+            la conversazione che gli scorre sotto. */}
         <View style={[styles.inputAnchor, { paddingBottom: tabBarSpace }]}>
-          <GlassSurface cornerRadius={radius.xl} padding={spacing.md}>
+          <GlassSurface cornerRadius={radius.xl} padding={spacing.md} activity={glassActivity}>
             <View style={styles.inputRow}>
               <TextInput
                 style={styles.input}

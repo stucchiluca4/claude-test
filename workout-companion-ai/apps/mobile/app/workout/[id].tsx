@@ -55,6 +55,13 @@ const emptyEntry: RowState = { load: '', reps: '', rpe: '', completed: false };
 /** Raggio degli elementi dentro la card esercizio (26 − 16): curve parallele. */
 const INNER = concentric(radius.lg, spacing.lg);
 
+/**
+ * Ferro al 92% (stessa materia di Card.tsx): la card resta opaca quanto basta
+ * per leggere carichi e ripetizioni con le mani sudate, ma il campo luminoso di
+ * fondo la tinge appena, così la superficie non legge come grigio morto.
+ */
+const IRON = 'rgba(21,26,36,0.92)';
+
 /** Corsa di scorrimento entro cui il vetro si accende del tutto (px). */
 const GLASS_RANGE = 120;
 
@@ -567,11 +574,13 @@ export default function WorkoutTrackerScreen() {
           scrollEventThrottle={16}
         >
           {exercises.length === 0 ? (
-            <EmptyState
-              emoji="🏋️"
-              title="Nessun esercizio"
-              message="Questa scheda non ha ancora esercizi. Chiedi al tuo coach di aggiungerli."
-            />
+            <Appear delay={appearDelay(0)}>
+              <EmptyState
+                emoji="🏋️"
+                title="Nessun esercizio"
+                message="Questa scheda non ha ancora esercizi. Chiedi al tuo coach di aggiungerli."
+              />
+            </Appear>
           ) : (
             exercises.map((we, index) => {
               const isOpen = expanded[we.id] ?? false;
@@ -589,6 +598,10 @@ export default function WorkoutTrackerScreen() {
               const showMedia = mediaOpen[we.id] ?? false;
 
               return (
+                // Schermata di dettaglio: l'entrata avviene UNA VOLTA sola
+                // all'apertura, senza replayOnFocus (quello vive nelle schede).
+                // La cascata 0/60/120/180 ms si ferma al quarto esercizio: oltre
+                // sarebbe attesa, non movimento.
                 <Appear
                   key={we.id}
                   delay={appearDelay(index)}
@@ -635,7 +648,9 @@ export default function WorkoutTrackerScreen() {
                     </Press>
 
                     {isOpen ? (
-                      <View style={styles.body}>
+                      // Il corpo dell'esercizio sale a molla ogni volta che la
+                      // card si apre: l'espansione non è più uno scatto secco.
+                      <Appear style={styles.body}>
                         {we.coach_notes ? (
                           <View style={styles.note}>
                             <Ionicons
@@ -754,7 +769,7 @@ export default function WorkoutTrackerScreen() {
                             exerciseId={we.exercise_id}
                           />
                         </View>
-                      </View>
+                      </Appear>
                     ) : null}
                   </View>
                 </Appear>
@@ -973,10 +988,14 @@ const styles = StyleSheet.create({
   // --- FERRO: card esercizio ---
   shell: {
     borderRadius: radius.lg,
-    backgroundColor: colors.card,
+    // L'unico strato di ferro della card sta qui: è anche la superficie che
+    // porta l'alone del faro, e un'ombra su fondo trasparente non si vedrebbe.
+    backgroundColor: IRON,
   },
   card: {
-    backgroundColor: colors.card,
+    // Trasparente di proposito: il ferro lo dà il guscio sottostante, così la
+    // tinta non si somma due volte e il campo luminoso passa davvero.
+    backgroundColor: 'transparent',
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: 'transparent',

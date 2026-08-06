@@ -15,6 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { colors, radius, spacing, sharedStyles, type } from '../../lib/theme';
+import { Appear, appearDelay } from '../../components/Appear';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { Press } from '../../components/Press';
 import { setDemo } from '../../lib/demo';
@@ -23,6 +24,9 @@ import { tapError } from '../../lib/haptics';
 /**
  * Prima schermata del prodotto: marchio, due campi di ferro, una sola azione blu.
  * Nessun vetro qui — non c'è nulla che scorra sotto: il vetro sarebbe una tinta.
+ *
+ * All'apertura marchio, titolo, modulo e piede salgono a cascata: è la prima
+ * impressione del prodotto, e avviene una volta sola (nessun replayOnFocus).
  */
 export default function LoginScreen() {
   const router = useRouter();
@@ -71,21 +75,21 @@ export default function LoginScreen() {
       <SafeAreaView style={styles.flex}>
         <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-            {/* Il marchio: pastiglia blu + logotipo, in alto e piccolo. */}
-            <View style={styles.brand}>
+            {/* Il marchio: pastiglia blu + logotipo, in alto e piccolo. Entra per primo. */}
+            <Appear delay={appearDelay(0)} style={styles.brand}>
               <View style={styles.mark}>
                 <Ionicons name="barbell" size={24} color={colors.accent} />
               </View>
               <Text style={styles.wordmark}>Workout Companion AI</Text>
-            </View>
+            </Appear>
 
             {/* L'elemento dominante: il titolo dell'atto che stai per compiere. */}
-            <View style={styles.heading}>
+            <Appear delay={appearDelay(1)} style={styles.heading}>
               <Text style={type.display}>Bentornato</Text>
               <Text style={sharedStyles.muted}>Il tuo coach, sempre in tasca.</Text>
-            </View>
+            </Appear>
 
-            <View style={styles.form}>
+            <Appear delay={appearDelay(2)} style={styles.form}>
               <View style={styles.fieldGroup}>
                 <Text style={type.label}>Email</Text>
                 <View style={[styles.field, focused === 'email' && styles.fieldFocus]}>
@@ -153,9 +157,9 @@ export default function LoginScreen() {
                 <Ionicons name="flask-outline" size={18} color={colors.accent} />
                 <Text style={styles.demoText}>Prova la demo, senza account</Text>
               </Press>
-            </View>
+            </Appear>
 
-            <View style={styles.footer}>
+            <Appear delay={appearDelay(3)} style={styles.footer}>
               <Text style={sharedStyles.muted}>Non hai ancora un account?</Text>
               <Press
                 onPress={() => router.push('/(auth)/register')}
@@ -165,7 +169,7 @@ export default function LoginScreen() {
               >
                 <Text style={styles.link}>Registrati</Text>
               </Press>
-            </View>
+            </Appear>
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>

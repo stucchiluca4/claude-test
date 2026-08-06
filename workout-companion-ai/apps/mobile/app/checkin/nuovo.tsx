@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -8,6 +8,8 @@ import {
   Text,
   TextInput,
   View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -26,6 +28,7 @@ import {
 } from '../../lib/theme';
 import { mondayOfCurrentWeek, parseNum, showError } from '../../lib/utils';
 import { getActiveCoachClient, getUserId } from '../../lib/queries';
+import { Appear, appearDelay } from '../../components/Appear';
 import { Card } from '../../components/Card';
 import { DotScale } from '../../components/DotScale';
 import { GlassSurface } from '../../components/Glass';
@@ -60,6 +63,12 @@ const SCALES: { key: ScaleKey; label: string; tint: string }[] = [
   { key: 'training_adherence', label: 'Aderenza agli allenamenti', tint: colors.mint },
   { key: 'nutrition_adherence', label: 'Aderenza alla dieta', tint: colors.mint },
 ];
+
+/** Corsa di scorrimento entro cui il vetro si accende del tutto (px). */
+const GLASS_RANGE = 120;
+
+/** Scatto minimo sotto il quale non vale la pena ridisegnare il vetro. */
+const GLASS_STEP = 0.05;
 
 /** "2026-05-12" -> "12 maggio". */
 function italianDayMonth(dateStr: string): string {
@@ -126,7 +135,25 @@ export default function NuovoCheckinScreen() {
   // Altezze dei due livelli in vetro: il ferro scorre sotto senza finirci dietro.
   const [headerH, setHeaderH] = useState(84);
   const [barH, setBarH] = useState(96);
+  // Quanto contenuto sta passando sotto il vetro (0 fermo, 1 dopo ~120px).
+  const [glassActivity, setGlassActivity] = useState(0);
+  const glassActivityRef = useRef(0);
   const router = useRouter();
+
+  /**
+   * Accende testata e barra in base a quanto check-in gli è passato sotto: da 0
+   * a 1 nei primi 120px, con scatti di 0.05 così non si ridisegna a ogni frame.
+   */
+  const onContentScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const y = e.nativeEvent.contentOffset.y;
+    const next = Math.max(0, Math.min(1, y / GLASS_RANGE));
+    const current = glassActivityRef.current;
+    if (next === current) return;
+    const settled = next === 0 || next === 1;
+    if (!settled && Math.abs(next - current) < GLASS_STEP) return;
+    glassActivityRef.current = next;
+    setGlassActivity(next);
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -198,11 +225,14 @@ export default function NuovoCheckinScreen() {
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         {!coachClient ? (
           <View style={[styles.emptyWrap, { paddingTop: headerH }]}>
-            <EmptyState
-              emoji="🤝"
-              title="Nessun coach collegato"
-              message="Il check-in si sblocca quando sei collegato a un coach."
-            />
+            {/* Entrata una volta sola: questa non è una schermata a scheda. */}
+            <Appear delay={appearDelay(0)}>
+              <EmptyState
+                emoji="🤝"
+                title="Nessun coach collegato"
+                message="Il check-in si sblocca quando sei collegato a un coach."
+              />
+            </Appear>
           </View>
         ) : (
           /* FERRO: tutto ciò che si legge e si compila scorre qui sotto, opaco. */
@@ -213,66 +243,77 @@ export default function NuovoCheckinScreen() {
             ]}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
+            onScroll={onContentScroll}
+            scrollEventThrottle={16}
           >
             {/* IL FARO: il peso è il dato che apre il check-in e senza il quale non parte. */}
-            <Card beacon={colors.cyan} style={shadow.beacon(colors.cyan)}>
-              <Text style={type.label}>Peso di questa settimana</Text>
-              <View style={styles.weightBox}>
-                <TextInput
-                  style={[styles.weightInput, tabular]}
-                  value={weight}
-                  onChangeText={setWeight}
-                  placeholder="72,5"
-                  placeholderTextColor={colors.textTertiary}
-                  keyboardType="decimal-pad"
-                />
-                <Text style={styles.weightUnit}>kg</Text>
-              </View>
-              <Text style={styles.note}>
-                È il primo dato che il tuo coach guarda: senza peso il check-in non può partire.
-              </Text>
-            </Card>
-
-            <Card>
-              <SectionHead
-                icon="pulse"
-                tint={colors.cyan}
-                title={`Come è andata · ${answered}/${SCALES.length}`}
-              />
-              <View style={styles.scaleGroup}>
-                {SCALES.map(({ key, label, tint }) => (
-                  <DotScale
-                    key={key}
-                    label={label}
-                    tint={tint}
-                    value={scales[key]}
-                    onChange={(v) => setScales((prev) => ({ ...prev, [key]: v }) as typeof prev)}
+            <Appear delay={appearDelay(0)}>
+              <Card beacon={colors.cyan} style={shadow.beacon(colors.cyan)}>
+                <Text style={type.label}>Peso di questa settimana</Text>
+                <View style={styles.weightBox}>
+                  <TextInput
+                    style={[styles.weightInput, tabular]}
+                    value={weight}
+                    onChangeText={setWeight}
+                    placeholder="72,5"
+                    placeholderTextColor={colors.textTertiary}
+                    keyboardType="decimal-pad"
                   />
-                ))}
-              </View>
-            </Card>
+                  <Text style={styles.weightUnit}>kg</Text>
+                </View>
+                <Text style={styles.note}>
+                  È il primo dato che il tuo coach guarda: senza peso il check-in non può partire.
+                </Text>
+              </Card>
+            </Appear>
 
-            <Card>
-              <SectionHead icon="footsteps" tint={colors.cyan} title="Passi" />
-              <NumberField
-                label="Passi medi al giorno"
-                value={steps}
-                onChange={setSteps}
-                placeholder="8000"
-              />
-            </Card>
+            {/* Cascata d'apertura: le sezioni salgono una dopo l'altra. */}
+            <Appear delay={appearDelay(1)}>
+              <Card>
+                <SectionHead
+                  icon="pulse"
+                  tint={colors.cyan}
+                  title={`Come è andata · ${answered}/${SCALES.length}`}
+                />
+                <View style={styles.scaleGroup}>
+                  {SCALES.map(({ key, label, tint }) => (
+                    <DotScale
+                      key={key}
+                      label={label}
+                      tint={tint}
+                      value={scales[key]}
+                      onChange={(v) => setScales((prev) => ({ ...prev, [key]: v }) as typeof prev)}
+                    />
+                  ))}
+                </View>
+              </Card>
+            </Appear>
 
-            <Card>
-              <SectionHead icon="create" tint={colors.textSecondary} title="Note per il coach" />
-              <TextInput
-                style={styles.notes}
-                value={notes}
-                onChangeText={setNotes}
-                placeholder="Come è andata davvero questa settimana? (facoltativo)"
-                placeholderTextColor={colors.textTertiary}
-                multiline
-              />
-            </Card>
+            <Appear delay={appearDelay(2)}>
+              <Card>
+                <SectionHead icon="footsteps" tint={colors.cyan} title="Passi" />
+                <NumberField
+                  label="Passi medi al giorno"
+                  value={steps}
+                  onChange={setSteps}
+                  placeholder="8000"
+                />
+              </Card>
+            </Appear>
+
+            <Appear delay={appearDelay(3)}>
+              <Card>
+                <SectionHead icon="create" tint={colors.textSecondary} title="Note per il coach" />
+                <TextInput
+                  style={styles.notes}
+                  value={notes}
+                  onChangeText={setNotes}
+                  placeholder="Come è andata davvero questa settimana? (facoltativo)"
+                  placeholderTextColor={colors.textTertiary}
+                  multiline
+                />
+              </Card>
+            </Appear>
           </ScrollView>
         )}
 
@@ -282,7 +323,8 @@ export default function NuovoCheckinScreen() {
           pointerEvents="box-none"
           onLayout={(e) => setHeaderH(e.nativeEvent.layout.height)}
         >
-          <GlassSurface cornerRadius={radius.xl} padding={spacing.md}>
+          {/* Il vetro si accende solo quando il check-in gli scorre sotto. */}
+          <GlassSurface cornerRadius={radius.xl} padding={spacing.md} activity={glassActivity}>
             <View style={styles.headerRow}>
               <Press
                 style={styles.glassBtn}
@@ -310,7 +352,7 @@ export default function NuovoCheckinScreen() {
             pointerEvents="box-none"
             onLayout={(e) => setBarH(e.nativeEvent.layout.height)}
           >
-            <GlassSurface cornerRadius={radius.xl} padding={spacing.md}>
+            <GlassSurface cornerRadius={radius.xl} padding={spacing.md} activity={glassActivity}>
               <PrimaryButton label="INVIA CHECK-IN" onPress={submit} loading={saving} />
             </GlassSurface>
           </View>

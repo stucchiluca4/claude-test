@@ -10,6 +10,7 @@ import { colors, concentric, radius, shadow, spacing, sharedStyles, tabular, typ
 import { mondayOfCurrentWeek, showError, todayDayOfWeek } from '../../lib/utils';
 import { currentWeekNumber, getActiveCoachClient, getActiveProgram, getUserId, getWeekWorkouts } from '../../lib/queries';
 import { ActivityRing } from '../../components/ActivityRing';
+import { Appear, appearDelay } from '../../components/Appear';
 import { Card } from '../../components/Card';
 import { MetricBlock } from '../../components/MetricBlock';
 import { Press } from '../../components/Press';
@@ -118,50 +119,64 @@ export default function AllenamentoScreen() {
         contentContainerStyle={sharedStyles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
       >
-        <View style={styles.header}>
+        {/* Cascata d'entrata: rientra a ogni ritorno sulla scheda. */}
+        <Appear delay={appearDelay(0)} style={styles.header} replayOnFocus>
           <Text style={sharedStyles.screenTitle}>Allenamento</Text>
           {data.programName ? (
             <Text style={[styles.subtitle, tabular]} numberOfLines={1}>
               {data.programName} · Settimana {data.weekNumber}
             </Text>
           ) : null}
-        </View>
+        </Appear>
 
         {!data.hasCoach ? (
-          <EmptyState
-            emoji="🤝"
-            title="Nessun coach collegato"
-            message="Quando il tuo coach ti aggiungerà, qui troverai la scheda della settimana con tutti gli allenamenti."
-          />
+          <Appear delay={appearDelay(1)} replayOnFocus>
+            <EmptyState
+              emoji="🤝"
+              title="Nessun coach collegato"
+              message="Quando il tuo coach ti aggiungerà, qui troverai la scheda della settimana con tutti gli allenamenti."
+            />
+          </Appear>
         ) : total === 0 ? (
-          <EmptyState
-            emoji="🗓️"
-            title="Nessun allenamento in programma"
-            message="Il tuo coach sta preparando la scheda di questa settimana: torna a controllare più tardi!"
-          />
+          <Appear delay={appearDelay(1)} replayOnFocus>
+            <EmptyState
+              emoji="🗓️"
+              title="Nessun allenamento in programma"
+              message="Il tuo coach sta preparando la scheda di questa settimana: torna a controllare più tardi!"
+            />
+          </Appear>
         ) : (
           <>
             {/* IL BLOCCO DOMINANTE: a che punto è la settimana. */}
-            <Card title="Questa settimana">
-              <MetricBlock
-                value={String(doneCount)}
-                unit={`/ ${total}`}
-                color={weekTone}
-                caption={
-                  remaining === 0
-                    ? 'Settimana completata: bel lavoro!'
-                    : `Ancora ${remaining} ${remaining === 1 ? 'seduta' : 'sedute'} da fare`
-                }
-                trailing={
-                  <ActivityRing progress={total > 0 ? doneCount / total : 0} color={weekTone} size={88} strokeWidth={12}>
-                    <Ionicons name={remaining === 0 ? 'trophy' : 'barbell'} size={30} color={weekTone} />
-                  </ActivityRing>
-                }
-              />
-            </Card>
+            <Appear delay={appearDelay(1)} replayOnFocus>
+              <Card title="Questa settimana">
+                <MetricBlock
+                  value={String(doneCount)}
+                  unit={`/ ${total}`}
+                  color={weekTone}
+                  caption={
+                    remaining === 0
+                      ? 'Settimana completata: bel lavoro!'
+                      : `Ancora ${remaining} ${remaining === 1 ? 'seduta' : 'sedute'} da fare`
+                  }
+                  trailing={
+                    <ActivityRing
+                      progress={total > 0 ? doneCount / total : 0}
+                      color={weekTone}
+                      size={88}
+                      strokeWidth={12}
+                    >
+                      <Ionicons name={remaining === 0 ? 'trophy' : 'barbell'} size={30} color={weekTone} />
+                    </ActivityRing>
+                  }
+                />
+              </Card>
+            </Appear>
 
-            {/* La settimana come scala: sette righe di ferro, una per giorno. */}
-            <View style={styles.week}>
+            {/* La settimana come scala: sette righe di ferro, una per giorno.
+                Entra il contenitore, non le singole righe: sette entrate a
+                cascata diventerebbero attesa, non movimento. */}
+            <Appear delay={appearDelay(2)} style={styles.week} replayOnFocus>
               <Text style={type.label}>Programma della settimana</Text>
               {WEEK_DAYS.map((day) => {
                 const dayWorkouts = data.workouts.filter((w) => w.day_of_week === day);
@@ -194,7 +209,7 @@ export default function AllenamentoScreen() {
                   );
                 });
               })}
-            </View>
+            </Appear>
           </>
         )}
       </ScrollView>

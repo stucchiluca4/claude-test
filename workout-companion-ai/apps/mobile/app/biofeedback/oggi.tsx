@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -8,6 +8,8 @@ import {
   Text,
   TextInput,
   View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -34,6 +36,7 @@ import {
   type DailyBiofeedback,
 } from '../../lib/queries';
 import { ActivityRing } from '../../components/ActivityRing';
+import { Appear, appearDelay } from '../../components/Appear';
 import { Card } from '../../components/Card';
 import { DotScale } from '../../components/DotScale';
 import { GlassSurface } from '../../components/Glass';
@@ -68,6 +71,12 @@ const SCALES: {
   { key: 'joint_stress', label: 'Stress articolare', bands: ['Leggero', 'Moderato', 'Alto'], tint: colors.amber },
   { key: 'recovery', label: 'Stato di recupero', bands: ['Scarso', 'Buono', 'Ottimo'], tint: colors.cyan },
 ];
+
+/** Corsa di scorrimento entro cui il vetro si accende del tutto (px). */
+const GLASS_RANGE = 120;
+
+/** Scatto minimo sotto il quale non vale la pena ridisegnare il vetro. */
+const GLASS_STEP = 0.05;
 
 const EMPTY_SCALES: Record<ScaleKey, number | null> = {
   sleep_quality: null,
@@ -167,10 +176,28 @@ export default function BiofeedbackOggiScreen() {
   // Altezze dei due livelli in vetro: il ferro scorre sotto senza finirci dietro.
   const [headerH, setHeaderH] = useState(84);
   const [barH, setBarH] = useState(96);
+  // Quanto contenuto sta passando sotto il vetro (0 fermo, 1 dopo ~120px).
+  const [glassActivity, setGlassActivity] = useState(0);
+  const glassActivityRef = useRef(0);
 
   const router = useRouter();
   const weekDates = currentWeekDates();
   const today = localDateString(new Date());
+
+  /**
+   * Accende testata e barra in base a quanto check gli è passato sotto: da 0 a 1
+   * nei primi 120px, con scatti di 0.05 così lo stato non cambia a ogni frame.
+   */
+  const onContentScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const y = e.nativeEvent.contentOffset.y;
+    const next = Math.max(0, Math.min(1, y / GLASS_RANGE));
+    const current = glassActivityRef.current;
+    if (next === current) return;
+    const settled = next === 0 || next === 1;
+    if (!settled && Math.abs(next - current) < GLASS_STEP) return;
+    glassActivityRef.current = next;
+    setGlassActivity(next);
+  }, []);
 
   const populate = useCallback((entry: DailyBiofeedback | null) => {
     setScales(
@@ -292,11 +319,14 @@ export default function BiofeedbackOggiScreen() {
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         {!coachClient ? (
           <View style={[styles.emptyWrap, { paddingTop: headerH }]}>
-            <EmptyState
-              emoji="🤝"
-              title="Nessun coach collegato"
-              message="Il check biofeedback si sblocca quando sei collegato a un coach. Quando il tuo coach ti aggiungerà potrai registrare qui sonno, energia, nutrizione e molto altro."
-            />
+            {/* Entrata una volta sola: questa non è una schermata a scheda. */}
+            <Appear delay={appearDelay(0)}>
+              <EmptyState
+                emoji="🤝"
+                title="Nessun coach collegato"
+                message="Il check biofeedback si sblocca quando sei collegato a un coach. Quando il tuo coach ti aggiungerà potrai registrare qui sonno, energia, nutrizione e molto altro."
+              />
+            </Appear>
           </View>
         ) : (
           /* FERRO: tutto ciò che si legge e si compila scorre qui sotto, opaco. */
@@ -307,8 +337,11 @@ export default function BiofeedbackOggiScreen() {
             ]}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
+            onScroll={onContentScroll}
+            scrollEventThrottle={16}
           >
-            <View style={styles.weekStrip}>
+            {/* Cascata d'apertura: la settimana, poi il faro, poi le sezioni. */}
+            <Appear delay={appearDelay(0)} style={styles.weekStrip}>
               {weekDates.map((d, i) => {
                 const dateStr = localDateString(d);
                 const isToday = dateStr === today;
@@ -345,151 +378,170 @@ export default function BiofeedbackOggiScreen() {
                   </View>
                 );
               })}
-            </View>
+            </Appear>
 
             {/* IL FARO: l'avanzamento del check, letto in tre secondi dall'anello. */}
-            <Card beacon={heroTone} style={shadow.beacon(heroTone)}>
-              <MetricBlock
-                value={String(answered)}
-                unit={`su ${SCALES.length}`}
-                label="Stato del check"
-                caption={heroCaption}
-                color={heroTone}
-                trailing={
-                  <ActivityRing
-                    progress={answered / SCALES.length}
-                    color={heroTone}
-                    size={84}
-                    strokeWidth={11}
-                  >
-                    <Ionicons
-                      name={complete ? 'checkmark' : 'pulse'}
-                      size={28}
+            <Appear delay={appearDelay(1)}>
+              <Card beacon={heroTone} style={shadow.beacon(heroTone)}>
+                <MetricBlock
+                  value={String(answered)}
+                  unit={`su ${SCALES.length}`}
+                  label="Stato del check"
+                  caption={heroCaption}
+                  color={heroTone}
+                  trailing={
+                    <ActivityRing
+                      progress={answered / SCALES.length}
                       color={heroTone}
-                    />
-                  </ActivityRing>
-                }
-              />
-            </Card>
-
-            <Card>
-              <SectionHead
-                icon="information-circle"
-                tint={colors.textSecondary}
-                title="Perché è importante"
-              />
-              <Text style={styles.note}>
-                Le tue risposte ci aiutano ad adattare il programma e migliorare performance e
-                recupero.
-              </Text>
-            </Card>
-
-            <Card>
-              <SectionHead icon="pulse" tint={colors.cyan} title="Stato generale" />
-              <View style={styles.scaleGroup}>
-                {SCALES.map(({ key, label, bands, tint }) => (
-                  <View key={key} style={styles.scaleBlock}>
-                    <DotScale
-                      label={label}
-                      bands={bands}
-                      tint={tint}
-                      value={scales[key]}
-                      onChange={(v) => setScales((prev) => ({ ...prev, [key]: v }) as typeof prev)}
-                    />
-                    {key === 'sleep_quality' ? (
-                      <NumberField
-                        label="Ore di sonno"
-                        value={sleepHours}
-                        onChange={setSleepHours}
-                        placeholder="7,5"
-                        unit="h"
-                        decimal
+                      size={84}
+                      strokeWidth={11}
+                    >
+                      <Ionicons
+                        name={complete ? 'checkmark' : 'pulse'}
+                        size={28}
+                        color={heroTone}
                       />
-                    ) : null}
-                  </View>
-                ))}
-              </View>
-            </Card>
+                    </ActivityRing>
+                  }
+                />
+              </Card>
+            </Appear>
 
-            <Card>
-              <SectionHead icon="nutrition" tint={colors.amber} title="Nutrizione" />
-              <View style={styles.fieldRow}>
-                <NumberField
-                  grow
-                  label="Carboidrati"
-                  value={carbs}
-                  onChange={setCarbs}
-                  placeholder="0"
-                  unit="g"
-                  target={nutritionDay ? `${nutritionDay.carbs_g} g` : null}
+            <Appear delay={appearDelay(2)}>
+              <Card>
+                <SectionHead
+                  icon="information-circle"
+                  tint={colors.textSecondary}
+                  title="Perché è importante"
                 />
-                <NumberField
-                  grow
-                  label="Proteine"
-                  value={protein}
-                  onChange={setProtein}
-                  placeholder="0"
-                  unit="g"
-                  target={nutritionDay ? `${nutritionDay.protein_g} g` : null}
-                />
-                <NumberField
-                  grow
-                  label="Grassi"
-                  value={fat}
-                  onChange={setFat}
-                  placeholder="0"
-                  unit="g"
-                  target={nutritionDay ? `${nutritionDay.fat_g} g` : null}
-                />
-              </View>
-            </Card>
+                <Text style={styles.note}>
+                  Le tue risposte ci aiutano ad adattare il programma e migliorare performance e
+                  recupero.
+                </Text>
+              </Card>
+            </Appear>
 
-            <Card>
-              <SectionHead icon="footsteps" tint={colors.cyan} title="Altre metriche" />
-              <View style={styles.fieldRow}>
-                <NumberField
-                  grow
-                  label="Idratazione"
-                  value={hydration}
-                  onChange={setHydration}
-                  placeholder="2,5"
-                  unit="l"
-                  decimal
-                />
-                <NumberField grow label="Passi" value={steps} onChange={setSteps} placeholder="8000" />
-              </View>
-              <View style={styles.fieldRow}>
-                <NumberField
-                  grow
-                  label="Kcal consumate"
-                  value={kcal}
-                  onChange={setKcal}
-                  placeholder="0"
-                  target={nutritionDay ? `${nutritionDay.kcal} kcal` : null}
-                />
-                <NumberField
-                  grow
-                  label="Peso (facoltativo)"
-                  value={weight}
-                  onChange={setWeight}
-                  placeholder="72,5"
-                  unit="kg"
-                  decimal
-                />
-              </View>
-            </Card>
+            {/* Da qui in giù la cascata resta a 180ms: il resto entra insieme. */}
+            <Appear delay={appearDelay(3)}>
+              <Card>
+                <SectionHead icon="pulse" tint={colors.cyan} title="Stato generale" />
+                <View style={styles.scaleGroup}>
+                  {SCALES.map(({ key, label, bands, tint }) => (
+                    <View key={key} style={styles.scaleBlock}>
+                      <DotScale
+                        label={label}
+                        bands={bands}
+                        tint={tint}
+                        value={scales[key]}
+                        onChange={(v) => setScales((prev) => ({ ...prev, [key]: v }) as typeof prev)}
+                      />
+                      {key === 'sleep_quality' ? (
+                        <NumberField
+                          label="Ore di sonno"
+                          value={sleepHours}
+                          onChange={setSleepHours}
+                          placeholder="7,5"
+                          unit="h"
+                          decimal
+                        />
+                      ) : null}
+                    </View>
+                  ))}
+                </View>
+              </Card>
+            </Appear>
 
-            <Card>
-              <SectionHead icon="create" tint={colors.textSecondary} title="Note libere" />
-              <TextInput
-                style={styles.notes}
-                value={notes}
-                onChangeText={setNotes}
-                placeholder="Come ti senti oggi? Scrivi qui qualsiasi cosa utile per il coach."
-                placeholderTextColor={colors.textTertiary}
-                multiline
-              />
-            </Card>
+            <Appear delay={appearDelay(4)}>
+              <Card>
+                <SectionHead icon="nutrition" tint={colors.amber} title="Nutrizione" />
+                <View style={styles.fieldRow}>
+                  <NumberField
+                    grow
+                    label="Carboidrati"
+                    value={carbs}
+                    onChange={setCarbs}
+                    placeholder="0"
+                    unit="g"
+                    target={nutritionDay ? `${nutritionDay.carbs_g} g` : null}
+                  />
+                  <NumberField
+                    grow
+                    label="Proteine"
+                    value={protein}
+                    onChange={setProtein}
+                    placeholder="0"
+                    unit="g"
+                    target={nutritionDay ? `${nutritionDay.protein_g} g` : null}
+                  />
+                  <NumberField
+                    grow
+                    label="Grassi"
+                    value={fat}
+                    onChange={setFat}
+                    placeholder="0"
+                    unit="g"
+                    target={nutritionDay ? `${nutritionDay.fat_g} g` : null}
+                  />
+                </View>
+              </Card>
+            </Appear>
+
+            <Appear delay={appearDelay(5)}>
+              <Card>
+                <SectionHead icon="footsteps" tint={colors.cyan} title="Altre metriche" />
+                <View style={styles.fieldRow}>
+                  <NumberField
+                    grow
+                    label="Idratazione"
+                    value={hydration}
+                    onChange={setHydration}
+                    placeholder="2,5"
+                    unit="l"
+                    decimal
+                  />
+                  <NumberField
+                    grow
+                    label="Passi"
+                    value={steps}
+                    onChange={setSteps}
+                    placeholder="8000"
+                  />
+                </View>
+                <View style={styles.fieldRow}>
+                  <NumberField
+                    grow
+                    label="Kcal consumate"
+                    value={kcal}
+                    onChange={setKcal}
+                    placeholder="0"
+                    target={nutritionDay ? `${nutritionDay.kcal} kcal` : null}
+                  />
+                  <NumberField
+                    grow
+                    label="Peso (facoltativo)"
+                    value={weight}
+                    onChange={setWeight}
+                    placeholder="72,5"
+                    unit="kg"
+                    decimal
+                  />
+                </View>
+              </Card>
+            </Appear>
+
+            <Appear delay={appearDelay(6)}>
+              <Card>
+                <SectionHead icon="create" tint={colors.textSecondary} title="Note libere" />
+                <TextInput
+                  style={styles.notes}
+                  value={notes}
+                  onChangeText={setNotes}
+                  placeholder="Come ti senti oggi? Scrivi qui qualsiasi cosa utile per il coach."
+                  placeholderTextColor={colors.textTertiary}
+                  multiline
+                />
+              </Card>
+            </Appear>
           </ScrollView>
         )}
 
@@ -499,7 +551,8 @@ export default function BiofeedbackOggiScreen() {
           pointerEvents="box-none"
           onLayout={(e) => setHeaderH(e.nativeEvent.layout.height)}
         >
-          <GlassSurface cornerRadius={radius.xl} padding={spacing.md}>
+          {/* Il vetro si accende solo quando il check gli scorre sotto. */}
+          <GlassSurface cornerRadius={radius.xl} padding={spacing.md} activity={glassActivity}>
             <View style={styles.headerRow}>
               <Press
                 style={styles.glassBtn}
@@ -527,7 +580,7 @@ export default function BiofeedbackOggiScreen() {
             pointerEvents="box-none"
             onLayout={(e) => setBarH(e.nativeEvent.layout.height)}
           >
-            <GlassSurface cornerRadius={radius.xl} padding={spacing.md}>
+            <GlassSurface cornerRadius={radius.xl} padding={spacing.md} activity={glassActivity}>
               <PrimaryButton label="SALVA CHECK" onPress={save} loading={saving} />
             </GlassSurface>
           </View>

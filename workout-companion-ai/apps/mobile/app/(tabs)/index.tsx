@@ -295,26 +295,30 @@ export default function HomeScreen() {
         contentContainerStyle={sharedStyles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
       >
-        {/* Saluto e data su una riga sola: il palcoscenico è della prontezza, non del nome. */}
-        <View style={styles.header}>
+        {/* Saluto e data su una riga sola: il palcoscenico è della prontezza, non del nome.
+            Apre la cascata: rientrando sulla scheda, il saluto sale per primo. */}
+        <Appear delay={appearDelay(0)} replayOnFocus style={styles.header}>
           <Text style={styles.greeting} numberOfLines={1}>
             Ciao{data.firstName ? `, ${data.firstName}` : ''}!
           </Text>
           <Text style={type.label}>{dateLabel}</Text>
-        </View>
+        </Appear>
 
         {!data.coachClient ? (
-          <EmptyState
-            emoji="🤝"
-            title="Nessun coach collegato"
-            message="Quando il tuo coach ti aggiungerà, qui troverai allenamenti, piano nutrizionale e check-in settimanali."
-          />
+          <Appear delay={appearDelay(1)} replayOnFocus>
+            <EmptyState
+              emoji="🤝"
+              title="Nessun coach collegato"
+              message="Quando il tuo coach ti aggiungerà, qui troverai allenamenti, piano nutrizionale e check-in settimanali."
+            />
+          </Appear>
         ) : (
           <>
             {/* IL NUMERO DOMINANTE: la prontezza, alta e sopra la piega, letta in tre secondi.
-                Da qui parte la cascata d'entrata delle card: 0/60/120/180 ms. */}
+                Segue il saluto nella cascata d'entrata: 0/60/120/180 ms, e l'entrata
+                si ripete a ogni ritorno sulla scheda (replayOnFocus). */}
             {readiness && score != null ? (
-              <Appear delay={appearDelay(0)}>
+              <Appear delay={appearDelay(1)} replayOnFocus>
                 <Card title="Prontezza di oggi">
                   <MetricBlock
                     value={score.toFixed(1).replace('.', ',')}
@@ -338,7 +342,7 @@ export default function HomeScreen() {
             ) : null}
 
             {/* IL FARO: cosa si fa oggi e l'azione primaria, a tutta larghezza. */}
-            <Appear delay={appearDelay(1)}>
+            <Appear delay={appearDelay(2)} replayOnFocus>
               <Card
                 title="Allenamento di oggi"
                 beacon={workoutTone ?? undefined}
@@ -394,7 +398,8 @@ export default function HomeScreen() {
               </Card>
             </Appear>
 
-            <Appear delay={appearDelay(2)}>
+            {/* Da qui in poi la cascata resta a 180 ms: più lunga sarebbe attesa, non movimento. */}
+            <Appear delay={appearDelay(3)} replayOnFocus>
               <Card title="Check biofeedback di oggi">
                 {data.todayBiofeedback ? (
                   <View style={styles.biofeedbackRow}>
@@ -422,7 +427,7 @@ export default function HomeScreen() {
               </Card>
             </Appear>
 
-            <Appear delay={appearDelay(3)}>
+            <Appear delay={appearDelay(4)} replayOnFocus>
               <Card title="Nutrizione di oggi">
                 {data.nutritionDay ? (
                   <>
@@ -456,7 +461,7 @@ export default function HomeScreen() {
               </Card>
             </Appear>
 
-            <Appear delay={appearDelay(4)}>
+            <Appear delay={appearDelay(5)} replayOnFocus>
               <Card title="Aggiungi velocemente">
                 <View style={styles.quickRow}>
                   <Press
@@ -503,7 +508,7 @@ export default function HomeScreen() {
               </Card>
             </Appear>
 
-            <Appear delay={appearDelay(5)}>
+            <Appear delay={appearDelay(6)} replayOnFocus>
               <Card title="Check-in settimanale">
                 {data.checkinDue ? (
                   <>

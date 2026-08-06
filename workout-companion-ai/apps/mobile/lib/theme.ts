@@ -133,7 +133,7 @@ export const type = StyleSheet.create(SCALE as never) as Record<keyof typeof SCA
 
 /** Materia del livello vetro. */
 export const glass = {
-  intensity: 42,
+  intensity: 62,
   tint: colors.glassTint,
   /** Gradiente della luce speculare sul bordo alto. */
   edge: [colors.glassEdge, 'rgba(255,255,255,0.04)', 'rgba(255,255,255,0)'] as const,
@@ -179,7 +179,9 @@ export const motion = {
 export const sharedStyles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.background,
+    // Trasparente di proposito: sotto vive il campo luminoso montato nel layout
+    // radice, ed è ciò che il vetro rifrange. Il fondo di ferro lo dà l'Aurora.
+    backgroundColor: 'transparent',
   },
   content: {
     padding: spacing.xl,
