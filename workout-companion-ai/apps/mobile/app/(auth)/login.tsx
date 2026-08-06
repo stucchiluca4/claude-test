@@ -1,8 +1,9 @@
 import { useRef, useState } from 'react';
 import {
-  Alert,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,28 +12,33 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
-import { colors, radius, spacing, sharedStyles, type } from '../../lib/theme';
+import { colors, concentric, radius, spacing, sharedStyles, type } from '../../lib/theme';
 import { Appear, appearDelay } from '../../components/Appear';
+import { GlassSurface } from '../../components/Glass';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { Press } from '../../components/Press';
 import { setDemo } from '../../lib/demo';
 import { tapError } from '../../lib/haptics';
 
 /**
- * Prima schermata del prodotto: marchio, due campi di ferro, una sola azione blu.
- * Nessun vetro qui — non c'è nulla che scorra sotto: il vetro sarebbe una tinta.
+ * Prima schermata del prodotto, e prima dimostrazione del sistema.
  *
- * All'apertura marchio, titolo, modulo e piede salgono a cascata: è la prima
- * impressione del prodotto, e avviene una volta sola (nessun replayOnFocus).
+ * Il modulo vive sul livello VETRO — è fatto di soli controlli — e galleggia
+ * sul campo luminoso che il layout radice monta dietro ogni schermata. I campi
+ * dentro restano FERRO opaco: due materiali affiancati, la tesi in un colpo
+ * d'occhio (DESIGN.md § Elevation & Depth).
+ *
+ * All'apertura marchio, titolo, modulo e piede salgono a cascata: avviene una
+ * volta sola, è la prima impressione.
  */
 export default function LoginScreen() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   // Solo presentazione: bordo blu sul campo attivo e password in chiaro.
   const [focused, setFocused] = useState<'email' | 'password' | null>(null);
   const [reveal, setReveal] = useState(false);
@@ -46,36 +52,34 @@ export default function LoginScreen() {
   async function handleLogin() {
     if (!email.trim() || !password) {
       tapError();
-      Alert.alert('Campi mancanti', 'Inserisci email e password per accedere.');
+      setError('Inserisci email e password per accedere.');
       return;
     }
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
+    setError(null);
+    const { error: authError } = await supabase.auth.signInWithPassword({
       email: email.trim().toLowerCase(),
       password,
     });
     setLoading(false);
-    if (error) {
+    if (authError) {
       tapError();
-      Alert.alert('Accesso non riuscito', error.message);
+      setError(
+        authError.message === 'Invalid login credentials'
+          ? 'Email o password non corretti.'
+          : authError.message,
+      );
     }
     // Al successo ci pensa il listener nel layout radice a portarci in app.
   }
 
   return (
-    <View style={sharedStyles.screen}>
-      {/* Luce ambientale: blu al 6% che scende dall'alto, l'unica atmosfera concessa. */}
-      <LinearGradient
-        colors={['rgba(10,132,255,0.06)', 'rgba(10,132,255,0.02)', 'rgba(10,132,255,0)']}
-        locations={[0, 0.55, 1]}
-        style={styles.ambient}
-        pointerEvents="none"
-      />
-
+    // Toccando fuori dai campi la tastiera si chiude: sul telefono è il gesto atteso.
+    <Pressable style={sharedStyles.screen} onPress={Keyboard.dismiss} accessible={false}>
       <SafeAreaView style={styles.flex}>
         <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-            {/* Il marchio: pastiglia blu + logotipo, in alto e piccolo. Entra per primo. */}
+            {/* Il marchio: pastiglia blu + logotipo. Entra per primo. */}
             <Appear delay={appearDelay(0)} style={styles.brand}>
               <View style={styles.mark}>
                 <Ionicons name="barbell" size={24} color={colors.accent} />
@@ -89,74 +93,94 @@ export default function LoginScreen() {
               <Text style={sharedStyles.muted}>Il tuo coach, sempre in tasca.</Text>
             </Appear>
 
-            <Appear delay={appearDelay(2)} style={styles.form}>
-              <View style={styles.fieldGroup}>
-                <Text style={type.label}>Email</Text>
-                <View style={[styles.field, focused === 'email' && styles.fieldFocus]}>
-                  <TextInput
-                    style={styles.input}
-                    value={email}
-                    onChangeText={setEmail}
-                    placeholder="nome@email.it"
-                    placeholderTextColor={colors.textTertiary}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    autoComplete="email"
-                    returnKeyType="next"
-                    submitBehavior="submit"
-                    onSubmitEditing={() => passwordRef.current?.focus()}
-                    onFocus={() => setFocused('email')}
-                    onBlur={() => setFocused(null)}
-                  />
-                </View>
-              </View>
+            {/* VETRO: il pannello dei controlli galleggia sul campo luminoso. */}
+            <Appear delay={appearDelay(2)}>
+              <GlassSurface cornerRadius={radius.lg} padding={spacing.xl}>
+                <View style={styles.form}>
+                  <View style={styles.fieldGroup}>
+                    <Text style={type.label}>Email</Text>
+                    <View style={[styles.field, focused === 'email' && styles.fieldFocus]}>
+                      <TextInput
+                        style={styles.input}
+                        value={email}
+                        onChangeText={(v) => {
+                          setEmail(v);
+                          if (error) setError(null);
+                        }}
+                        placeholder="nome@email.it"
+                        placeholderTextColor={colors.textTertiary}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        autoComplete="email"
+                        returnKeyType="next"
+                        submitBehavior="submit"
+                        onSubmitEditing={() => passwordRef.current?.focus()}
+                        onFocus={() => setFocused('email')}
+                        onBlur={() => setFocused(null)}
+                      />
+                    </View>
+                  </View>
 
-              <View style={styles.fieldGroup}>
-                <Text style={type.label}>Password</Text>
-                <View style={[styles.field, focused === 'password' && styles.fieldFocus]}>
-                  <TextInput
-                    ref={passwordRef}
-                    style={styles.input}
-                    value={password}
-                    onChangeText={setPassword}
-                    placeholder="La tua password"
-                    placeholderTextColor={colors.textTertiary}
-                    secureTextEntry={!reveal}
-                    autoCapitalize="none"
-                    autoComplete="password"
-                    returnKeyType="go"
-                    onSubmitEditing={handleLogin}
-                    onFocus={() => setFocused('password')}
-                    onBlur={() => setFocused(null)}
-                  />
+                  <View style={styles.fieldGroup}>
+                    <Text style={type.label}>Password</Text>
+                    <View style={[styles.field, focused === 'password' && styles.fieldFocus]}>
+                      <TextInput
+                        ref={passwordRef}
+                        style={styles.input}
+                        value={password}
+                        onChangeText={(v) => {
+                          setPassword(v);
+                          if (error) setError(null);
+                        }}
+                        placeholder="La tua password"
+                        placeholderTextColor={colors.textTertiary}
+                        secureTextEntry={!reveal}
+                        autoCapitalize="none"
+                        autoComplete="password"
+                        returnKeyType="go"
+                        onSubmitEditing={handleLogin}
+                        onFocus={() => setFocused('password')}
+                        onBlur={() => setFocused(null)}
+                      />
+                      <Press
+                        onPress={() => setReveal((v) => !v)}
+                        style={styles.reveal}
+                        hitSlop={8}
+                        accessibilityLabel={reveal ? 'Nascondi password' : 'Mostra password'}
+                      >
+                        <Ionicons
+                          name={reveal ? 'eye-off-outline' : 'eye-outline'}
+                          size={20}
+                          color={focused === 'password' ? colors.accent : colors.textSecondary}
+                        />
+                      </Press>
+                    </View>
+                  </View>
+
+                  {/* L'errore vive nel modulo, accanto ai campi: niente finestre
+                      di sistema che coprono ciò che hai appena scritto. */}
+                  {error ? (
+                    <View style={styles.error} accessibilityRole="alert">
+                      <Ionicons name="alert-circle" size={18} color={colors.rose} />
+                      <Text style={styles.errorText}>{error}</Text>
+                    </View>
+                  ) : null}
+
+                  <PrimaryButton label="Accedi" onPress={handleLogin} loading={loading} style={styles.cta} />
+
+                  {/* Terza azione: ghost, testo blu, nessun fondo. */}
                   <Press
-                    onPress={() => setReveal((v) => !v)}
-                    style={styles.reveal}
-                    hitSlop={8}
-                    accessibilityLabel={reveal ? 'Nascondi password' : 'Mostra password'}
+                    onPress={enterDemo}
+                    haptic="medium"
+                    style={styles.demo}
+                    accessibilityLabel="Prova la demo senza account"
                   >
-                    <Ionicons
-                      name={reveal ? 'eye-off-outline' : 'eye-outline'}
-                      size={20}
-                      color={focused === 'password' ? colors.accent : colors.textSecondary}
-                    />
+                    <Ionicons name="flask-outline" size={18} color={colors.accent} />
+                    <Text style={styles.demoText}>Prova la demo, senza account</Text>
                   </Press>
                 </View>
-              </View>
-
-              <PrimaryButton label="Accedi" onPress={handleLogin} loading={loading} style={styles.cta} />
-
-              {/* Terza azione: ghost, testo blu, nessun fondo. */}
-              <Press
-                onPress={enterDemo}
-                haptic="medium"
-                style={styles.demo}
-                accessibilityLabel="Prova la demo senza account"
-              >
-                <Ionicons name="flask-outline" size={18} color={colors.accent} />
-                <Text style={styles.demoText}>Prova la demo, senza account</Text>
-              </Press>
+              </GlassSurface>
             </Appear>
 
             <Appear delay={appearDelay(3)} style={styles.footer}>
@@ -173,7 +197,7 @@ export default function LoginScreen() {
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
-    </View>
+    </Pressable>
   );
 }
 
@@ -181,19 +205,12 @@ const styles = StyleSheet.create({
   flex: {
     flex: 1,
   },
-  ambient: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: '62%',
-  },
   container: {
     flexGrow: 1,
     justifyContent: 'center',
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.xxxl,
-    gap: spacing.xxl,
+    gap: spacing.xl,
   },
   brand: {
     flexDirection: 'row',
@@ -228,8 +245,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     minHeight: 52,
+    // FERRO dentro il vetro: il campo dove si scrive resta opaco e leggibile.
     backgroundColor: colors.raised,
-    borderRadius: radius.sm,
+    borderRadius: concentric(radius.lg, spacing.xl),
     borderWidth: 1,
     borderColor: 'transparent',
     paddingHorizontal: spacing.lg,
@@ -256,8 +274,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: -spacing.sm,
   },
+  error: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: -spacing.xs,
+  },
+  errorText: {
+    flex: 1,
+    color: colors.rose,
+    fontSize: 15,
+    fontWeight: '600',
+    lineHeight: 20,
+  },
   cta: {
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
   },
   demo: {
     flexDirection: 'row',
