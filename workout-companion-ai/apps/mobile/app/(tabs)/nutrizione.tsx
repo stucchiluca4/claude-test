@@ -21,6 +21,7 @@ import { Card } from '../../components/Card';
 import { MacroBar } from '../../components/MacroBar';
 import { MetricBlock } from '../../components/MetricBlock';
 import { Press } from '../../components/Press';
+import { PrimaryButton } from '../../components/PrimaryButton';
 import { Skeleton } from '../../components/Skeleton';
 import { EmptyState } from '../../components/States';
 
@@ -60,10 +61,12 @@ function mealKcal(meal: MealRow): number {
 export default function NutrizioneScreen() {
   const router = useRouter();
   const [data, setData] = useState<NutritionData | null>(null);
+  const [failed, setFailed] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     try {
+      setFailed(false);
       if (isDemo()) {
         const { day, meals } = demoNutrition();
         setData({ hasCoach: true, day, meals, eatenKcal: 1850 });
@@ -99,6 +102,9 @@ export default function NutrizioneScreen() {
 
       setData({ hasCoach: true, day, meals, eatenKcal: bio?.kcal_consumed ?? null });
     } catch (e) {
+      // Senza questo la schermata resterebbe sullo scheletro all'infinito: il
+      // pull-to-refresh vive nei rami sotto la guardia, quindi non è montato.
+      setFailed(true);
       showError(e, 'Errore di caricamento');
     }
   }, []);
@@ -115,6 +121,39 @@ export default function NutrizioneScreen() {
     setRefreshing(true);
     await load();
     setRefreshing(false);
+  }
+
+  // Il caricamento fallito ha la sua schermata, con la via d'uscita dentro.
+  // La guardia è `!data && failed`: se a cadere è un aggiornamento quando il
+  // piano è già a schermo, l'atleta continua a vederlo.
+  if (!data && failed) {
+    return (
+      <SafeAreaView style={sharedStyles.screen} edges={['top']}>
+        <ScrollView
+          contentContainerStyle={sharedStyles.content}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
+        >
+          <Appear delay={appearDelay(0)} replayOnFocus>
+            <Text style={sharedStyles.screenTitle}>Nutrizione</Text>
+          </Appear>
+          <Appear delay={appearDelay(1)} replayOnFocus>
+            <EmptyState
+              emoji="📡"
+              title="Dati non disponibili"
+              message="Non riesco a caricare il piano di oggi. Controlla la connessione e riprova."
+              action={
+                <PrimaryButton
+                  label="Riprova"
+                  onPress={() => {
+                    void load();
+                  }}
+                />
+              }
+            />
+          </Appear>
+        </ScrollView>
+      </SafeAreaView>
+    );
   }
 
   if (!data) {

@@ -17,7 +17,7 @@ import { estimate1RM, loadSuggestion, setVolume } from '@wc/shared';
 import type { ExerciseFeedback, ExerciseSet, ProgramWorkout, RecordType, SetLog, WorkoutExercise } from '@wc/shared';
 import { supabase } from '../../lib/supabase';
 import { colors, concentric, radius, shadow, spacing, sharedStyles, tabular, type } from '../../lib/theme';
-import { formatClock, localDateString, parseNum, showError } from '../../lib/utils';
+import { formatClock, localDateString, parseNum, showError, todayDayOfWeek } from '../../lib/utils';
 import {
   getActiveCoachClient,
   getExerciseFeedbackForLog,
@@ -37,7 +37,7 @@ import { AdvancedTimer } from '../../components/AdvancedTimer';
 import { AiCoachSheet } from '../../components/AiCoachSheet';
 import { ExerciseMediaBar } from '../../components/ExerciseMediaBar';
 import { EmptyState, LoadingState } from '../../components/States';
-import { demoLastPerf, demoWorkout } from '../../lib/demo';
+import { demoLastPerf, demoWorkoutById, isDemo } from '../../lib/demo';
 
 interface RowState extends SetEntry {
   /** id della riga in set_logs una volta salvata (per gli update successivi). */
@@ -121,8 +121,10 @@ export default function WorkoutTrackerScreen() {
       if (!id) return;
 
       // Modalità demo: allenamento di esempio, nessun accesso al database.
-      if (id === 'demo') {
-        const w = demoWorkout();
+      // La condizione è la modalità, non l'id: la scheda della settimana apre
+      // sedute con id diversi, e tutte devono restare dentro la demo.
+      if (isDemo()) {
+        const w = demoWorkoutById(String(id), todayDayOfWeek());
         if (cancelled) return;
         setWorkout(w);
         setLogId('demo');

@@ -85,6 +85,33 @@ export function demoWorkout(): ProgramWorkout {
   };
 }
 
+/**
+ * Settimana demo per la scheda dell'atleta: lunedì, mercoledì, venerdì e — se
+ * cade in un altro giorno — anche oggi, così la riga di oggi (il faro della
+ * schermata) c'è sempre, qualunque giorno si apra la demo.
+ */
+export function demoWeekWorkouts(today: number): ProgramWorkout[] {
+  const base = demoWorkout();
+  const days = [...new Set([1, 3, 5, today])].sort((a, b) => a - b);
+  const names = ['Full Body A (demo)', 'Full Body B (demo)', 'Full Body C (demo)', 'Full Body D (demo)'];
+  return days.map((day, i) => ({
+    ...base,
+    id: `demo-w${day}`,
+    day_of_week: day,
+    name: names[i] ?? `Allenamento ${i + 1} (demo)`,
+    sort_order: i,
+  }));
+}
+
+/**
+ * L'allenamento demo aperto per id: se l'id viene dalla scheda della settimana
+ * ne eredita nome e giorno, così la testata non dice «Full Body A» quando hai
+ * toccato «Full Body C».
+ */
+export function demoWorkoutById(id: string, today: number): ProgramWorkout {
+  return demoWeekWorkouts(today).find((w) => w.id === id) ?? demoWorkout();
+}
+
 /** Ultima performance finta per esercizio (per il consiglio di progressione). */
 export function demoLastPerf(): Record<string, SetLog[]> {
   const out: Record<string, SetLog[]> = {};

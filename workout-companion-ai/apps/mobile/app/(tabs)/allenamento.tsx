@@ -14,7 +14,9 @@ import { Appear, appearDelay } from '../../components/Appear';
 import { Card } from '../../components/Card';
 import { MetricBlock } from '../../components/MetricBlock';
 import { Press } from '../../components/Press';
+import { PrimaryButton } from '../../components/PrimaryButton';
 import { EmptyState, LoadingState } from '../../components/States';
+import { demoWeekWorkouts, isDemo } from '../../lib/demo';
 
 interface WeekData {
   hasCoach: boolean;
@@ -34,11 +36,29 @@ function dayAbbr(day: number): string {
 
 export default function AllenamentoScreen() {
   const [data, setData] = useState<WeekData | null>(null);
+  const [failed, setFailed] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
 
   const load = useCallback(async () => {
     try {
+      setFailed(false);
+
+      // In demo non c'è database: senza questo ramo la schermata interrogava
+      // Supabase con l'id fittizio dell'atleta demo e non caricava mai.
+      if (isDemo()) {
+        const day = todayDayOfWeek();
+        const workouts = demoWeekWorkouts(day);
+        setData({
+          hasCoach: true,
+          programName: 'Programma dimostrativo',
+          weekNumber: 1,
+          workouts,
+          doneIds: new Set(workouts.filter((w) => w.day_of_week < day).map((w) => w.id)),
+        });
+        return;
+      }
+
       const uid = await getUserId();
       if (!uid) return;
 
@@ -81,6 +101,9 @@ export default function AllenamentoScreen() {
 
       setData({ hasCoach: true, programName: program.name, weekNumber, workouts, doneIds });
     } catch (e) {
+      // Senza questo la schermata resterebbe sul caricamento all'infinito: il
+      // pull-to-refresh vive nei rami sotto la guardia, quindi non è montato.
+      setFailed(true);
       showError(e, 'Errore di caricamento');
     }
   }, []);
@@ -97,6 +120,39 @@ export default function AllenamentoScreen() {
     setRefreshing(true);
     await load();
     setRefreshing(false);
+  }
+
+  // Il caricamento fallito ha la sua schermata, con la via d'uscita dentro.
+  // La guardia è `!data && failed`: se a cadere è un aggiornamento quando la
+  // scheda è già a schermo, l'atleta continua a vederla.
+  if (!data && failed) {
+    return (
+      <SafeAreaView style={sharedStyles.screen} edges={['top']}>
+        <ScrollView
+          contentContainerStyle={sharedStyles.content}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
+        >
+          <Appear delay={appearDelay(0)} replayOnFocus>
+            <Text style={sharedStyles.screenTitle}>Scheda</Text>
+          </Appear>
+          <Appear delay={appearDelay(1)} replayOnFocus>
+            <EmptyState
+              emoji="📡"
+              title="Dati non disponibili"
+              message="Non riesco a caricare il tuo programma. Controlla la connessione e riprova."
+              action={
+                <PrimaryButton
+                  label="Riprova"
+                  onPress={() => {
+                    void load();
+                  }}
+                />
+              }
+            />
+          </Appear>
+        </ScrollView>
+      </SafeAreaView>
+    );
   }
 
   if (!data) {

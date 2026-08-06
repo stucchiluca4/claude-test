@@ -83,6 +83,7 @@ function readinessScore(b: DailyBiofeedback | null): number | null {
 
 export default function HomeScreen() {
   const [data, setData] = useState<HomeData | null>(null);
+  const [failed, setFailed] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [quickForm, setQuickForm] = useState<'peso' | 'nota' | null>(null);
   const [quickValue, setQuickValue] = useState('');
@@ -91,6 +92,7 @@ export default function HomeScreen() {
 
   const load = useCallback(async () => {
     try {
+      setFailed(false);
       if (isDemo()) {
         const bf = demoBiofeedback();
         setData({
@@ -213,6 +215,9 @@ export default function HomeScreen() {
 
       setData(next);
     } catch (e) {
+      // Senza questo la schermata resterebbe sul caricamento all'infinito: il
+      // pull-to-refresh vive nei rami sotto la guardia, quindi non è montato.
+      setFailed(true);
       showError(e, 'Errore di caricamento');
     }
   }, []);
@@ -272,6 +277,39 @@ export default function HomeScreen() {
     } finally {
       setQuickSaving(false);
     }
+  }
+
+  // Il caricamento fallito ha la sua schermata, con la via d'uscita dentro.
+  // La guardia è `!data && failed`: se a cadere è un aggiornamento quando la
+  // giornata è già a schermo, l'atleta continua a vederla.
+  if (!data && failed) {
+    return (
+      <SafeAreaView style={sharedStyles.screen} edges={['top']}>
+        <ScrollView
+          contentContainerStyle={sharedStyles.content}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
+        >
+          <Appear delay={appearDelay(0)} replayOnFocus>
+            <Text style={sharedStyles.screenTitle}>Oggi</Text>
+          </Appear>
+          <Appear delay={appearDelay(1)} replayOnFocus>
+            <EmptyState
+              emoji="📡"
+              title="Dati non disponibili"
+              message="Non riesco a caricare la tua giornata. Controlla la connessione e riprova."
+              action={
+                <PrimaryButton
+                  label="Riprova"
+                  onPress={() => {
+                    void load();
+                  }}
+                />
+              }
+            />
+          </Appear>
+        </ScrollView>
+      </SafeAreaView>
+    );
   }
 
   if (!data) {
