@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { Badge, Card, KpiCard, buttonGhost, buttonSecondary } from '@/components/ui';
+import { Reveal } from '@/components/motion';
 import { cn, fullName, formatDate } from '@/lib/utils';
 import { QuickNotes } from './quick-notes';
 import {
@@ -77,14 +78,14 @@ const QUICK_ACTIONS: ActionItem[] = [
   { href: '/dashboard?demo=1', label: 'Demo prodotto', detail: 'Stessa app con dati demo', icon: ShieldCheck },
 ];
 
-/** Ritardi scalati per l'ingresso della fascia KPI (il ritardo va sulla Card interna). */
-const KPI_DELAY = [
-  '[&>div]:[animation-delay:0ms]',
-  '[&>div]:[animation-delay:50ms]',
-  '[&>div]:[animation-delay:100ms]',
-  '[&>div]:[animation-delay:150ms]',
-  '[&>div]:[animation-delay:200ms]',
-];
+/**
+ * Le primitive condivise (KpiCard, QuickNotes) portano una `.rise` che parte al
+ * montaggio: dentro un Reveal il tempo lo detta lo scorrimento, quindi si spegne.
+ */
+const NO_RISE = '[&_.rise]:!animate-none';
+
+/** Passo della cascata: le card entrano una dopo l'altra, non tutte insieme. */
+const STEP = 70;
 
 const DEMO_CLIENTS: ClientRow[] = [
   {
@@ -463,67 +464,69 @@ function DashboardControlRoom({
   return (
     <div className="space-y-6">
       {/* ---------- Intestazione: chi sei, che giorno è, cosa cerchi ---------- */}
-      <header className="rise flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-        <div className="min-w-0">
-          <p className="text-[12px] font-bold uppercase tracking-[0.06em] text-text-secondary">
-            {demoMode ? 'Modalità demo · dati di esempio' : todayLabel}
-          </p>
-          <h1 className="mt-2 text-[34px] font-extrabold leading-[1.1] tracking-[-0.02em] text-white">
-            Bentornato, {coachName}
-          </h1>
-          <p className="mt-2 max-w-xl text-[15px] leading-relaxed text-text-secondary">
-            {demoMode
-              ? 'Stessa app, dati già compilati: nessuna attesa dal database, perfetta da mostrare in call.'
-              : 'Qui sotto trovi solo ciò che richiede una tua decisione oggi.'}
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2.5">
-          <div className="relative">
-            <Search
-              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary"
-              size={17}
-              aria-hidden
-            />
-            <input
-              type="search"
-              aria-label="Cerca clienti o programmi"
-              placeholder="Cerca clienti o programmi"
-              className="h-11 w-full rounded-full bg-raised pl-11 pr-4 text-[15px] text-white outline-none transition placeholder:text-text-tertiary focus:shadow-[0_0_0_4px_rgba(10,132,255,0.18)] sm:w-[276px]"
-            />
+      <Reveal>
+        <header className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="min-w-0">
+            <p className="text-[12px] font-bold uppercase tracking-[0.06em] text-text-secondary">
+              {demoMode ? 'Modalità demo · dati di esempio' : todayLabel}
+            </p>
+            <h1 className="mt-2 text-[34px] font-extrabold leading-[1.1] tracking-[-0.02em] text-white">
+              Bentornato, {coachName}
+            </h1>
+            <p className="mt-2 max-w-xl text-[15px] leading-relaxed text-text-secondary">
+              {demoMode
+                ? 'Stessa app, dati già compilati: nessuna attesa dal database, perfetta da mostrare in call.'
+                : 'Qui sotto trovi solo ciò che richiede una tua decisione oggi.'}
+            </p>
           </div>
-          <Link href={demoMode ? '/dashboard' : '/dashboard?demo=1'} className={cn(buttonSecondary, 'h-11 py-0')}>
-            <ShieldCheck size={17} aria-hidden />
-            {demoMode ? 'Torna ai dati reali' : 'Modalità demo'}
-          </Link>
-        </div>
-      </header>
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="relative">
+              <Search
+                className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary"
+                size={17}
+                aria-hidden
+              />
+              <input
+                type="search"
+                aria-label="Cerca clienti o programmi"
+                placeholder="Cerca clienti o programmi"
+                className="h-11 w-full rounded-full bg-raised pl-11 pr-4 text-[15px] text-white outline-none transition placeholder:text-text-tertiary focus:shadow-[0_0_0_4px_rgba(10,132,255,0.18)] sm:w-[276px]"
+              />
+            </div>
+            <Link href={demoMode ? '/dashboard' : '/dashboard?demo=1'} className={cn(buttonSecondary, 'h-11 py-0')}>
+              <ShieldCheck size={17} aria-hidden />
+              {demoMode ? 'Torna ai dati reali' : 'Modalità demo'}
+            </Link>
+          </div>
+        </header>
+      </Reveal>
 
       {/* ---------- Il polso di oggi: ogni segnale ha un solo mestiere ---------- */}
+      {/* Le card entrano a cascata: il ritardo dà l'ordine di lettura, da sinistra. */}
       <section aria-label="Indicatori di oggi" className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
         {kpis.map((kpi, i) => (
-          <Link
-            key={kpi.label}
-            href={kpi.href}
-            className={cn(
-              'press block rounded-lg [&>div]:transition-colors [&>div:hover]:bg-raised',
-              KPI_DELAY[i],
-            )}
-          >
-            <KpiCard
-              label={kpi.label}
-              value={kpi.value}
-              delta={kpi.delta}
-              deltaGood={kpi.deltaGood}
-              tone={kpi.tone}
-            />
-          </Link>
+          <Reveal key={kpi.label} delay={i * STEP} className={NO_RISE}>
+            <Link
+              href={kpi.href}
+              className="press block rounded-lg [&>div]:transition-colors [&>div:hover]:bg-raised"
+            >
+              <KpiCard
+                label={kpi.label}
+                value={kpi.value}
+                delta={kpi.delta}
+                deltaGood={kpi.deltaGood}
+                tone={kpi.tone}
+              />
+            </Link>
+          </Reveal>
         ))}
       </section>
 
-      <div className="grid gap-4 xl:grid-cols-[1.55fr_1fr]">
+      {/* La fascia entra intera: il faro e il suo grafico di supporto sono una cosa sola. */}
+      <Reveal delay={STEP * 2} className="grid gap-4 xl:grid-cols-[1.55fr_1fr]">
         {/* ---------- IL FARO: la coda di lavoro di oggi ---------- */}
-        <Card beacon className="rise rise-2 overflow-hidden p-0">
+        <Card beacon className="overflow-hidden p-0">
           <div className="flex flex-wrap items-center justify-between gap-3 px-6 pb-4 pt-6">
             <div className="min-w-0">
               <h2 className="text-[22px] font-bold leading-tight tracking-[-0.01em] text-white">
@@ -606,7 +609,7 @@ function DashboardControlRoom({
         </Card>
 
         {/* ---------- Il ritmo: volume delle ultime 8 settimane ---------- */}
-        <Card className="rise rise-3">
+        <Card>
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <h2 className="text-[17px] font-bold text-white">Ritmo delle ultime 8 settimane</h2>
@@ -632,147 +635,150 @@ function DashboardControlRoom({
             <MiniStat label="Check 30 giorni" value={String(checkins30d)} />
           </div>
         </Card>
-      </div>
+      </Reveal>
 
       {/* ---------- Chi si è allenato, chi no ---------- */}
-      <Card className="rise rise-3 overflow-hidden p-0">
-        <div className="flex flex-wrap items-start justify-between gap-3 px-6 pb-4 pt-6">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2.5">
-              <Users size={19} className="shrink-0 text-text-secondary" aria-hidden />
-              <h2 className="text-[17px] font-bold text-white">Chi si è allenato, chi no</h2>
+      {/* La lista è lunga: entra il contenitore, non riga per riga. */}
+      <Reveal>
+        <Card className="overflow-hidden p-0">
+          <div className="flex flex-wrap items-start justify-between gap-3 px-6 pb-4 pt-6">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2.5">
+                <Users size={19} className="shrink-0 text-text-secondary" aria-hidden />
+                <h2 className="text-[17px] font-bold text-white">Chi si è allenato, chi no</h2>
+              </div>
+              <p className="mt-1 text-[13px] text-text-secondary">
+                Aderenza, readiness e ultimo segnale dai tuoi atleti.
+              </p>
             </div>
-            <p className="mt-1 text-[13px] text-text-secondary">
-              Aderenza, readiness e ultimo segnale dai tuoi atleti.
-            </p>
+            <Link href="/clienti" className={cn(buttonGhost, 'min-h-[44px] px-0')}>
+              Vedi tutti <ArrowUpRight size={15} aria-hidden />
+            </Link>
           </div>
-          <Link href="/clienti" className={cn(buttonGhost, 'min-h-[44px] px-0')}>
-            Vedi tutti <ArrowUpRight size={15} aria-hidden />
-          </Link>
-        </div>
 
-        {clients.length > 0 && (
-          <div className="flex flex-wrap gap-2 px-6 pb-4">
-            <RosterChip tone="mint" label="allenati" count={trained} />
-            <RosterChip tone="rose" label="silenti" count={silent} />
-            <RosterChip tone="amber" label="in onboarding" count={onboarding} />
-          </div>
-        )}
-
-        {clients.length === 0 ? (
-          <div className="flex flex-col items-center border-t border-line/60 px-6 py-14 text-center">
-            <span className="mb-4 grid h-[72px] w-[72px] place-items-center rounded-lg bg-raised text-4xl">
-              🏋️
-            </span>
-            <h3 className="text-[22px] font-bold tracking-[-0.01em] text-white">Il roster è vuoto</h3>
-            <p className="mt-2 max-w-md text-[15px] leading-relaxed text-text-secondary">
-              Invita il tuo primo atleta e questa tabella inizierà a raccontarti chi si allena, chi
-              rallenta e chi va ripreso in mano.
-            </p>
-            <div className="mt-6 flex flex-wrap justify-center gap-2">
-              <Link href="/clienti" className={buttonSecondary}>
-                <Plus size={17} aria-hidden />
-                Invita un cliente
-              </Link>
-              <Link href="/dashboard?demo=1" className={cn(buttonGhost, 'min-h-[44px]')}>
-                Guarda la demo <ArrowUpRight size={15} aria-hidden />
-              </Link>
+          {clients.length > 0 && (
+            <div className="flex flex-wrap gap-2 px-6 pb-4">
+              <RosterChip tone="mint" label="allenati" count={trained} />
+              <RosterChip tone="rose" label="silenti" count={silent} />
+              <RosterChip tone="amber" label="in onboarding" count={onboarding} />
             </div>
-          </div>
-        ) : (
-          <>
-            {/* Tabella densa da 768px in su */}
-            <table className="hidden w-full border-t border-line/60 text-left md:table">
-              <thead>
-                <tr className="border-b border-line/60">
-                  <th className="px-6 py-3.5 text-[12px] font-bold uppercase tracking-[0.06em] text-text-secondary">
-                    Cliente
-                  </th>
-                  <th className="px-4 py-3.5 text-[12px] font-bold uppercase tracking-[0.06em] text-text-secondary">
-                    Stato
-                  </th>
-                  <th className="px-4 py-3.5 text-[12px] font-bold uppercase tracking-[0.06em] text-text-secondary">
-                    Aderenza
-                  </th>
-                  <th className="hidden px-4 py-3.5 text-[12px] font-bold uppercase tracking-[0.06em] text-text-secondary lg:table-cell">
-                    Readiness
-                  </th>
-                  <th className="px-6 py-3.5 text-[12px] font-bold uppercase tracking-[0.06em] text-text-secondary">
-                    Ultimo segnale
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {clients.map((client) => (
-                  <tr
-                    key={client.id}
-                    className="border-b border-line/40 transition last:border-b-0 hover:bg-raised"
-                  >
-                    <td className="px-6 py-4">
-                      <Link
-                        href={demoMode ? '/demo' : `/clienti/${client.id}`}
-                        className="text-[15px] font-bold text-white transition hover:text-accent"
-                      >
-                        {client.name}
-                      </Link>
-                      <p className="mt-0.5 text-[13px] text-text-secondary">{client.goal}</p>
-                    </td>
-                    <td className="px-4 py-4">
-                      <ClientStatusBadge status={client.status} />
-                    </td>
-                    <td className="px-4 py-4">
-                      {client.status === 'invited' ? (
-                        <span className="text-[13px] text-text-tertiary">—</span>
-                      ) : (
-                        <MetricBar value={client.adherence} metric="adherence" />
-                      )}
-                    </td>
-                    <td className="hidden px-4 py-4 lg:table-cell">
-                      {client.status === 'invited' ? (
-                        <span className="text-[13px] text-text-tertiary">—</span>
-                      ) : (
-                        <MetricBar value={client.readiness} metric="readiness" />
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-[13px] text-text-secondary">{client.lastWorkout}</td>
+          )}
+
+          {clients.length === 0 ? (
+            <div className="flex flex-col items-center border-t border-line/60 px-6 py-14 text-center">
+              <span className="mb-4 grid h-[72px] w-[72px] place-items-center rounded-lg bg-raised text-4xl">
+                🏋️
+              </span>
+              <h3 className="text-[22px] font-bold tracking-[-0.01em] text-white">Il roster è vuoto</h3>
+              <p className="mt-2 max-w-md text-[15px] leading-relaxed text-text-secondary">
+                Invita il tuo primo atleta e questa tabella inizierà a raccontarti chi si allena, chi
+                rallenta e chi va ripreso in mano.
+              </p>
+              <div className="mt-6 flex flex-wrap justify-center gap-2">
+                <Link href="/clienti" className={buttonSecondary}>
+                  <Plus size={17} aria-hidden />
+                  Invita un cliente
+                </Link>
+                <Link href="/dashboard?demo=1" className={cn(buttonGhost, 'min-h-[44px]')}>
+                  Guarda la demo <ArrowUpRight size={15} aria-hidden />
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Tabella densa da 768px in su */}
+              <table className="hidden w-full border-t border-line/60 text-left md:table">
+                <thead>
+                  <tr className="border-b border-line/60">
+                    <th className="px-6 py-3.5 text-[12px] font-bold uppercase tracking-[0.06em] text-text-secondary">
+                      Cliente
+                    </th>
+                    <th className="px-4 py-3.5 text-[12px] font-bold uppercase tracking-[0.06em] text-text-secondary">
+                      Stato
+                    </th>
+                    <th className="px-4 py-3.5 text-[12px] font-bold uppercase tracking-[0.06em] text-text-secondary">
+                      Aderenza
+                    </th>
+                    <th className="hidden px-4 py-3.5 text-[12px] font-bold uppercase tracking-[0.06em] text-text-secondary lg:table-cell">
+                      Readiness
+                    </th>
+                    <th className="px-6 py-3.5 text-[12px] font-bold uppercase tracking-[0.06em] text-text-secondary">
+                      Ultimo segnale
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {clients.map((client) => (
+                    <tr
+                      key={client.id}
+                      className="border-b border-line/40 transition last:border-b-0 hover:bg-raised"
+                    >
+                      <td className="px-6 py-4">
+                        <Link
+                          href={demoMode ? '/demo' : `/clienti/${client.id}`}
+                          className="text-[15px] font-bold text-white transition hover:text-accent"
+                        >
+                          {client.name}
+                        </Link>
+                        <p className="mt-0.5 text-[13px] text-text-secondary">{client.goal}</p>
+                      </td>
+                      <td className="px-4 py-4">
+                        <ClientStatusBadge status={client.status} />
+                      </td>
+                      <td className="px-4 py-4">
+                        {client.status === 'invited' ? (
+                          <span className="text-[13px] text-text-tertiary">—</span>
+                        ) : (
+                          <MetricBar value={client.adherence} metric="adherence" />
+                        )}
+                      </td>
+                      <td className="hidden px-4 py-4 lg:table-cell">
+                        {client.status === 'invited' ? (
+                          <span className="text-[13px] text-text-tertiary">—</span>
+                        ) : (
+                          <MetricBar value={client.readiness} metric="readiness" />
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-[13px] text-text-secondary">{client.lastWorkout}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
 
-            {/* Sotto 768px la tabella diventa una lista di card */}
-            <ul className="border-t border-line/60 md:hidden">
-              {clients.map((client) => (
-                <li key={client.id} className="border-b border-line/40 last:border-b-0">
-                  <Link
-                    href={demoMode ? '/demo' : `/clienti/${client.id}`}
-                    className="press block px-5 py-4 transition hover:bg-raised"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-[15px] font-bold text-white">{client.name}</p>
-                        <p className="mt-0.5 truncate text-[13px] text-text-secondary">{client.goal}</p>
+              {/* Sotto 768px la tabella diventa una lista di card */}
+              <ul className="border-t border-line/60 md:hidden">
+                {clients.map((client) => (
+                  <li key={client.id} className="border-b border-line/40 last:border-b-0">
+                    <Link
+                      href={demoMode ? '/demo' : `/clienti/${client.id}`}
+                      className="press block px-5 py-4 transition hover:bg-raised"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-[15px] font-bold text-white">{client.name}</p>
+                          <p className="mt-0.5 truncate text-[13px] text-text-secondary">{client.goal}</p>
+                        </div>
+                        <ClientStatusBadge status={client.status} />
                       </div>
-                      <ClientStatusBadge status={client.status} />
-                    </div>
-                    {client.status !== 'invited' && (
-                      <div className="mt-3 space-y-2">
-                        <LabelledBar label="Aderenza" value={client.adherence} metric="adherence" />
-                        <LabelledBar label="Readiness" value={client.readiness} metric="readiness" />
-                      </div>
-                    )}
-                    <p className="mt-3 text-[13px] text-text-tertiary">{client.lastWorkout}</p>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-      </Card>
+                      {client.status !== 'invited' && (
+                        <div className="mt-3 space-y-2">
+                          <LabelledBar label="Aderenza" value={client.adherence} metric="adherence" />
+                          <LabelledBar label="Readiness" value={client.readiness} metric="readiness" />
+                        </div>
+                      )}
+                      <p className="mt-3 text-[13px] text-text-tertiary">{client.lastWorkout}</p>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </Card>
+      </Reveal>
 
       {/* ---------- Strumenti: cosa apri adesso, cosa ti annoti ---------- */}
-      <div className="grid gap-4 xl:grid-cols-[1.55fr_1fr]">
-        <Card className="rise rise-4">
+      <Reveal className={cn('grid gap-4 xl:grid-cols-[1.55fr_1fr]', NO_RISE)}>
+        <Card>
           <h2 className="text-[17px] font-bold text-white">Azioni rapide</h2>
           <p className="mt-1 text-[13px] text-text-secondary">Le sei cose che apri più spesso.</p>
           <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
@@ -796,7 +802,7 @@ function DashboardControlRoom({
         </Card>
 
         {demoMode ? (
-          <Card className="rise rise-4">
+          <Card>
             <div className="flex items-start gap-4">
               <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xs bg-accent/15 text-accent">
                 <ShieldCheck size={20} aria-hidden />
@@ -813,7 +819,7 @@ function DashboardControlRoom({
         ) : (
           <QuickNotes initialBody={note} />
         )}
-      </div>
+      </Reveal>
     </div>
   );
 }

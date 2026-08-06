@@ -6,7 +6,16 @@
  * applicando lo stesso linguaggio del prodotto (DESIGN.md — "Glass Over Iron"):
  * il CONTENUTO vive su ferro opaco, il VETRO resta al livello dei controlli
  * (testate, barre schede, barre d'azione, timer di recupero).
- * I dati mostrati sono di un atleta di esempio: è dichiarato una volta, in alto.
+ *
+ * Due amplificazioni rispetto alla prima versione:
+ * 1) MATERIA — la pagina non copre più il campo luminoso del layout radice, e
+ *    dentro lo schermo del telefono vive un campo luminoso suo. Senza qualcosa
+ *    di vivo sotto, il vetro legge come grigio piatto e il materiale sparisce.
+ * 2) MOVIMENTO — ogni sezione entra allo scorrimento con `Reveal`, in cascata,
+ *    così la pagina si legge in un ordine invece che tutta insieme.
+ *
+ * I dati mostrati sono di un atleta di esempio: è dichiarato in alto, accanto
+ * ai numeri dimostrativi e sotto la cornice del telefono.
  */
 
 import { useState } from 'react';
@@ -34,6 +43,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { Card, KpiCard, buttonPrimary, buttonSecondary } from '@/components/ui';
+import { Parallax, Reveal } from '@/components/motion';
 import { cn } from '@/lib/utils';
 
 /* ============================================================
@@ -236,9 +246,13 @@ export default function AthleteDemoPage() {
   const screen = SCREENS.find((s) => s.id === active) ?? SCREENS[0];
 
   return (
-    <main className="min-h-screen bg-background text-text-primary">
-      {/* VETRO — testata ancorata: livello dei controlli */}
-      <header className="glass-chrome sticky top-0 z-50 !border-x-0 !border-t-0">
+    // Nessun fondo opaco qui: il campo luminoso del layout radice deve restare
+    // visibile — è ciò che il vetro rifrange.
+    <main className="min-h-screen text-text-primary">
+      {/* VETRO — testata ancorata: livello dei controlli.
+          È una superficie molto grande, quindi ferma (`glass-still`): il
+          riflesso che scorre resta ai comandi, dove porta significato. */}
+      <header className="glass-chrome glass-still sticky top-0 z-50 !border-x-0 !border-t-0">
         <div className="mx-auto flex h-[72px] max-w-[1200px] items-center justify-between gap-4 px-5">
           <Link href="/" className="press flex min-w-0 items-center gap-3">
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-sm bg-accent text-white">
@@ -267,39 +281,71 @@ export default function AthleteDemoPage() {
         </div>
       </header>
 
-      {/* Apertura */}
+      {/* Apertura — entra in cascata mentre lo sguardo scende */}
       <section className="mx-auto max-w-[1200px] px-5 pb-8 pt-12">
-        <p className="rise text-[12px] font-bold uppercase tracking-[0.06em] text-accent">
-          Esperienza atleta
-        </p>
-        <h1 className="rise rise-1 mt-3 max-w-3xl text-[34px] font-extrabold leading-[1.08] tracking-[-0.02em] text-white md:text-[46px]">
-          Quello che riceve il tuo atleta, schermata per schermata.
-        </h1>
-        <p className="rise rise-2 mt-5 max-w-2xl text-[17px] leading-[1.5] text-text-secondary">
-          Il coach lavora dal portale, l&apos;atleta vive nell&apos;app. Qui sotto trovi quattro
-          schermate reali dell&apos;app mobile, ricostruite fedelmente: scegli quella che vuoi
-          vedere e leggi accanto cosa succede davvero.
-        </p>
-        <p className="rise rise-3 mt-4 max-w-2xl text-[13px] leading-relaxed text-text-tertiary">
-          Un&apos;avvertenza onesta: i numeri di queste schermate sono di un atleta di esempio.
-          Nell&apos;app reale sono quelli del tuo cliente, aggiornati mentre si allena.
-        </p>
+        <Reveal>
+          <p className="text-[12px] font-bold uppercase tracking-[0.06em] text-accent">
+            Esperienza atleta
+          </p>
+        </Reveal>
+        <Reveal delay={70} className="mt-3">
+          <h1 className="max-w-3xl text-[34px] font-extrabold leading-[1.08] tracking-[-0.02em] text-white md:text-[46px]">
+            Quello che riceve il tuo atleta, schermata per schermata.
+          </h1>
+        </Reveal>
+        <Reveal delay={140} className="mt-5">
+          <p className="max-w-2xl text-[17px] leading-[1.5] text-text-secondary">
+            Il coach lavora dal portale, l&apos;atleta vive nell&apos;app. Qui sotto trovi quattro
+            schermate reali dell&apos;app mobile, ricostruite fedelmente: scegli quella che vuoi
+            vedere e leggi accanto cosa succede davvero.
+          </p>
+        </Reveal>
+        <Reveal delay={210} className="mt-4">
+          <p className="max-w-2xl text-[13px] leading-relaxed text-text-tertiary">
+            Un&apos;avvertenza onesta: i numeri di queste schermate sono di un atleta di esempio.
+            Nell&apos;app reale sono quelli del tuo cliente, aggiornati mentre si allena.
+          </p>
+        </Reveal>
       </section>
 
       {/* KPI dell'atleta di esempio: in alto, prima del contenuto */}
       <section className="mx-auto max-w-[1200px] px-5 pb-12">
+        <Reveal className="mb-4 flex items-center gap-2.5">
+          <span className="h-px w-7 shrink-0 bg-line" aria-hidden />
+          <p className="text-[12px] font-bold uppercase tracking-[0.06em] text-text-tertiary">
+            Atleta di esempio · numeri dimostrativi
+          </p>
+        </Reveal>
+        {/* Cascata 0 · 70 · 140 · 210 ms: le card arrivano una dopo l'altra */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <KpiCard label="Peso corporeo" value="76,1 kg" delta="−0,4 kg in 7 giorni" deltaGood tone="cyan" />
-          <KpiCard label="Aderenza al piano" value="94%" delta="+6% sul mese" deltaGood tone="mint" />
-          <KpiCard label="Volume 4 settimane" value="+12%" delta="Progressione in salita" deltaGood tone="amber" />
-          <KpiCard label="Record del mese" value="3" delta="Ultimo: squat 142 kg" deltaGood tone="rose" />
+          <Reveal className="h-full [&>*]:h-full">
+            <KpiCard label="Peso corporeo" value="76,1 kg" delta="−0,4 kg in 7 giorni" deltaGood tone="cyan" />
+          </Reveal>
+          <Reveal delay={70} className="h-full [&>*]:h-full">
+            <KpiCard label="Aderenza al piano" value="94%" delta="+6% sul mese" deltaGood tone="mint" />
+          </Reveal>
+          <Reveal delay={140} className="h-full [&>*]:h-full">
+            <KpiCard label="Volume 4 settimane" value="+12%" delta="Progressione in salita" deltaGood tone="amber" />
+          </Reveal>
+          <Reveal delay={210} className="h-full [&>*]:h-full">
+            <KpiCard label="Record del mese" value="3" delta="Ultimo: squat 142 kg" deltaGood tone="rose" />
+          </Reveal>
         </div>
       </section>
 
       {/* Vetrina: cornice telefono + spiegazione */}
-      <section className="mx-auto max-w-[1200px] px-5 pb-16">
+      <section className="relative isolate mx-auto max-w-[1200px] px-5 pb-16">
+        {/* Fondo vivo: uno strato che scorre più lentamente della pagina.
+            Serve alla cornice — il vetro deve avere sotto qualcosa che si muove. */}
+        <Parallax
+          speed={0.14}
+          className="pointer-events-none absolute inset-x-0 top-10 -z-10 flex justify-center lg:justify-start lg:pl-20"
+        >
+          <span className="block h-[560px] w-[560px] rounded-full bg-accent/[0.16] blur-[110px]" aria-hidden />
+        </Parallax>
+
         {/* VETRO — selettore di schermata */}
-        <div className="mb-8 flex justify-center">
+        <Reveal className="mb-8 flex justify-center">
           <div
             role="tablist"
             aria-label="Schermate dell'app atleta"
@@ -327,7 +373,7 @@ export default function AthleteDemoPage() {
               );
             })}
           </div>
-        </div>
+        </Reveal>
 
         <div
           id="pannello-schermata"
@@ -335,72 +381,88 @@ export default function AthleteDemoPage() {
           aria-labelledby={`tab-${screen.id}`}
           className="grid grid-cols-1 gap-10 lg:grid-cols-[352px_minmax(0,1fr)] lg:gap-14"
         >
-          {/* La cornice: resta ancorata solo se la finestra è alta abbastanza da contenerla */}
+          {/* La cornice: resta ancorata solo se la finestra è alta abbastanza da contenerla.
+              Il `Reveal` sta DENTRO il contenitore ancorato, così l'entrata non
+              interferisce con lo `sticky`. Entra "pop": arriva in scala e si mette
+              a fuoco, come un oggetto che si avvicina. */}
           <div className="lg:self-start [@media(min-width:1024px)_and_(min-height:880px)]:sticky [@media(min-width:1024px)_and_(min-height:880px)]:top-6">
-            <PhoneFrame>
-              <div key={active} className="rise h-full">
-                {active === 'oggi' && <ScreenOggi />}
-                {active === 'tracker' && <ScreenTracker />}
-                {active === 'riepilogo' && <ScreenRiepilogo />}
-                {active === 'progressi' && <ScreenProgressi />}
-              </div>
-            </PhoneFrame>
-            <p className="mt-5 text-center text-[13px] text-text-tertiary">
-              Ricostruzione fedele dell&apos;app mobile — iPhone 15, tema scuro.
-            </p>
+            <Reveal variant="pop" delay={70} amount={0.08}>
+              <PhoneFrame>
+                <div key={active} className="rise h-full">
+                  {active === 'oggi' && <ScreenOggi />}
+                  {active === 'tracker' && <ScreenTracker />}
+                  {active === 'riepilogo' && <ScreenRiepilogo />}
+                  {active === 'progressi' && <ScreenProgressi />}
+                </div>
+              </PhoneFrame>
+            </Reveal>
+            <Reveal delay={210}>
+              <p className="mt-5 text-center text-[13px] leading-relaxed text-text-tertiary">
+                Ricostruzione fedele dell&apos;app mobile — iPhone 15, tema scuro.
+                <span className="mt-1 block">Numeri, nomi e grafici sono di esempio.</span>
+              </p>
+            </Reveal>
           </div>
 
-          {/* Il racconto */}
-          <div key={`testo-${active}`} className="rise rise-1">
-            <p className="text-[12px] font-bold uppercase tracking-[0.06em] text-accent">
-              {screen.eyebrow}
-            </p>
-            <h2 className="mt-3 text-[30px] font-extrabold leading-[1.12] tracking-[-0.02em] text-white md:text-[34px]">
-              {screen.title}
-            </h2>
-            <p className="mt-4 max-w-xl text-[17px] leading-[1.5] text-text-secondary">
-              {screen.lede}
-            </p>
+          {/* Il racconto — arriva di lato, dopo la cornice */}
+          <Reveal variant="slide" delay={140}>
+            <div key={`testo-${active}`} className="rise">
+              <p className="text-[12px] font-bold uppercase tracking-[0.06em] text-accent">
+                {screen.eyebrow}
+              </p>
+              <h2 className="mt-3 text-[30px] font-extrabold leading-[1.12] tracking-[-0.02em] text-white md:text-[34px]">
+                {screen.title}
+              </h2>
+              <p className="mt-4 max-w-xl text-[17px] leading-[1.5] text-text-secondary">
+                {screen.lede}
+              </p>
 
-            <div className="mt-8 space-y-3">
-              {screen.points.map((p) => (
-                <Card key={p.title} className="flex items-start gap-4 p-5">
-                  <span className="mt-0.5 grid h-11 w-11 shrink-0 place-items-center rounded-sm bg-raised">
-                    <p.icon size={20} className={p.tone} aria-hidden />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block text-[17px] font-bold text-white">{p.title}</span>
-                    <span className="mt-1 block text-[15px] leading-[1.45] text-text-secondary">
-                      {p.text}
+              {/* Le tre spiegazioni entrano a cascata a ogni cambio di schermata */}
+              <div className="mt-8 space-y-3">
+                {screen.points.map((p, i) => (
+                  <Card key={p.title} className={cn('flex items-start gap-4 p-5 rise', `rise-${i + 1}`)}>
+                    <span className="mt-0.5 grid h-11 w-11 shrink-0 place-items-center rounded-sm bg-raised">
+                      <p.icon size={20} className={p.tone} aria-hidden />
                     </span>
-                  </span>
-                </Card>
-              ))}
-            </div>
+                    <span className="min-w-0">
+                      <span className="block text-[17px] font-bold text-white">{p.title}</span>
+                      <span className="mt-1 block text-[15px] leading-[1.45] text-text-secondary">
+                        {p.text}
+                      </span>
+                    </span>
+                  </Card>
+                ))}
+              </div>
 
-            <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Link href="/registrati" className={buttonPrimary}>
-                Attiva la prova gratuita
-              </Link>
-              <Link href="/demo" className={buttonSecondary}>
-                Guarda il portale coach
-              </Link>
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                <Link href="/registrati" className={buttonPrimary}>
+                  Attiva la prova gratuita
+                </Link>
+                <Link href="/demo" className={buttonSecondary}>
+                  Guarda il portale coach
+                </Link>
+              </div>
             </div>
-          </div>
+          </Reveal>
         </div>
       </section>
 
       {/* Il resto dell'app */}
       <section className="mx-auto max-w-[1200px] px-5 pb-20">
-        <h2 className="text-[26px] font-extrabold tracking-[-0.02em] text-white">
-          E tutto il resto che l&apos;atleta si porta in tasca
-        </h2>
-        <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-text-secondary">
-          L&apos;app è organizzata in sei schede — Oggi, Scheda, Nutrizione, Progressi, Chat e
-          Profilo — con il diario di salute collegato ai dati del telefono.
-        </p>
+        <Reveal>
+          <h2 className="text-[26px] font-extrabold tracking-[-0.02em] text-white">
+            E tutto il resto che l&apos;atleta si porta in tasca
+          </h2>
+        </Reveal>
+        <Reveal delay={70} className="mt-2">
+          <p className="max-w-2xl text-[15px] leading-relaxed text-text-secondary">
+            L&apos;app è organizzata in sei schede — Oggi, Scheda, Nutrizione, Progressi, Chat e
+            Profilo — con il diario di salute collegato ai dati del telefono.
+          </p>
+        </Reveal>
 
-        <div className="mt-5 flex flex-wrap gap-2">
+        {/* Elenco delle schede: sono etichette, non comandi — restano su ferro */}
+        <Reveal delay={140} className="mt-5 flex flex-wrap gap-2">
           {APP_TABS.map((t) => (
             <span
               key={t.label}
@@ -410,91 +472,98 @@ export default function AthleteDemoPage() {
               {t.label}
             </span>
           ))}
-        </div>
+        </Reveal>
 
+        {/* Cascata 0 · 70 · 140 ms */}
         <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <Card className="rise min-w-0 p-5">
-            <SectionTitle icon={Dumbbell} tone="text-accent" title="Scheda della settimana" />
-            <ul className="mt-4 space-y-2">
-              {workouts.map((w) => (
-                <li
-                  key={w.day}
-                  className="flex min-h-[56px] items-center gap-3 rounded-sm bg-raised px-3.5 py-2.5"
-                >
-                  <span className="w-11 shrink-0 text-[12px] font-bold uppercase tracking-[0.06em] text-text-secondary">
-                    {w.day}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[15px] font-bold text-white">{w.name}</span>
-                    <span className="block truncate text-[13px] text-text-secondary">{w.detail}</span>
-                  </span>
-                  {w.done ? (
-                    <span className="inline-flex items-center gap-1.5 text-[12px] font-bold text-mint">
-                      <Check size={15} aria-hidden />
-                      Fatto
-                    </span>
-                  ) : (
-                    <ChevronRight size={18} className="shrink-0 text-text-tertiary" aria-hidden />
-                  )}
-                </li>
-              ))}
-            </ul>
-          </Card>
-
-          <Card className="rise rise-1 min-w-0 p-5">
-            <SectionTitle icon={Apple} tone="text-mint" title="Piano alimentare" />
-            <ul className="mt-4 space-y-2">
-              {meals.map((m) => (
-                <li key={m.name} className="min-h-[56px] rounded-sm bg-raised px-3.5 py-2.5">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <span className="truncate text-[15px] font-bold text-white">
-                      {m.name} <span className="text-text-tertiary tnum">· {m.time}</span>
-                    </span>
-                    <span className="shrink-0 text-[14px] font-bold text-mint tnum">
-                      {m.kcal} kcal
-                    </span>
-                  </div>
-                  <p className="mt-0.5 truncate text-[13px] text-text-secondary">{m.foods}</p>
-                </li>
-              ))}
-            </ul>
-          </Card>
-
-          <Card className="rise rise-2 min-w-0 p-5">
-            <SectionTitle icon={MessageCircle} tone="text-accent" title="Chat con il coach" />
-            <div className="mt-4 space-y-3">
-              {messages.map((m) => {
-                const mine = m.from === 'Tu';
-                return (
-                  <div
-                    key={m.text}
-                    className={cn(
-                      'max-w-[88%] rounded-sm px-3.5 py-3',
-                      mine ? 'ml-auto bg-accent text-white' : 'bg-raised text-text-primary',
-                    )}
+          <Reveal className="h-full [&>*]:h-full">
+            <Card className="min-w-0 p-5">
+              <SectionTitle icon={Dumbbell} tone="text-accent" title="Scheda della settimana" />
+              <ul className="mt-4 space-y-2">
+                {workouts.map((w) => (
+                  <li
+                    key={w.day}
+                    className="flex min-h-[56px] items-center gap-3 rounded-sm bg-raised px-3.5 py-2.5"
                   >
-                    <p
+                    <span className="w-11 shrink-0 text-[12px] font-bold uppercase tracking-[0.06em] text-text-secondary">
+                      {w.day}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[15px] font-bold text-white">{w.name}</span>
+                      <span className="block truncate text-[13px] text-text-secondary">{w.detail}</span>
+                    </span>
+                    {w.done ? (
+                      <span className="inline-flex items-center gap-1.5 text-[12px] font-bold text-mint">
+                        <Check size={15} aria-hidden />
+                        Fatto
+                      </span>
+                    ) : (
+                      <ChevronRight size={18} className="shrink-0 text-text-tertiary" aria-hidden />
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          </Reveal>
+
+          <Reveal delay={70} className="h-full [&>*]:h-full">
+            <Card className="min-w-0 p-5">
+              <SectionTitle icon={Apple} tone="text-mint" title="Piano alimentare" />
+              <ul className="mt-4 space-y-2">
+                {meals.map((m) => (
+                  <li key={m.name} className="min-h-[56px] rounded-sm bg-raised px-3.5 py-2.5">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="truncate text-[15px] font-bold text-white">
+                        {m.name} <span className="text-text-tertiary tnum">· {m.time}</span>
+                      </span>
+                      <span className="shrink-0 text-[14px] font-bold text-mint tnum">
+                        {m.kcal} kcal
+                      </span>
+                    </div>
+                    <p className="mt-0.5 truncate text-[13px] text-text-secondary">{m.foods}</p>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          </Reveal>
+
+          <Reveal delay={140} className="h-full [&>*]:h-full">
+            <Card className="min-w-0 p-5">
+              <SectionTitle icon={MessageCircle} tone="text-accent" title="Chat con il coach" />
+              <div className="mt-4 space-y-3">
+                {messages.map((m) => {
+                  const mine = m.from === 'Tu';
+                  return (
+                    <div
+                      key={m.text}
                       className={cn(
-                        'text-[12px] font-bold uppercase tracking-[0.06em]',
-                        mine ? 'text-white/70' : 'text-text-secondary',
+                        'max-w-[88%] rounded-sm px-3.5 py-3',
+                        mine ? 'ml-auto bg-accent text-white' : 'bg-raised text-text-primary',
                       )}
                     >
-                      {m.from}
-                    </p>
-                    <p className="mt-1 text-[15px] leading-[1.45]">{m.text}</p>
-                  </div>
-                );
-              })}
-              <p className="pt-1 text-[13px] text-text-tertiary">
-                Foto, video del top set e note del check-in viaggiano nello stesso filo.
-              </p>
-            </div>
-          </Card>
+                      <p
+                        className={cn(
+                          'text-[12px] font-bold uppercase tracking-[0.06em]',
+                          mine ? 'text-white/70' : 'text-text-secondary',
+                        )}
+                      >
+                        {m.from}
+                      </p>
+                      <p className="mt-1 text-[15px] leading-[1.45]">{m.text}</p>
+                    </div>
+                  );
+                })}
+                <p className="pt-1 text-[13px] text-text-tertiary">
+                  Foto, video del top set e note del check-in viaggiano nello stesso filo.
+                </p>
+              </div>
+            </Card>
+          </Reveal>
         </div>
       </section>
 
       {/* Chiusura */}
-      <section className="mx-auto max-w-[1200px] px-5 pb-24">
+      <Reveal as="section" className="mx-auto max-w-[1200px] px-5 pb-24">
         <Card className="flex flex-col items-start gap-6 p-8 md:flex-row md:items-center md:justify-between">
           <div className="max-w-xl">
             <h2 className="text-[26px] font-extrabold tracking-[-0.02em] text-white">
@@ -514,7 +583,7 @@ export default function AthleteDemoPage() {
             </Link>
           </div>
         </Card>
-      </section>
+      </Reveal>
     </main>
   );
 }
@@ -527,8 +596,17 @@ function PhoneFrame({ children }: { children: React.ReactNode }) {
   return (
     <div className="mx-auto w-full max-w-[352px]">
       <div className="rounded-[44px] bg-void p-[10px] shadow-[0_50px_90px_-40px_rgba(0,0,0,0.95)] ring-1 ring-white/[0.07]">
-        {/* 332×720: le proporzioni reali di un iPhone 15 */}
-        <div className="relative h-[720px] overflow-hidden rounded-2xl bg-background">
+        {/* 332×720: le proporzioni reali di un iPhone 15.
+            Lo schermo è appena translucido e ha un campo luminoso suo: è la
+            materia che la testata e la barra schede in vetro rifrangono. Senza,
+            il vetro dentro la cornice leggerebbe come grigio piatto.
+            `isolate` tiene il campo dietro al contenuto ma davanti al fondo. */}
+        <div className="relative isolate h-[720px] overflow-hidden rounded-2xl bg-background/[0.88]">
+          <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden>
+            <span className="absolute -left-14 -top-20 block h-52 w-52 rounded-full bg-accent/40 blur-[62px]" />
+            <span className="absolute -right-16 top-[38%] block h-44 w-44 rounded-full bg-violet/25 blur-[62px]" />
+            <span className="absolute -bottom-16 left-6 block h-52 w-52 rounded-full bg-cyan/25 blur-[62px]" />
+          </div>
           {/* isola dinamica */}
           <div
             className="pointer-events-none absolute left-1/2 top-2.5 z-30 h-[22px] w-[92px] -translate-x-1/2 rounded-full bg-void"
@@ -553,16 +631,20 @@ function ScreenShell({
 }) {
   return (
     <div className="flex h-full flex-col">
+      {/* VETRO — la testata ancorata: si sfoca, prende luce sul bordo alto e
+          lascia intravedere il campo luminoso dello schermo. */}
       <div className="glass-chrome relative z-20 !border-x-0 !border-t-0 px-4 pb-3 pt-[40px]">
         {header}
       </div>
+      {/* FERRO — il contenuto scorre SOTTO il vetro, non ci vive sopra. */}
       <div className="relative flex-1 overflow-hidden">
         <div className="h-full space-y-2 px-4 pb-[104px] pt-3">{children}</div>
         <div
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-background to-transparent"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-background/90 via-background/45 to-transparent"
           aria-hidden
         />
       </div>
+      {/* VETRO — barra schede o barra d'azione, ancorata sopra la safe area */}
       <div className="absolute inset-x-3 bottom-3 z-20">{footer}</div>
     </div>
   );

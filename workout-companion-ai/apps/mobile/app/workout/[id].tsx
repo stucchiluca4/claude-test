@@ -7,6 +7,8 @@ import {
   StyleSheet,
   Text,
   View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -24,6 +26,7 @@ import {
   upsertExerciseFeedback,
   type ExercisePrCandidate,
 } from '../../lib/queries';
+import { Appear, appearDelay } from '../../components/Appear';
 import { GlassSurface } from '../../components/Glass';
 import { Press } from '../../components/Press';
 import { PrimaryButton } from '../../components/PrimaryButton';
@@ -51,6 +54,12 @@ const emptyEntry: RowState = { load: '', reps: '', rpe: '', completed: false };
 
 /** Raggio degli elementi dentro la card esercizio (26 − 16): curve parallele. */
 const INNER = concentric(radius.lg, spacing.lg);
+
+/** Corsa di scorrimento entro cui il vetro si accende del tutto (px). */
+const GLASS_RANGE = 120;
+
+/** Scatto minimo sotto il quale non vale la pena ridisegnare il vetro. */
+const GLASS_STEP = 0.05;
 
 function entryKey(workoutExerciseId: string, setNumber: number): string {
   return `${workoutExerciseId}:${setNumber}`;
@@ -93,6 +102,9 @@ export default function WorkoutTrackerScreen() {
   // Altezze misurate dei due strati in vetro, per non coprire il contenuto.
   const [headerH, setHeaderH] = useState(104);
   const [barH, setBarH] = useState(92);
+  // Quanto contenuto sta passando sotto il vetro (0 fermo, 1 dopo ~120px).
+  const [glassActivity, setGlassActivity] = useState(0);
+  const glassActivityRef = useRef(0);
 
   // Caricamento scheda + apertura del workout_log + ultima performance.
   useEffect(() => {
@@ -260,6 +272,22 @@ export default function WorkoutTrackerScreen() {
 
   const updateEntry = useCallback((key: string, patch: Partial<RowState>) => {
     setEntries((prev) => ({ ...prev, [key]: { ...(prev[key] ?? emptyEntry), ...patch } }));
+  }, []);
+
+  /**
+   * Accende il vetro in base a quanta lista gli è passata sotto: da 0 a 1 nei
+   * primi 120px di scorrimento. Il valore è throttolato a scatti di 0.05 (e
+   * fissato sugli estremi) così lo stato non si aggiorna a ogni frame.
+   */
+  const onListScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const y = e.nativeEvent.contentOffset.y;
+    const next = Math.max(0, Math.min(1, y / GLASS_RANGE));
+    const current = glassActivityRef.current;
+    if (next === current) return;
+    const settled = next === 0 || next === 1;
+    if (!settled && Math.abs(next - current) < GLASS_STEP) return;
+    glassActivityRef.current = next;
+    setGlassActivity(next);
   }, []);
 
   async function toggleSet(we: WorkoutExercise, set: ExerciseSet) {
@@ -535,6 +563,8 @@ export default function WorkoutTrackerScreen() {
           ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          onScroll={onListScroll}
+          scrollEventThrottle={16}
         >
           {exercises.length === 0 ? (
             <EmptyState
@@ -559,7 +589,11 @@ export default function WorkoutTrackerScreen() {
               const showMedia = mediaOpen[we.id] ?? false;
 
               return (
-                <View key={we.id} style={[styles.shell, isBeacon ? shadow.beacon(colors.accent) : null]}>
+                <Appear
+                  key={we.id}
+                  delay={appearDelay(index)}
+                  style={[styles.shell, isBeacon ? shadow.beacon(colors.accent) : null]}
+                >
                   <View style={[styles.card, isBeacon && styles.cardBeacon]}>
                     <View style={styles.topLight} pointerEvents="none" />
 
@@ -723,7 +757,7 @@ export default function WorkoutTrackerScreen() {
                       </View>
                     ) : null}
                   </View>
-                </View>
+                </Appear>
               );
             })
           )}
@@ -735,7 +769,8 @@ export default function WorkoutTrackerScreen() {
           pointerEvents="box-none"
           onLayout={(e) => setHeaderH(e.nativeEvent.layout.height)}
         >
-          <GlassSurface cornerRadius={radius.xl} padding={spacing.md}>
+          {/* Il vetro si accende solo quando la lista degli esercizi gli scorre sotto. */}
+          <GlassSurface cornerRadius={radius.xl} padding={spacing.md} activity={glassActivity}>
             <View style={styles.headerRow}>
               <Press
                 style={styles.glassBtn}
@@ -790,7 +825,7 @@ export default function WorkoutTrackerScreen() {
           pointerEvents="box-none"
           onLayout={(e) => setBarH(e.nativeEvent.layout.height)}
         >
-          <GlassSurface cornerRadius={radius.xl} padding={spacing.md}>
+          <GlassSurface cornerRadius={radius.xl} padding={spacing.md} activity={glassActivity}>
             <PrimaryButton
               label="COMPLETA ALLENAMENTO"
               variant="success"

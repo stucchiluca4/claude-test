@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { Badge, PageHeader } from '@/components/ui';
+import { Reveal } from '@/components/motion';
 import { OffersManager, type Offer } from './offers-manager';
 
 const DEMO_OFFERS: Offer[] = [
@@ -44,6 +45,12 @@ const DEMO_OFFERS: Offer[] = [
   },
 ];
 
+/**
+ * La fascia del listino è più alta dello schermo: la soglia d'ingresso resta
+ * bassa, altrimenti la percentuale visibile non basterebbe mai a farla entrare.
+ */
+const BAND_AMOUNT = 0.04;
+
 export default async function ListinoPage({ searchParams }: { searchParams: Promise<{ demo?: string }> }) {
   const { demo } = await searchParams;
   if (demo === '1') {
@@ -54,7 +61,10 @@ export default async function ListinoPage({ searchParams }: { searchParams: Prom
           subtitle="Stesso listino, compilato con offerte di esempio: pronto da mostrare in call."
           actions={<Badge color="accent">Dati demo</Badge>}
         />
-        <OffersManager offers={DEMO_OFFERS} />
+        {/* Unica fascia di contenuto: entra dopo il titolo, salendo. */}
+        <Reveal amount={BAND_AMOUNT}>
+          <OffersManager offers={DEMO_OFFERS} />
+        </Reveal>
       </div>
     );
   }
@@ -78,7 +88,10 @@ export default async function ListinoPage({ searchParams }: { searchParams: Prom
         title="Listino Coaching Online"
         subtitle="Costruisci i pacchetti che vendi — prezzo, durata e ritmo dei check. Pubblica solo quelli pronti."
       />
-      <OffersManager offers={(offers ?? []) as Offer[]} />
+      {/* Unica fascia di contenuto: entra dopo il titolo, salendo. */}
+      <Reveal amount={BAND_AMOUNT}>
+        <OffersManager offers={(offers ?? []) as Offer[]} />
+      </Reveal>
     </div>
   );
 }

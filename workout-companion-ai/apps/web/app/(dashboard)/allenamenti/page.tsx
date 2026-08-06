@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { PageHeader, Card, Badge, EmptyState, KpiCard, buttonSecondary } from '@/components/ui';
+import { Reveal } from '@/components/motion';
 import { PROGRAM_GOALS } from '@wc/shared';
 import { cn, fullName } from '@/lib/utils';
 import { NewProgramForm } from './new-program-form';
@@ -37,13 +38,14 @@ const FALLBACK_META = {
   tone: 'text-text-secondary',
 };
 
-/** Ritardi scalati per l'ingresso della fascia KPI (il ritardo va sulla Card interna). */
-const KPI_DELAY = [
-  '[&>div]:[animation-delay:0ms]',
-  '[&>div]:[animation-delay:50ms]',
-  '[&>div]:[animation-delay:100ms]',
-  '[&>div]:[animation-delay:150ms]',
-];
+/**
+ * Le primitive condivise (PageHeader, KpiCard, EmptyState) portano una `.rise`
+ * che parte al montaggio: dentro un Reveal il tempo lo detta lo scorrimento.
+ */
+const NO_RISE = '[&_.rise]:!animate-none';
+
+/** Passo della cascata: le fasce entrano una dopo l'altra, non tutte insieme. */
+const STEP = 70;
 
 const DEMO_PROGRAMS = [
   { id: 'demo-hypertrophy', name: 'Hypertrophy Engine W5', goal: 'hypertrophy', status: 'active', duration_weeks: 8, coach_client: { client: { first_name: 'Marco', last_name: 'Bellini' } } },
@@ -129,51 +131,57 @@ function ProgramsGrid({ programs, clientOptions, demo = false }: { programs: any
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Allenamenti"
-        subtitle={
-          demo
-            ? 'Stessa sezione programmi, compilata con esempi avanzati: perfetta da mostrare in call.'
-            : 'Le tue schede multi-settimana: periodizzazione, volume per gruppo muscolare e consegna al cliente.'
-        }
-        actions={
-          demo ? (
-            <>
-              <Badge color="accent">Demo</Badge>
-              <Link href="/allenamenti" className={cn(buttonSecondary, 'min-h-[44px]')}>
-                Torna ai dati reali
-              </Link>
-            </>
-          ) : (
-            <>
-              <Link href="/allenamenti?demo=1" className={cn(buttonSecondary, 'min-h-[44px]')}>
-                Vedi con dati demo
-                <ArrowUpRight size={16} aria-hidden />
-              </Link>
-              <NewProgramForm clients={clientOptions} />
-            </>
-          )
-        }
-      />
-
-      {programs.length === 0 ? (
-        <EmptyState
-          emoji="🏋️"
-          title="Nessuna scheda in archivio"
-          description="Crea il primo programma: aggiungi settimane, sessioni ed esercizi dalla libreria con serie, ripetizioni, RPE e recuperi. Il builder calcola il volume per gruppo muscolare mentre scrivi."
-          action={
-            <Link href="/allenamenti?demo=1" className={cn(buttonSecondary, 'min-h-[44px]')}>
-              Guarda com’è con dati demo
-              <ArrowUpRight size={16} aria-hidden />
-            </Link>
+      {/* ---------- Testata: dove sei e cosa puoi fare da qui ---------- */}
+      <Reveal className={NO_RISE}>
+        <PageHeader
+          title="Allenamenti"
+          subtitle={
+            demo
+              ? 'Stessa sezione programmi, compilata con esempi avanzati: perfetta da mostrare in call.'
+              : 'Le tue schede multi-settimana: periodizzazione, volume per gruppo muscolare e consegna al cliente.'
+          }
+          actions={
+            demo ? (
+              <>
+                <Badge color="accent">Demo</Badge>
+                <Link href="/allenamenti" className={cn(buttonSecondary, 'min-h-[44px]')}>
+                  Torna ai dati reali
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link href="/allenamenti?demo=1" className={cn(buttonSecondary, 'min-h-[44px]')}>
+                  Vedi con dati demo
+                  <ArrowUpRight size={16} aria-hidden />
+                </Link>
+                <NewProgramForm clients={clientOptions} />
+              </>
+            )
           }
         />
+      </Reveal>
+
+      {programs.length === 0 ? (
+        <Reveal delay={STEP} className={NO_RISE}>
+          <EmptyState
+            emoji="🏋️"
+            title="Nessuna scheda in archivio"
+            description="Crea il primo programma: aggiungi settimane, sessioni ed esercizi dalla libreria con serie, ripetizioni, RPE e recuperi. Il builder calcola il volume per gruppo muscolare mentre scrivi."
+            action={
+              <Link href="/allenamenti?demo=1" className={cn(buttonSecondary, 'min-h-[44px]')}>
+                Guarda com’è con dati demo
+                <ArrowUpRight size={16} aria-hidden />
+              </Link>
+            }
+          />
+        </Reveal>
       ) : (
         <>
           {/* ---------- Il polso dell'archivio ---------- */}
+          {/* Le card entrano a cascata: il ritardo dà l'ordine di lettura, da sinistra. */}
           <section aria-label="Stato dei programmi" className="grid grid-cols-2 gap-4 md:grid-cols-4">
             {kpis.map((kpi, i) => (
-              <div key={kpi.label} className={KPI_DELAY[i]}>
+              <Reveal key={kpi.label} delay={i * STEP} className={NO_RISE}>
                 <KpiCard
                   label={kpi.label}
                   value={kpi.value}
@@ -181,11 +189,12 @@ function ProgramsGrid({ programs, clientOptions, demo = false }: { programs: any
                   deltaGood={kpi.deltaGood}
                   tone={kpi.tone}
                 />
-              </div>
+              </Reveal>
             ))}
           </section>
 
           {/* ---------- IL FARO: la scheda su cui hai lavorato per ultima ---------- */}
+          {/* Arriva per ultimo nella prima schermata: è l'ultima cosa che si posa. */}
           <section aria-label="Scheda più recente">
             <HeroProgramCard program={hero} demo={demo} />
           </section>
@@ -193,26 +202,28 @@ function ProgramsGrid({ programs, clientOptions, demo = false }: { programs: any
           {/* ---------- L'archivio ---------- */}
           {rest.length > 0 && (
             <section aria-label="Elenco dei programmi" className="space-y-4">
-              <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
-                <h2 className="text-[19px] font-bold tracking-[-0.01em] text-white">
-                  Le altre schede
-                </h2>
-                <ul className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                  {counters.map((c) => (
-                    <li key={c.key} className="flex items-baseline gap-1.5">
-                      <span
-                        className={cn(
-                          'tnum text-[15px] font-bold',
-                          (STATUS_META[c.key] ?? FALLBACK_META).tone
-                        )}
-                      >
-                        {c.value}
-                      </span>
-                      <span className="text-[13px] text-text-secondary">{c.label}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              <Reveal>
+                <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+                  <h2 className="text-[19px] font-bold tracking-[-0.01em] text-white">
+                    Le altre schede
+                  </h2>
+                  <ul className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                    {counters.map((c) => (
+                      <li key={c.key} className="flex items-baseline gap-1.5">
+                        <span
+                          className={cn(
+                            'tnum text-[15px] font-bold',
+                            (STATUS_META[c.key] ?? FALLBACK_META).tone
+                          )}
+                        >
+                          {c.value}
+                        </span>
+                        <span className="text-[13px] text-text-secondary">{c.label}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </Reveal>
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {rest.map((p, i) => (
@@ -234,54 +245,56 @@ function HeroProgramCard({ program, demo }: { program: any; demo: boolean }) {
   const client = (program.coach_client as any)?.client;
 
   return (
-    <Link
-      href={demo ? `/allenamenti/${program.id}?demo=1` : `/allenamenti/${program.id}`}
-      className="group block rise rise-1"
-      aria-label={`Riprendi il builder di ${program.name}`}
-    >
-      <Card beacon className="p-0 transition group-hover:bg-card-hover">
-        <div className="flex flex-col gap-6 p-6 lg:flex-row lg:items-end lg:justify-between lg:gap-10 lg:p-7">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-accent/15 px-2.5 py-1 text-[12px] font-bold uppercase tracking-[0.06em] text-accent">
-                Ultima modificata
-              </span>
-              <Badge color={meta.color}>
-                <Icon size={12} className="mr-1.5" aria-hidden />
-                {meta.label}
-              </Badge>
-            </div>
-            <h2 className="mt-3.5 text-[26px] font-extrabold leading-[1.1] tracking-[-0.02em] text-white sm:text-[32px]">
-              {program.name}
-            </h2>
-            <p className="mt-2.5 max-w-lg text-[15px] leading-relaxed text-text-secondary">
-              Riprendi da dove hai lasciato: settimane, sessioni, serie prescritte e volume per
-              gruppo muscolare, tutto nello stesso editor.
-            </p>
-          </div>
-
-          <div className="shrink-0 lg:w-[23rem]">
-            <dl className="grid grid-cols-2 gap-2">
-              <MetaTile icon={Target} label="Obiettivo">
-                {PROGRAM_GOALS[program.goal as keyof typeof PROGRAM_GOALS] ?? program.goal}
-              </MetaTile>
-              <MetaTile icon={CalendarDays} label="Durata" numeric>
-                {program.duration_weeks} settimane
-              </MetaTile>
-              <div className="col-span-2">
-                <MetaTile icon={User} label="Atleta">
-                  {client ? fullName(client) : 'Template — nessun cliente'}
-                </MetaTile>
+    <Reveal delay={STEP * 3}>
+      <Link
+        href={demo ? `/allenamenti/${program.id}?demo=1` : `/allenamenti/${program.id}`}
+        className="group block"
+        aria-label={`Riprendi il builder di ${program.name}`}
+      >
+        <Card beacon className="p-0 transition group-hover:bg-card-hover">
+          <div className="flex flex-col gap-6 p-6 lg:flex-row lg:items-end lg:justify-between lg:gap-10 lg:p-7">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-accent/15 px-2.5 py-1 text-[12px] font-bold uppercase tracking-[0.06em] text-accent">
+                  Ultima modificata
+                </span>
+                <Badge color={meta.color}>
+                  <Icon size={12} className="mr-1.5" aria-hidden />
+                  {meta.label}
+                </Badge>
               </div>
-            </dl>
-            <span className="mt-3.5 inline-flex min-h-[44px] items-center gap-1.5 text-[15px] font-bold text-accent transition group-hover:text-accent-hover">
-              Apri il builder
-              <ChevronRight size={17} aria-hidden />
-            </span>
+              <h2 className="mt-3.5 text-[26px] font-extrabold leading-[1.1] tracking-[-0.02em] text-white sm:text-[32px]">
+                {program.name}
+              </h2>
+              <p className="mt-2.5 max-w-lg text-[15px] leading-relaxed text-text-secondary">
+                Riprendi da dove hai lasciato: settimane, sessioni, serie prescritte e volume per
+                gruppo muscolare, tutto nello stesso editor.
+              </p>
+            </div>
+
+            <div className="shrink-0 lg:w-[23rem]">
+              <dl className="grid grid-cols-2 gap-2">
+                <MetaTile icon={Target} label="Obiettivo">
+                  {PROGRAM_GOALS[program.goal as keyof typeof PROGRAM_GOALS] ?? program.goal}
+                </MetaTile>
+                <MetaTile icon={CalendarDays} label="Durata" numeric>
+                  {program.duration_weeks} settimane
+                </MetaTile>
+                <div className="col-span-2">
+                  <MetaTile icon={User} label="Atleta">
+                    {client ? fullName(client) : 'Template — nessun cliente'}
+                  </MetaTile>
+                </div>
+              </dl>
+              <span className="mt-3.5 inline-flex min-h-[44px] items-center gap-1.5 text-[15px] font-bold text-accent transition group-hover:text-accent-hover">
+                Apri il builder
+                <ChevronRight size={17} aria-hidden />
+              </span>
+            </div>
           </div>
-        </div>
-      </Card>
-    </Link>
+        </Card>
+      </Link>
+    </Reveal>
   );
 }
 
@@ -316,49 +329,52 @@ function ProgramCard({ program, demo, index }: { program: any; demo: boolean; in
   const client = (program.coach_client as any)?.client;
 
   return (
-    <Link
-      href={demo ? `/allenamenti/${program.id}?demo=1` : `/allenamenti/${program.id}`}
-      className={cn('group block rise', index < 4 && `rise-${index + 2}`)}
-      aria-label={`Apri il builder di ${program.name}`}
-    >
-      <Card className="flex h-full flex-col p-5 transition group-hover:bg-card-hover">
-        <div className="flex items-start justify-between gap-3">
-          <h3 className="text-[19px] font-bold leading-snug tracking-[-0.01em] text-white">
-            {program.name}
-          </h3>
-          <Badge color={meta.color}>
-            <Icon size={12} className="mr-1.5" aria-hidden />
-            {meta.label}
-          </Badge>
-        </div>
-
-        <dl className="mt-3.5 flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px] text-text-secondary">
-          <div className="flex items-center gap-1.5">
-            <Target size={14} className="shrink-0" aria-hidden />
-            <dt className="sr-only">Obiettivo</dt>
-            <dd>{PROGRAM_GOALS[program.goal as keyof typeof PROGRAM_GOALS] ?? program.goal}</dd>
+    /* La cascata si ferma alla quarta card: oltre, l'attesa diventa lentezza. */
+    <Reveal delay={Math.min(index, 3) * STEP} className="h-full">
+      <Link
+        href={demo ? `/allenamenti/${program.id}?demo=1` : `/allenamenti/${program.id}`}
+        className="group block h-full"
+        aria-label={`Apri il builder di ${program.name}`}
+      >
+        <Card className="flex h-full flex-col p-5 transition group-hover:bg-card-hover">
+          <div className="flex items-start justify-between gap-3">
+            <h3 className="text-[19px] font-bold leading-snug tracking-[-0.01em] text-white">
+              {program.name}
+            </h3>
+            <Badge color={meta.color}>
+              <Icon size={12} className="mr-1.5" aria-hidden />
+              {meta.label}
+            </Badge>
           </div>
-          <div className="flex items-center gap-1.5">
-            <CalendarDays size={14} className="shrink-0" aria-hidden />
-            <dt className="sr-only">Durata</dt>
-            <dd className="tnum">{program.duration_weeks} settimane</dd>
+
+          <dl className="mt-3.5 flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px] text-text-secondary">
+            <div className="flex items-center gap-1.5">
+              <Target size={14} className="shrink-0" aria-hidden />
+              <dt className="sr-only">Obiettivo</dt>
+              <dd>{PROGRAM_GOALS[program.goal as keyof typeof PROGRAM_GOALS] ?? program.goal}</dd>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <CalendarDays size={14} className="shrink-0" aria-hidden />
+              <dt className="sr-only">Durata</dt>
+              <dd className="tnum">{program.duration_weeks} settimane</dd>
+            </div>
+          </dl>
+
+          <div className="mt-3.5 flex items-center gap-2.5 rounded-md bg-raised px-3.5 py-3">
+            <User size={16} className="shrink-0 text-text-secondary" aria-hidden />
+            <span className="min-w-0 truncate text-[15px] font-semibold text-white">
+              {client ? fullName(client) : 'Template — nessun cliente'}
+            </span>
           </div>
-        </dl>
 
-        <div className="mt-3.5 flex items-center gap-2.5 rounded-md bg-raised px-3.5 py-3">
-          <User size={16} className="shrink-0 text-text-secondary" aria-hidden />
-          <span className="min-w-0 truncate text-[15px] font-semibold text-white">
-            {client ? fullName(client) : 'Template — nessun cliente'}
-          </span>
-        </div>
-
-        <div className="mt-auto flex items-center justify-end pt-4">
-          <span className="inline-flex items-center gap-1 text-[15px] font-semibold text-accent transition group-hover:text-accent-hover">
-            Apri il builder
-            <ChevronRight size={16} aria-hidden />
-          </span>
-        </div>
-      </Card>
-    </Link>
+          <div className="mt-auto flex items-center justify-end pt-4">
+            <span className="inline-flex items-center gap-1 text-[15px] font-semibold text-accent transition group-hover:text-accent-hover">
+              Apri il builder
+              <ChevronRight size={16} aria-hidden />
+            </span>
+          </div>
+        </Card>
+      </Link>
+    </Reveal>
   );
 }

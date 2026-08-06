@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { PageHeader, Card, Badge, EmptyState, KpiCard, buttonSecondary } from '@/components/ui';
+import { Reveal } from '@/components/motion';
 import { cn, fullName } from '@/lib/utils';
 import { NewPlanForm } from './new-plan-form';
 
@@ -19,13 +20,14 @@ const DEMO_PLANS = [
   { id: 'demo-cut', name: 'Cut sostenibile 1900 kcal', status: 'draft', duration_weeks: 6, tdee_kcal: 2480, target_kcal: 1900, coach_client: { client: { first_name: 'Andrea', last_name: 'Costa' } } },
 ];
 
-/** Ritardi scalati per l'ingresso della fascia KPI (il ritardo va sulla Card interna). */
-const KPI_DELAY = [
-  '[&>div]:[animation-delay:0ms]',
-  '[&>div]:[animation-delay:50ms]',
-  '[&>div]:[animation-delay:100ms]',
-  '[&>div]:[animation-delay:150ms]',
-];
+/**
+ * Le primitive condivise (PageHeader, KpiCard, EmptyState) portano una `.rise`
+ * che parte al montaggio: dentro un Reveal il tempo lo detta lo scorrimento.
+ */
+const NO_RISE = '[&_.rise]:!animate-none';
+
+/** Passo della cascata: le fasce entrano una dopo l'altra, non tutte insieme. */
+const STEP = 70;
 
 const STATUS_META = {
   active: { label: 'Attivo', color: 'success' as const, icon: CircleCheck },
@@ -116,51 +118,57 @@ function NutritionGrid({ plans, clientOptions, demo = false }: { plans: any[]; c
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Piani Alimentari"
-        subtitle={
-          demo
-            ? 'Stessa sezione nutrizione, compilata con piani e macro demo: pronta da mostrare in call.'
-            : 'Calorie e macro giorno per giorno, rotazione ON/OFF, calcolo del fabbisogno e progressioni automatiche.'
-        }
-        actions={
-          demo ? (
-            <>
-              <Badge color="accent">Demo</Badge>
-              <Link href="/nutrizione" className={cn(buttonSecondary, 'min-h-[44px]')}>
-                Torna ai dati reali
-              </Link>
-            </>
-          ) : (
-            <>
-              <Link href="/nutrizione?demo=1" className={cn(buttonSecondary, 'min-h-[44px]')}>
-                Vedi con dati demo
-                <ArrowUpRight size={16} aria-hidden />
-              </Link>
-              <NewPlanForm clients={clientOptions} />
-            </>
-          )
-        }
-      />
-
-      {plans.length === 0 ? (
-        <EmptyState
-          emoji="🍽️"
-          title="Nessun piano alimentare"
-          description="Crea il primo piano: imposti calorie e macro per ogni giorno della settimana, distingui i giorni di allenamento da quelli di riposo e lasci che la progressione generi le settimane successive."
-          action={
-            <Link href="/nutrizione?demo=1" className={cn(buttonSecondary, 'min-h-[44px]')}>
-              Guarda com’è con dati demo
-              <ArrowUpRight size={16} aria-hidden />
-            </Link>
+      {/* ---------- Testata: dove sei e cosa puoi fare da qui ---------- */}
+      <Reveal className={NO_RISE}>
+        <PageHeader
+          title="Piani Alimentari"
+          subtitle={
+            demo
+              ? 'Stessa sezione nutrizione, compilata con piani e macro demo: pronta da mostrare in call.'
+              : 'Calorie e macro giorno per giorno, rotazione ON/OFF, calcolo del fabbisogno e progressioni automatiche.'
+          }
+          actions={
+            demo ? (
+              <>
+                <Badge color="accent">Demo</Badge>
+                <Link href="/nutrizione" className={cn(buttonSecondary, 'min-h-[44px]')}>
+                  Torna ai dati reali
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link href="/nutrizione?demo=1" className={cn(buttonSecondary, 'min-h-[44px]')}>
+                  Vedi con dati demo
+                  <ArrowUpRight size={16} aria-hidden />
+                </Link>
+                <NewPlanForm clients={clientOptions} />
+              </>
+            )
           }
         />
+      </Reveal>
+
+      {plans.length === 0 ? (
+        <Reveal delay={STEP} className={NO_RISE}>
+          <EmptyState
+            emoji="🍽️"
+            title="Nessun piano alimentare"
+            description="Crea il primo piano: imposti calorie e macro per ogni giorno della settimana, distingui i giorni di allenamento da quelli di riposo e lasci che la progressione generi le settimane successive."
+            action={
+              <Link href="/nutrizione?demo=1" className={cn(buttonSecondary, 'min-h-[44px]')}>
+                Guarda com’è con dati demo
+                <ArrowUpRight size={16} aria-hidden />
+              </Link>
+            }
+          />
+        </Reveal>
       ) : (
         <>
           {/* ---------- Il polso della sezione ---------- */}
+          {/* Le card entrano a cascata: il ritardo dà l'ordine di lettura, da sinistra. */}
           <section aria-label="Stato dei piani alimentari" className="grid grid-cols-2 gap-4 md:grid-cols-4">
             {kpis.map((kpi, i) => (
-              <div key={kpi.label} className={KPI_DELAY[i]}>
+              <Reveal key={kpi.label} delay={i * STEP} className={NO_RISE}>
                 <KpiCard
                   label={kpi.label}
                   value={kpi.value}
@@ -168,11 +176,12 @@ function NutritionGrid({ plans, clientOptions, demo = false }: { plans: any[]; c
                   deltaGood={kpi.deltaGood}
                   tone={kpi.tone}
                 />
-              </div>
+              </Reveal>
             ))}
           </section>
 
           {/* ---------- IL FARO: il piano su cui hai lavorato per ultimo ---------- */}
+          {/* Arriva per ultimo nella prima schermata: è l'ultima cosa che si posa. */}
           <section aria-label="Piano più recente">
             <HeroPlanCard plan={hero} demo={demo} />
           </section>
@@ -180,7 +189,11 @@ function NutritionGrid({ plans, clientOptions, demo = false }: { plans: any[]; c
           {/* ---------- L'archivio dei piani ---------- */}
           {rest.length > 0 && (
             <section aria-label="Elenco dei piani alimentari" className="space-y-4">
-              <h2 className="text-[19px] font-bold tracking-[-0.01em] text-white">Gli altri piani</h2>
+              <Reveal>
+                <h2 className="text-[19px] font-bold tracking-[-0.01em] text-white">
+                  Gli altri piani
+                </h2>
+              </Reveal>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {rest.map((p, i) => (
                   <PlanCard key={p.id} plan={p} demo={demo} index={i} />
@@ -207,69 +220,71 @@ function HeroPlanCard({ plan, demo }: { plan: any; demo: boolean }) {
   const isTarget = plan.target_kcal != null;
 
   return (
-    <Link
-      href={demo ? `/nutrizione/${plan.id}?demo=1` : `/nutrizione/${plan.id}`}
-      className="group block rise rise-1"
-      aria-label={`Apri il piano ${plan.name}`}
-    >
-      <Card beacon className="p-0 transition group-hover:bg-card-hover">
-        <div className="flex flex-col gap-6 p-6 lg:flex-row lg:items-end lg:justify-between lg:gap-10 lg:p-7">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-accent/15 px-2.5 py-1 text-[12px] font-bold uppercase tracking-[0.06em] text-accent">
-                Ultimo modificato
-              </span>
-              <Badge color={meta.color}>
-                <Icon size={12} className="mr-1.5" aria-hidden />
-                {meta.label}
-              </Badge>
+    <Reveal delay={STEP * 3}>
+      <Link
+        href={demo ? `/nutrizione/${plan.id}?demo=1` : `/nutrizione/${plan.id}`}
+        className="group block"
+        aria-label={`Apri il piano ${plan.name}`}
+      >
+        <Card beacon className="p-0 transition group-hover:bg-card-hover">
+          <div className="flex flex-col gap-6 p-6 lg:flex-row lg:items-end lg:justify-between lg:gap-10 lg:p-7">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-accent/15 px-2.5 py-1 text-[12px] font-bold uppercase tracking-[0.06em] text-accent">
+                  Ultimo modificato
+                </span>
+                <Badge color={meta.color}>
+                  <Icon size={12} className="mr-1.5" aria-hidden />
+                  {meta.label}
+                </Badge>
+              </div>
+              <h2 className="mt-3.5 text-[26px] font-extrabold leading-[1.1] tracking-[-0.02em] text-white sm:text-[32px]">
+                {plan.name}
+              </h2>
+              <p className="mt-2.5 max-w-lg text-[15px] leading-relaxed text-text-secondary">
+                Apri l’editor per rivedere macro giorno per giorno, rotazione ON/OFF e la
+                progressione delle settimane successive.
+              </p>
             </div>
-            <h2 className="mt-3.5 text-[26px] font-extrabold leading-[1.1] tracking-[-0.02em] text-white sm:text-[32px]">
-              {plan.name}
-            </h2>
-            <p className="mt-2.5 max-w-lg text-[15px] leading-relaxed text-text-secondary">
-              Apri l’editor per rivedere macro giorno per giorno, rotazione ON/OFF e la progressione
-              delle settimane successive.
-            </p>
-          </div>
 
-          <div className="shrink-0 lg:w-[23rem]">
-            {kcal != null ? (
-              <div className="rounded-md bg-raised px-4 py-3.5">
-                <div className="flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.06em] text-text-secondary">
-                  <Flame size={13} className="shrink-0" aria-hidden />
-                  {isTarget ? 'Obiettivo giornaliero' : 'Fabbisogno stimato'}
+            <div className="shrink-0 lg:w-[23rem]">
+              {kcal != null ? (
+                <div className="rounded-md bg-raised px-4 py-3.5">
+                  <div className="flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.06em] text-text-secondary">
+                    <Flame size={13} className="shrink-0" aria-hidden />
+                    {isTarget ? 'Obiettivo giornaliero' : 'Fabbisogno stimato'}
+                  </div>
+                  <div className="mt-1.5 flex items-baseline gap-2">
+                    <span className="font-metric tnum text-[46px] font-extrabold leading-none text-white sm:text-[54px]">
+                      {kcal.toLocaleString('it-IT')}
+                    </span>
+                    <span className="text-[15px] font-semibold text-text-secondary">kcal/die</span>
+                  </div>
                 </div>
-                <div className="mt-1.5 flex items-baseline gap-2">
-                  <span className="font-metric tnum text-[46px] font-extrabold leading-none text-white sm:text-[54px]">
-                    {kcal.toLocaleString('it-IT')}
-                  </span>
-                  <span className="text-[15px] font-semibold text-text-secondary">kcal/die</span>
+              ) : (
+                <div className="rounded-md bg-raised px-4 py-3.5 text-[15px] text-text-secondary">
+                  Macro ancora da definire: apri il piano e imposta il fabbisogno.
                 </div>
-              </div>
-            ) : (
-              <div className="rounded-md bg-raised px-4 py-3.5 text-[15px] text-text-secondary">
-                Macro ancora da definire: apri il piano e imposta il fabbisogno.
-              </div>
-            )}
+              )}
 
-            <dl className="mt-2 grid grid-cols-2 gap-2">
-              <MetaTile icon={UserRound} label="Atleta">
-                {client ? fullName(client) : 'Nessun atleta collegato'}
-              </MetaTile>
-              <MetaTile icon={CalendarDays} label="Durata" numeric>
-                {plan.duration_weeks} settimane
-              </MetaTile>
-            </dl>
+              <dl className="mt-2 grid grid-cols-2 gap-2">
+                <MetaTile icon={UserRound} label="Atleta">
+                  {client ? fullName(client) : 'Nessun atleta collegato'}
+                </MetaTile>
+                <MetaTile icon={CalendarDays} label="Durata" numeric>
+                  {plan.duration_weeks} settimane
+                </MetaTile>
+              </dl>
 
-            <span className="mt-3.5 inline-flex min-h-[44px] items-center gap-1.5 text-[15px] font-bold text-accent transition group-hover:text-accent-hover">
-              Apri l’editor macro
-              <ChevronRight size={17} aria-hidden />
-            </span>
+              <span className="mt-3.5 inline-flex min-h-[44px] items-center gap-1.5 text-[15px] font-bold text-accent transition group-hover:text-accent-hover">
+                Apri l’editor macro
+                <ChevronRight size={17} aria-hidden />
+              </span>
+            </div>
           </div>
-        </div>
-      </Card>
-    </Link>
+        </Card>
+      </Link>
+    </Reveal>
   );
 }
 
@@ -310,48 +325,51 @@ function PlanCard({ plan, demo, index }: { plan: any; demo: boolean; index: numb
   const isTarget = plan.target_kcal != null;
 
   return (
-    <Link
-      href={demo ? `/nutrizione/${plan.id}?demo=1` : `/nutrizione/${plan.id}`}
-      className={cn('group block rise', index < 4 && `rise-${index + 2}`)}
-      aria-label={`Apri il piano ${plan.name}`}
-    >
-      <Card className="flex h-full flex-col p-5 transition group-hover:bg-card-hover">
-        <div className="flex items-start justify-between gap-3">
-          <h3 className="text-[19px] font-bold leading-snug tracking-[-0.01em] text-white">
-            {plan.name}
-          </h3>
-          <Badge color={meta.color}>
-            <Icon size={12} className="mr-1.5" aria-hidden />
-            {meta.label}
-          </Badge>
-        </div>
-
-        {kcal != null ? (
-          <div className="mt-4">
-            <div className="flex items-baseline gap-2">
-              <span className="font-metric tnum text-[34px] font-extrabold leading-none text-white">
-                {kcal.toLocaleString('it-IT')}
-              </span>
-              <span className="text-[13px] font-semibold text-text-secondary">kcal/die</span>
-            </div>
-            <p className="mt-1.5 text-[12px] font-bold uppercase tracking-[0.06em] text-text-secondary">
-              {isTarget ? 'Obiettivo giornaliero' : 'Fabbisogno stimato'}
-            </p>
+    /* La cascata si ferma alla quarta card: oltre, l'attesa diventa lentezza. */
+    <Reveal delay={Math.min(index, 3) * STEP} className="h-full">
+      <Link
+        href={demo ? `/nutrizione/${plan.id}?demo=1` : `/nutrizione/${plan.id}`}
+        className="group block h-full"
+        aria-label={`Apri il piano ${plan.name}`}
+      >
+        <Card className="flex h-full flex-col p-5 transition group-hover:bg-card-hover">
+          <div className="flex items-start justify-between gap-3">
+            <h3 className="text-[19px] font-bold leading-snug tracking-[-0.01em] text-white">
+              {plan.name}
+            </h3>
+            <Badge color={meta.color}>
+              <Icon size={12} className="mr-1.5" aria-hidden />
+              {meta.label}
+            </Badge>
           </div>
-        ) : (
-          <p className="mt-4 text-[15px] text-text-secondary">Macro ancora da definire</p>
-        )}
 
-        <div className="mt-auto flex items-center justify-between gap-3 border-t border-line/60 pt-3.5 text-[13px]">
-          <span className="flex min-w-0 items-center gap-1.5 text-text-secondary">
-            <UserRound size={14} className="shrink-0" aria-hidden />
-            <span className="truncate">{client ? fullName(client) : 'Nessun atleta'}</span>
-          </span>
-          <span className="tnum shrink-0 font-semibold text-text-secondary">
-            {plan.duration_weeks} sett.
-          </span>
-        </div>
-      </Card>
-    </Link>
+          {kcal != null ? (
+            <div className="mt-4">
+              <div className="flex items-baseline gap-2">
+                <span className="font-metric tnum text-[34px] font-extrabold leading-none text-white">
+                  {kcal.toLocaleString('it-IT')}
+                </span>
+                <span className="text-[13px] font-semibold text-text-secondary">kcal/die</span>
+              </div>
+              <p className="mt-1.5 text-[12px] font-bold uppercase tracking-[0.06em] text-text-secondary">
+                {isTarget ? 'Obiettivo giornaliero' : 'Fabbisogno stimato'}
+              </p>
+            </div>
+          ) : (
+            <p className="mt-4 text-[15px] text-text-secondary">Macro ancora da definire</p>
+          )}
+
+          <div className="mt-auto flex items-center justify-between gap-3 border-t border-line/60 pt-3.5 text-[13px]">
+            <span className="flex min-w-0 items-center gap-1.5 text-text-secondary">
+              <UserRound size={14} className="shrink-0" aria-hidden />
+              <span className="truncate">{client ? fullName(client) : 'Nessun atleta'}</span>
+            </span>
+            <span className="tnum shrink-0 font-semibold text-text-secondary">
+              {plan.duration_weeks} sett.
+            </span>
+          </div>
+        </Card>
+      </Link>
+    </Reveal>
   );
 }

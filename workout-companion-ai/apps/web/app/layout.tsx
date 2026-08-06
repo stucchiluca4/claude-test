@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
+import { Aurora } from '@/components/motion';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -49,6 +50,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body
         className={`${inter.className} min-h-screen bg-background text-text-primary antialiased selection:bg-accent/30 selection:text-white`}
       >
+        {/* Il campo luminoso vive dietro ogni cosa: è ciò che il vetro rifrange. */}
+        <Aurora />
         {children}
       </body>
     </html>

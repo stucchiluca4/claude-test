@@ -27,6 +27,7 @@ import {
   type DailyBiofeedback,
 } from '../../lib/queries';
 import { ActivityRing } from '../../components/ActivityRing';
+import { Appear, appearDelay } from '../../components/Appear';
 import { Card } from '../../components/Card';
 import { MetricBlock } from '../../components/MetricBlock';
 import { Press } from '../../components/Press';
@@ -310,213 +311,226 @@ export default function HomeScreen() {
           />
         ) : (
           <>
-            {/* IL NUMERO DOMINANTE: la prontezza, alta e sopra la piega, letta in tre secondi. */}
+            {/* IL NUMERO DOMINANTE: la prontezza, alta e sopra la piega, letta in tre secondi.
+                Da qui parte la cascata d'entrata delle card: 0/60/120/180 ms. */}
             {readiness && score != null ? (
-              <Card title="Prontezza di oggi">
-                <MetricBlock
-                  value={score.toFixed(1).replace('.', ',')}
-                  unit="/10"
-                  color={readinessTone}
-                  trailing={
-                    <ActivityRing progress={score / 10} color={readinessTone} size={88} strokeWidth={12}>
-                      <Ionicons name={READINESS_ICON[readiness.level]} size={30} color={readinessTone} />
-                    </ActivityRing>
-                  }
-                />
-                <View style={styles.noteBlock}>
-                  <View style={[styles.toneDot, { backgroundColor: readinessTone }]} />
-                  <View style={styles.noteBody}>
-                    <Text style={[styles.readinessLabel, { color: readinessTone }]}>{readiness.label}</Text>
-                    <Text style={styles.noteText}>{readiness.advice}</Text>
+              <Appear delay={appearDelay(0)}>
+                <Card title="Prontezza di oggi">
+                  <MetricBlock
+                    value={score.toFixed(1).replace('.', ',')}
+                    unit="/10"
+                    color={readinessTone}
+                    trailing={
+                      <ActivityRing progress={score / 10} color={readinessTone} size={88} strokeWidth={12}>
+                        <Ionicons name={READINESS_ICON[readiness.level]} size={30} color={readinessTone} />
+                      </ActivityRing>
+                    }
+                  />
+                  <View style={styles.noteBlock}>
+                    <View style={[styles.toneDot, { backgroundColor: readinessTone }]} />
+                    <View style={styles.noteBody}>
+                      <Text style={[styles.readinessLabel, { color: readinessTone }]}>{readiness.label}</Text>
+                      <Text style={styles.noteText}>{readiness.advice}</Text>
+                    </View>
                   </View>
-                </View>
-              </Card>
+                </Card>
+              </Appear>
             ) : null}
 
             {/* IL FARO: cosa si fa oggi e l'azione primaria, a tutta larghezza. */}
-            <Card
-              title="Allenamento di oggi"
-              beacon={workoutTone ?? undefined}
-              style={workoutTone ? shadow.beacon(workoutTone) : undefined}
-            >
-              {data.todayWorkout ? (
-                <>
-                  <Text style={styles.workoutName}>{data.todayWorkout.name}</Text>
-                  {data.todayWorkout.goal || workoutDuration ? (
-                    <View style={styles.chipRow}>
-                      {data.todayWorkout.goal ? (
-                        <View style={styles.chip}>
-                          <Ionicons name="flag-outline" size={15} color={colors.textSecondary} />
-                          <Text style={styles.chipText}>{data.todayWorkout.goal}</Text>
-                        </View>
-                      ) : null}
-                      {workoutDuration ? (
-                        <View style={styles.chip}>
-                          <Ionicons name="time-outline" size={15} color={colors.textSecondary} />
-                          <Text style={[styles.chipText, tabular]}>~{workoutDuration} min</Text>
-                        </View>
-                      ) : null}
-                    </View>
-                  ) : null}
-                  {data.todayWorkout.coach_notes ? (
-                    <View style={styles.noteBlock}>
-                      <Ionicons name="chatbubble-ellipses-outline" size={18} color={colors.textSecondary} />
-                      <View style={styles.noteBody}>
-                        <Text style={type.label}>Note del coach</Text>
-                        <Text style={styles.noteText}>{data.todayWorkout.coach_notes}</Text>
+            <Appear delay={appearDelay(1)}>
+              <Card
+                title="Allenamento di oggi"
+                beacon={workoutTone ?? undefined}
+                style={workoutTone ? shadow.beacon(workoutTone) : undefined}
+              >
+                {data.todayWorkout ? (
+                  <>
+                    <Text style={styles.workoutName}>{data.todayWorkout.name}</Text>
+                    {data.todayWorkout.goal || workoutDuration ? (
+                      <View style={styles.chipRow}>
+                        {data.todayWorkout.goal ? (
+                          <View style={styles.chip}>
+                            <Ionicons name="flag-outline" size={15} color={colors.textSecondary} />
+                            <Text style={styles.chipText}>{data.todayWorkout.goal}</Text>
+                          </View>
+                        ) : null}
+                        {workoutDuration ? (
+                          <View style={styles.chip}>
+                            <Ionicons name="time-outline" size={15} color={colors.textSecondary} />
+                            <Text style={[styles.chipText, tabular]}>~{workoutDuration} min</Text>
+                          </View>
+                        ) : null}
                       </View>
-                    </View>
-                  ) : null}
-                  {data.todayWorkoutDone ? (
+                    ) : null}
+                    {data.todayWorkout.coach_notes ? (
+                      <View style={styles.noteBlock}>
+                        <Ionicons name="chatbubble-ellipses-outline" size={18} color={colors.textSecondary} />
+                        <View style={styles.noteBody}>
+                          <Text style={type.label}>Note del coach</Text>
+                          <Text style={styles.noteText}>{data.todayWorkout.coach_notes}</Text>
+                        </View>
+                      </View>
+                    ) : null}
+                    {data.todayWorkoutDone ? (
+                      <View style={styles.statusRow}>
+                        <Ionicons name="checkmark-circle" size={22} color={colors.mint} />
+                        <Text style={styles.doneText}>Completato — ottimo lavoro!</Text>
+                      </View>
+                    ) : (
+                      <PrimaryButton
+                        label="INIZIA ALLENAMENTO"
+                        onPress={() => router.push(`/workout/${data.todayWorkout?.id}`)}
+                        style={styles.fullWidth}
+                      />
+                    )}
+                  </>
+                ) : (
+                  <View style={styles.statusRow}>
+                    <Ionicons name="moon" size={22} color={colors.cyan} />
+                    <Text style={styles.body}>Nessun allenamento in programma: riposo e recupero.</Text>
+                  </View>
+                )}
+              </Card>
+            </Appear>
+
+            <Appear delay={appearDelay(2)}>
+              <Card title="Check biofeedback di oggi">
+                {data.todayBiofeedback ? (
+                  <View style={styles.biofeedbackRow}>
                     <View style={styles.statusRow}>
                       <Ionicons name="checkmark-circle" size={22} color={colors.mint} />
-                      <Text style={styles.doneText}>Completato — ottimo lavoro!</Text>
+                      <Text style={styles.doneText}>Completato</Text>
                     </View>
-                  ) : (
-                    <PrimaryButton
-                      label="INIZIA ALLENAMENTO"
-                      onPress={() => router.push(`/workout/${data.todayWorkout?.id}`)}
-                      style={styles.fullWidth}
-                    />
-                  )}
-                </>
-              ) : (
-                <View style={styles.statusRow}>
-                  <Ionicons name="moon" size={22} color={colors.cyan} />
-                  <Text style={styles.body}>Nessun allenamento in programma: riposo e recupero.</Text>
-                </View>
-              )}
-            </Card>
-
-            <Card title="Check biofeedback di oggi">
-              {data.todayBiofeedback ? (
-                <View style={styles.biofeedbackRow}>
-                  <View style={styles.statusRow}>
-                    <Ionicons name="checkmark-circle" size={22} color={colors.mint} />
-                    <Text style={styles.doneText}>Completato</Text>
+                    <Press
+                      onPress={() => router.push('/biofeedback/oggi')}
+                      hitSlop={8}
+                      style={styles.link}
+                      accessibilityLabel="Modifica il check di oggi"
+                    >
+                      <Text style={styles.linkText}>Modifica</Text>
+                      <Ionicons name="chevron-forward" size={16} color={colors.accent} />
+                    </Press>
                   </View>
-                  <Press
-                    onPress={() => router.push('/biofeedback/oggi')}
-                    hitSlop={8}
-                    style={styles.link}
-                    accessibilityLabel="Modifica il check di oggi"
-                  >
-                    <Text style={styles.linkText}>Modifica</Text>
-                    <Ionicons name="chevron-forward" size={16} color={colors.accent} />
-                  </Press>
-                </View>
-              ) : (
-                <PrimaryButton
-                  label="COMPILA IL CHECK DI OGGI"
-                  onPress={() => router.push('/biofeedback/oggi')}
-                  style={styles.fullWidth}
-                />
-              )}
-            </Card>
-
-            <Card title="Nutrizione di oggi">
-              {data.nutritionDay ? (
-                <>
-                  {/* Le kcal sono un dato di supporto: scendono a metricSm, il 64px
-                      resta alla sola prontezza (un solo numero dominante per schermata). */}
-                  <View style={styles.kcalBlock}>
-                    <View style={styles.kcalRow}>
-                      <Text style={[styles.kcalValue, tabular]}>
-                        {data.nutritionDay.kcal.toLocaleString('it-IT')}
-                      </Text>
-                      <Text style={styles.kcalUnit}>kcal</Text>
-                    </View>
-                    <Text style={styles.kcalCaption}>Obiettivo del giorno</Text>
-                  </View>
-                  {/* I macro sono dati categoriali, non segnali: scala neutra, mai i colori-segnale. */}
-                  <View style={styles.pillRow}>
-                    <StatPill
-                      label="Proteine"
-                      value={`${data.nutritionDay.protein_g}g`}
-                      color={colors.macroProtein}
-                    />
-                    <StatPill label="Carbo" value={`${data.nutritionDay.carbs_g}g`} color={colors.macroCarbs} />
-                    <StatPill label="Grassi" value={`${data.nutritionDay.fat_g}g`} color={colors.macroFat} />
-                  </View>
-                </>
-              ) : (
-                <Text style={styles.body}>
-                  Nessun piano nutrizionale attivo per oggi. Chiedi al tuo coach!
-                </Text>
-              )}
-            </Card>
-
-            <Card title="Aggiungi velocemente">
-              <View style={styles.quickRow}>
-                <Press
-                  onPress={() => toggleQuickForm('peso')}
-                  haptic="light"
-                  style={[styles.quickButton, quickForm === 'peso' && styles.quickButtonActive]}
-                  accessibilityLabel="Registra peso"
-                >
-                  <Ionicons
-                    name="scale-outline"
-                    size={20}
-                    color={quickForm === 'peso' ? colors.accent : colors.textSecondary}
-                  />
-                  <Text style={styles.quickButtonText}>Registra peso</Text>
-                </Press>
-                <Press
-                  onPress={() => toggleQuickForm('nota')}
-                  haptic="light"
-                  style={[styles.quickButton, quickForm === 'nota' && styles.quickButtonActive]}
-                  accessibilityLabel="Aggiungi nota"
-                >
-                  <Ionicons
-                    name="create-outline"
-                    size={20}
-                    color={quickForm === 'nota' ? colors.accent : colors.textSecondary}
-                  />
-                  <Text style={styles.quickButtonText}>Aggiungi nota</Text>
-                </Press>
-              </View>
-              {quickForm ? (
-                <>
-                  <TextInput
-                    style={[sharedStyles.input, quickForm === 'peso' ? tabular : styles.quickNote]}
-                    value={quickValue}
-                    onChangeText={setQuickValue}
-                    placeholder={quickForm === 'peso' ? 'Peso in kg (es. 72,5)' : 'Nota di oggi per il coach'}
-                    placeholderTextColor={colors.textTertiary}
-                    keyboardType={quickForm === 'peso' ? 'decimal-pad' : 'default'}
-                    multiline={quickForm === 'nota'}
-                  />
-                  <PrimaryButton label="Salva" onPress={saveQuick} loading={quickSaving} style={styles.fullWidth} />
-                </>
-              ) : null}
-            </Card>
-
-            <Card title="Check-in settimanale">
-              {data.checkinDue ? (
-                <>
-                  <Text style={styles.body}>
-                    È il momento del check-in di questa settimana: bastano 2 minuti.
-                  </Text>
+                ) : (
                   <PrimaryButton
-                    label="COMPILA CHECK-IN"
-                    variant="ghost"
-                    onPress={() => router.push('/checkin/nuovo')}
+                    label="COMPILA IL CHECK DI OGGI"
+                    onPress={() => router.push('/biofeedback/oggi')}
                     style={styles.fullWidth}
                   />
-                </>
-              ) : (
-                <View style={styles.statusRow}>
-                  <Ionicons name="checkmark-circle" size={22} color={colors.mint} />
-                  <Text style={styles.doneText}>Check-in inviato, il coach lo sta esaminando.</Text>
+                )}
+              </Card>
+            </Appear>
+
+            <Appear delay={appearDelay(3)}>
+              <Card title="Nutrizione di oggi">
+                {data.nutritionDay ? (
+                  <>
+                    {/* Le kcal sono un dato di supporto: scendono a metricSm, il 64px
+                        resta alla sola prontezza (un solo numero dominante per schermata). */}
+                    <View style={styles.kcalBlock}>
+                      <View style={styles.kcalRow}>
+                        <Text style={[styles.kcalValue, tabular]}>
+                          {data.nutritionDay.kcal.toLocaleString('it-IT')}
+                        </Text>
+                        <Text style={styles.kcalUnit}>kcal</Text>
+                      </View>
+                      <Text style={styles.kcalCaption}>Obiettivo del giorno</Text>
+                    </View>
+                    {/* I macro sono dati categoriali, non segnali: scala neutra, mai i colori-segnale. */}
+                    <View style={styles.pillRow}>
+                      <StatPill
+                        label="Proteine"
+                        value={`${data.nutritionDay.protein_g}g`}
+                        color={colors.macroProtein}
+                      />
+                      <StatPill label="Carbo" value={`${data.nutritionDay.carbs_g}g`} color={colors.macroCarbs} />
+                      <StatPill label="Grassi" value={`${data.nutritionDay.fat_g}g`} color={colors.macroFat} />
+                    </View>
+                  </>
+                ) : (
+                  <Text style={styles.body}>
+                    Nessun piano nutrizionale attivo per oggi. Chiedi al tuo coach!
+                  </Text>
+                )}
+              </Card>
+            </Appear>
+
+            <Appear delay={appearDelay(4)}>
+              <Card title="Aggiungi velocemente">
+                <View style={styles.quickRow}>
+                  <Press
+                    onPress={() => toggleQuickForm('peso')}
+                    haptic="light"
+                    style={[styles.quickButton, quickForm === 'peso' && styles.quickButtonActive]}
+                    accessibilityLabel="Registra peso"
+                  >
+                    <Ionicons
+                      name="scale-outline"
+                      size={20}
+                      color={quickForm === 'peso' ? colors.accent : colors.textSecondary}
+                    />
+                    <Text style={styles.quickButtonText}>Registra peso</Text>
+                  </Press>
+                  <Press
+                    onPress={() => toggleQuickForm('nota')}
+                    haptic="light"
+                    style={[styles.quickButton, quickForm === 'nota' && styles.quickButtonActive]}
+                    accessibilityLabel="Aggiungi nota"
+                  >
+                    <Ionicons
+                      name="create-outline"
+                      size={20}
+                      color={quickForm === 'nota' ? colors.accent : colors.textSecondary}
+                    />
+                    <Text style={styles.quickButtonText}>Aggiungi nota</Text>
+                  </Press>
                 </View>
-              )}
-              {data.latestWeight != null ? (
-                <View style={styles.weightRow}>
-                  <Text style={type.label}>Ultimo peso registrato</Text>
-                  <Text style={styles.weightValue}>{data.latestWeight} kg</Text>
-                </View>
-              ) : null}
-            </Card>
+                {quickForm ? (
+                  <>
+                    <TextInput
+                      style={[sharedStyles.input, quickForm === 'peso' ? tabular : styles.quickNote]}
+                      value={quickValue}
+                      onChangeText={setQuickValue}
+                      placeholder={quickForm === 'peso' ? 'Peso in kg (es. 72,5)' : 'Nota di oggi per il coach'}
+                      placeholderTextColor={colors.textTertiary}
+                      keyboardType={quickForm === 'peso' ? 'decimal-pad' : 'default'}
+                      multiline={quickForm === 'nota'}
+                    />
+                    <PrimaryButton label="Salva" onPress={saveQuick} loading={quickSaving} style={styles.fullWidth} />
+                  </>
+                ) : null}
+              </Card>
+            </Appear>
+
+            <Appear delay={appearDelay(5)}>
+              <Card title="Check-in settimanale">
+                {data.checkinDue ? (
+                  <>
+                    <Text style={styles.body}>
+                      È il momento del check-in di questa settimana: bastano 2 minuti.
+                    </Text>
+                    <PrimaryButton
+                      label="COMPILA CHECK-IN"
+                      variant="ghost"
+                      onPress={() => router.push('/checkin/nuovo')}
+                      style={styles.fullWidth}
+                    />
+                  </>
+                ) : (
+                  <View style={styles.statusRow}>
+                    <Ionicons name="checkmark-circle" size={22} color={colors.mint} />
+                    <Text style={styles.doneText}>Check-in inviato, il coach lo sta esaminando.</Text>
+                  </View>
+                )}
+                {data.latestWeight != null ? (
+                  <View style={styles.weightRow}>
+                    <Text style={type.label}>Ultimo peso registrato</Text>
+                    <Text style={styles.weightValue}>{data.latestWeight} kg</Text>
+                  </View>
+                ) : null}
+              </Card>
+            </Appear>
           </>
         )}
       </ScrollView>

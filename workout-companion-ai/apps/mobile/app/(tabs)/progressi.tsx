@@ -22,6 +22,7 @@ import { colors, concentric, radius, shadow, spacing, sharedStyles, tabular, typ
 import { showError } from '../../lib/utils';
 import { getActiveCoachClient, getUserId } from '../../lib/queries';
 import { ActivityRing } from '../../components/ActivityRing';
+import { Appear, appearDelay } from '../../components/Appear';
 import { Card } from '../../components/Card';
 import { MetricBlock } from '../../components/MetricBlock';
 import { StatPill } from '../../components/StatPill';
@@ -326,129 +327,142 @@ export default function ProgressiScreen() {
         </View>
 
         {/* IL BLOCCO DOMINANTE: tutto il ferro spostato, con l'anello dello streak accanto.
-            È l'unico faro della schermata (ambra = sforzo accumulato). */}
-        <Card beacon={colors.amber} style={shadow.beacon(colors.amber)}>
-          <MetricBlock
-            value={tonsLabel}
-            unit="t"
-            label="Volume totale"
-            caption="Il ferro che hai spostato finora."
-            color={colors.amber}
-            trailing={
-              <View style={styles.streak}>
-                <ActivityRing progress={streakProgress} color={colors.mint} size={96} strokeWidth={12}>
-                  <Text style={styles.streakValue}>{data.streak}</Text>
-                </ActivityRing>
-                <Text style={styles.streakLabel} numberOfLines={2}>
-                  Sett. di fila
-                </Text>
-              </View>
-            }
-          />
-        </Card>
+            È l'unico faro della schermata (ambra = sforzo accumulato).
+            Da qui parte la cascata d'entrata: 0/60/120/180 ms. */}
+        <Appear delay={appearDelay(0)}>
+          <Card beacon={colors.amber} style={shadow.beacon(colors.amber)}>
+            <MetricBlock
+              value={tonsLabel}
+              unit="t"
+              label="Volume totale"
+              caption="Il ferro che hai spostato finora."
+              color={colors.amber}
+              trailing={
+                <View style={styles.streak}>
+                  <ActivityRing progress={streakProgress} color={colors.mint} size={96} strokeWidth={12}>
+                    <Text style={styles.streakValue}>{data.streak}</Text>
+                  </ActivityRing>
+                  <Text style={styles.streakLabel} numberOfLines={2}>
+                    Sett. di fila
+                  </Text>
+                </View>
+              }
+            />
+          </Card>
+        </Appear>
 
         {/* KPI di supporto: due righe pulite, un colore per ogni significato. */}
-        <View style={styles.pillRow}>
+        <Appear delay={appearDelay(1)} style={styles.pillRow}>
           <StatPill label="Allenamenti" value={String(data.totalWorkouts)} color={colors.mint} />
           <StatPill label="Freq./sett." value={String(data.frequency)} />
-        </View>
-        <View style={styles.pillRow}>
+        </Appear>
+        <Appear delay={appearDelay(2)} style={styles.pillRow}>
           <StatPill
             label="Peso medio"
             value={data.avgWeight != null ? `${data.avgWeight} kg` : '—'}
             color={colors.cyan}
           />
           <StatPill label="Record" value={String(data.prs.length)} color={colors.rose} />
-        </View>
+        </Appear>
 
         {data.insights.length > 0 ? (
-          <Card>
-            <View style={styles.cardHead}>
-              <Ionicons name="sparkles" size={18} color={colors.violet} />
-              <Text style={[type.label, styles.aiLabel]}>Insight per te</Text>
-            </View>
-            <View style={styles.insightList}>
-              {data.insights.map((ins) => {
-                const tone = INSIGHT_TONE[ins.severity];
-                return (
-                  <View key={ins.id} style={styles.insight}>
-                    <Ionicons name={tone.icon} size={22} color={tone.color} style={styles.insightIcon} />
-                    <View style={styles.insightBody}>
-                      <Text style={[styles.insightTitle, { color: tone.color }]}>{ins.title}</Text>
-                      <Text style={styles.insightText}>{ins.body}</Text>
+          <Appear delay={appearDelay(3)}>
+            <Card>
+              <View style={styles.cardHead}>
+                <Ionicons name="sparkles" size={18} color={colors.violet} />
+                <Text style={[type.label, styles.aiLabel]}>Insight per te</Text>
+              </View>
+              <View style={styles.insightList}>
+                {data.insights.map((ins) => {
+                  const tone = INSIGHT_TONE[ins.severity];
+                  return (
+                    <View key={ins.id} style={styles.insight}>
+                      <Ionicons name={tone.icon} size={22} color={tone.color} style={styles.insightIcon} />
+                      <View style={styles.insightBody}>
+                        <Text style={[styles.insightTitle, { color: tone.color }]}>{ins.title}</Text>
+                        <Text style={styles.insightText}>{ins.body}</Text>
+                      </View>
                     </View>
-                  </View>
-                );
-              })}
-            </View>
-          </Card>
+                  );
+                })}
+              </View>
+            </Card>
+          </Appear>
         ) : null}
 
-        <Card title="Volume settimanale">
-          <BarChart data={volumeBars} color={colors.amber} height={152} />
-          {data.trendPct != null ? (
-            <View style={styles.delta}>
-              <Ionicons
-                name={data.trendPct >= 0 ? 'trending-up' : 'trending-down'}
-                size={20}
-                color={trendTone}
-              />
-              <Text style={styles.deltaText}>
-                <Text style={[styles.deltaValue, tabular, { color: trendTone }]}>
-                  {data.trendPct >= 0 ? '+' : ''}
-                  {data.trendPct}%
+        <Appear delay={appearDelay(4)}>
+          <Card title="Volume settimanale">
+            <BarChart data={volumeBars} color={colors.amber} height={152} />
+            {data.trendPct != null ? (
+              <View style={styles.delta}>
+                <Ionicons
+                  name={data.trendPct >= 0 ? 'trending-up' : 'trending-down'}
+                  size={20}
+                  color={trendTone}
+                />
+                <Text style={styles.deltaText}>
+                  <Text style={[styles.deltaValue, tabular, { color: trendTone }]}>
+                    {data.trendPct >= 0 ? '+' : ''}
+                    {data.trendPct}%
+                  </Text>
+                  {" rispetto all'inizio del periodo"}
                 </Text>
-                {" rispetto all'inizio del periodo"}
-              </Text>
-            </View>
-          ) : null}
-        </Card>
+              </View>
+            ) : null}
+          </Card>
+        </Appear>
 
-        <Card title="Attività settimanale">
-          <Text style={styles.cardSub}>Allenamenti completati, settimana per settimana.</Text>
-          <BarChart data={freqBars} color={colors.mint} height={112} />
-        </Card>
+        <Appear delay={appearDelay(5)}>
+          <Card title="Attività settimanale">
+            <Text style={styles.cardSub}>Allenamenti completati, settimana per settimana.</Text>
+            <BarChart data={freqBars} color={colors.mint} height={112} />
+          </Card>
+        </Appear>
 
         {data.strength ? (
-          <Card title="Progressione forza">
-            <Text style={styles.cardTitleStrong} numberOfLines={2}>
-              {data.strength.exerciseName}
-            </Text>
-            <Text style={styles.cardSub}>1RM stimato per seduta (kg).</Text>
-            {/* Serie temporale di carico: è sforzo, non un record — quindi ambra.
-                Il rosa resta riservato ai record personali e alle azioni distruttive. */}
-            <BarChart data={data.strength.points} color={colors.amber} />
-          </Card>
+          <Appear delay={appearDelay(6)}>
+            <Card title="Progressione forza">
+              <Text style={styles.cardTitleStrong} numberOfLines={2}>
+                {data.strength.exerciseName}
+              </Text>
+              <Text style={styles.cardSub}>1RM stimato per seduta (kg).</Text>
+              {/* Serie temporale di carico: è sforzo, non un record — quindi ambra.
+                  Il rosa resta riservato ai record personali e alle azioni distruttive. */}
+              <BarChart data={data.strength.points} color={colors.amber} />
+            </Card>
+          </Appear>
         ) : null}
 
-        <Card title="Record personali">
-          {data.prs.length > 0 ? (
-            <View style={styles.prList}>
-              {data.prs.map((pr, i) => (
-                <View key={pr.id} style={[styles.prRow, i === data.prs.length - 1 && styles.prRowLast]}>
-                  <View style={styles.prBadge}>
-                    <Ionicons name="trophy" size={18} color={colors.rose} />
-                  </View>
-                  <View style={styles.prInfo}>
-                    <Text style={styles.prExercise} numberOfLines={1}>
-                      {pr.exercise?.name ?? 'Esercizio'}
+        <Appear delay={appearDelay(7)}>
+          <Card title="Record personali">
+            {data.prs.length > 0 ? (
+              <View style={styles.prList}>
+                {data.prs.map((pr, i) => (
+                  <View key={pr.id} style={[styles.prRow, i === data.prs.length - 1 && styles.prRowLast]}>
+                    <View style={styles.prBadge}>
+                      <Ionicons name="trophy" size={18} color={colors.rose} />
+                    </View>
+                    <View style={styles.prInfo}>
+                      <Text style={styles.prExercise} numberOfLines={1}>
+                        {pr.exercise?.name ?? 'Esercizio'}
+                      </Text>
+                      <Text style={styles.prMeta} numberOfLines={1}>
+                        {RECORD_LABELS[pr.record_type]} · {formatDay(pr.achieved_at)}
+                      </Text>
+                    </View>
+                    <Text style={styles.prValue}>
+                      {pr.record_type === 'max_reps' ? `${Math.round(pr.value)}` : `${pr.value} kg`}
                     </Text>
-                    <Text style={styles.prMeta} numberOfLines={1}>
-                      {RECORD_LABELS[pr.record_type]} · {formatDay(pr.achieved_at)}
-                    </Text>
                   </View>
-                  <Text style={styles.prValue}>
-                    {pr.record_type === 'max_reps' ? `${Math.round(pr.value)}` : `${pr.value} kg`}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          ) : (
-            <Text style={styles.emptyText}>
-              Nessun record ancora: continua così e cominceranno ad arrivare. 💪
-            </Text>
-          )}
-        </Card>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.emptyText}>
+                Nessun record ancora: continua così e cominceranno ad arrivare. 💪
+              </Text>
+            )}
+          </Card>
+        </Appear>
       </ScrollView>
     </SafeAreaView>
   );

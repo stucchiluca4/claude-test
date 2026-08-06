@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ArrowUpRight, CheckCircle2, ChevronRight, Clock3, Hourglass } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { PageHeader, Card, Badge, EmptyState, KpiCard, buttonSecondary } from '@/components/ui';
+import { Reveal } from '@/components/motion';
 import { cn, fullName, formatDate, formatKg } from '@/lib/utils';
 
 /** Ogni stato porta colore + icona + parola: il colore non è mai l'unica informazione. */
@@ -16,12 +17,20 @@ const STATUS_META: Record<
   pending: { label: 'In attesa', color: 'default', icon: Hourglass },
 };
 
-/** Ritardi scalati per l'ingresso della fascia KPI (il ritardo va sulla Card interna). */
-const KPI_DELAY = [
-  '[&>div]:[animation-delay:0ms]',
-  '[&>div]:[animation-delay:50ms]',
-  '[&>div]:[animation-delay:100ms]',
-];
+/**
+ * Le primitive condivise (PageHeader, KpiCard, EmptyState) portano una `.rise`
+ * che parte al montaggio: dentro un Reveal il tempo lo detta lo scorrimento.
+ */
+const NO_RISE = '[&_.rise]:!animate-none';
+
+/** Passo della cascata: le fasce entrano una dopo l'altra, non tutte insieme. */
+const STEP = 70;
+
+/**
+ * Le fasce che portano una lista lunga partono appena si affacciano: con la
+ * soglia normale un elenco più alto dello schermo non la raggiungerebbe mai.
+ */
+const TALL = 0.02;
 
 const DEMO_CHECKINS = [
   { id: 'demo-check-1', week_start: '2026-07-20', status: 'submitted', weight_kg: 82.4, submitted_at: '2026-07-27T08:12:00Z', coach_client: { client: { first_name: 'Andrea', last_name: 'Costa' } } },
@@ -247,51 +256,57 @@ function CheckinsBoard({ checkins, demo = false }: { checkins: any[]; demo?: boo
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Check & Progressi"
-        subtitle={
-          demo
-            ? 'Stessa sezione check-in, compilata con progressi demo: perfetta da mostrare in call.'
-            : 'I check-in settimanali dei tuoi clienti: peso, foto, benessere. Qui decidi la settimana che verrà.'
-        }
-        actions={
-          demo ? (
-            <>
-              <Badge color="accent">Demo</Badge>
-              <Link href="/checkin" className={cn(buttonSecondary, 'min-h-[44px]')}>
-                Torna ai dati reali
+      {/* ---------- Testata: dove sei e cosa puoi fare da qui ---------- */}
+      <Reveal className={NO_RISE}>
+        <PageHeader
+          title="Check & Progressi"
+          subtitle={
+            demo
+              ? 'Stessa sezione check-in, compilata con progressi demo: perfetta da mostrare in call.'
+              : 'I check-in settimanali dei tuoi clienti: peso, foto, benessere. Qui decidi la settimana che verrà.'
+          }
+          actions={
+            demo ? (
+              <>
+                <Badge color="accent">Demo</Badge>
+                <Link href="/checkin" className={cn(buttonSecondary, 'min-h-[44px]')}>
+                  Torna ai dati reali
+                </Link>
+              </>
+            ) : (
+              <Link href="/checkin?demo=1" className={cn(buttonSecondary, 'min-h-[44px]')}>
+                Vedi con dati demo
+                <ArrowUpRight size={16} aria-hidden />
               </Link>
-            </>
-          ) : (
-            <Link href="/checkin?demo=1" className={cn(buttonSecondary, 'min-h-[44px]')}>
-              Vedi con dati demo
-              <ArrowUpRight size={16} aria-hidden />
-            </Link>
-          )
-        }
-      />
-
-      {rows.length === 0 ? (
-        <EmptyState
-          emoji="📸"
-          title="Nessun check-in ricevuto"
-          description="Quando i tuoi clienti invieranno il check-in settimanale dall'app — peso, foto, sonno, energia, aderenza — lo troverai qui, pronto da leggere e commentare."
-          action={
-            <Link href="/checkin?demo=1" className={cn(buttonSecondary, 'min-h-[44px]')}>
-              Guarda com’è con dati demo
-              <ArrowUpRight size={16} aria-hidden />
-            </Link>
+            )
           }
         />
+      </Reveal>
+
+      {rows.length === 0 ? (
+        <Reveal delay={STEP} className={NO_RISE}>
+          <EmptyState
+            emoji="📸"
+            title="Nessun check-in ricevuto"
+            description="Quando i tuoi clienti invieranno il check-in settimanale dall'app — peso, foto, sonno, energia, aderenza — lo troverai qui, pronto da leggere e commentare."
+            action={
+              <Link href="/checkin?demo=1" className={cn(buttonSecondary, 'min-h-[44px]')}>
+                Guarda com’è con dati demo
+                <ArrowUpRight size={16} aria-hidden />
+              </Link>
+            }
+          />
+        </Reveal>
       ) : (
         <>
           {/* ---------- Il polso della settimana ---------- */}
+          {/* Le card entrano a cascata: il ritardo dà l'ordine di lettura, da sinistra. */}
           <section
             aria-label="Stato dei check-in"
             className="grid grid-cols-2 gap-4 md:grid-cols-3"
           >
             {kpis.map((kpi, i) => (
-              <div key={kpi.label} className={KPI_DELAY[i]}>
+              <Reveal key={kpi.label} delay={i * STEP} className={NO_RISE}>
                 <KpiCard
                   label={kpi.label}
                   value={kpi.value}
@@ -299,58 +314,64 @@ function CheckinsBoard({ checkins, demo = false }: { checkins: any[]; demo?: boo
                   deltaGood={kpi.deltaGood}
                   tone={kpi.tone}
                 />
-              </div>
+              </Reveal>
             ))}
           </section>
 
           {/* ---------- IL FARO: la coda di lavoro ---------- */}
-          <Card beacon={toReview.length > 0} className="rise rise-3 overflow-hidden p-0">
-            <div className="flex flex-wrap items-start justify-between gap-3 px-6 pb-4 pt-6">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2.5">
-                  <Clock3 size={19} className="shrink-0 text-amber" aria-hidden />
-                  <h2 className="text-[17px] font-bold text-white">Da valutare</h2>
-                </div>
-                <p className="mt-1 text-[13px] text-text-secondary">
-                  Check-in arrivati e ancora senza il tuo feedback. Apri, leggi, rispondi.
-                </p>
-              </div>
-              <span className="shrink-0 rounded-full bg-raised px-3 py-1.5 text-[13px] font-bold tnum text-white">
-                {toReview.length} in attesa
-              </span>
-            </div>
-
-            {toReview.length === 0 ? (
-              <div className="flex items-center gap-3 border-t border-line/60 px-6 py-6">
-                <CheckCircle2 size={20} className="shrink-0 text-mint" aria-hidden />
-                <p className="text-[15px] text-text-secondary">
-                  Sei in pari: nessun check-in in attesa della tua valutazione.
-                </p>
-              </div>
-            ) : (
-              <CheckinRows rows={toReview} />
-            )}
-          </Card>
-
-          {/* ---------- Lo storico ---------- */}
-          {archive.length > 0 && (
-            <Card className="rise rise-4 overflow-hidden p-0">
+          {/* Le righe sono tante: entra il contenitore, non una riga alla volta. */}
+          <Reveal delay={STEP * 3} amount={TALL}>
+            <Card beacon={toReview.length > 0} className="overflow-hidden p-0">
               <div className="flex flex-wrap items-start justify-between gap-3 px-6 pb-4 pt-6">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2.5">
-                    <CheckCircle2 size={19} className="shrink-0 text-text-secondary" aria-hidden />
-                    <h2 className="text-[17px] font-bold text-white">Storico check-in</h2>
+                    <Clock3 size={19} className="shrink-0 text-amber" aria-hidden />
+                    <h2 className="text-[17px] font-bold text-white">Da valutare</h2>
                   </div>
                   <p className="mt-1 text-[13px] text-text-secondary">
-                    Settimane già chiuse: riaprile per rileggere foto, numeri e il feedback che hai dato.
+                    Check-in arrivati e ancora senza il tuo feedback. Apri, leggi, rispondi.
                   </p>
                 </div>
                 <span className="shrink-0 rounded-full bg-raised px-3 py-1.5 text-[13px] font-bold tnum text-white">
-                  {archive.length} {archive.length === 1 ? 'settimana' : 'settimane'}
+                  {toReview.length} in attesa
                 </span>
               </div>
-              <CheckinRows rows={archive} />
+
+              {toReview.length === 0 ? (
+                <div className="flex items-center gap-3 border-t border-line/60 px-6 py-6">
+                  <CheckCircle2 size={20} className="shrink-0 text-mint" aria-hidden />
+                  <p className="text-[15px] text-text-secondary">
+                    Sei in pari: nessun check-in in attesa della tua valutazione.
+                  </p>
+                </div>
+              ) : (
+                <CheckinRows rows={toReview} />
+              )}
             </Card>
+          </Reveal>
+
+          {/* ---------- Lo storico ---------- */}
+          {/* Arriva quasi sempre sotto la piega: entra da sé, con un respiro corto. */}
+          {archive.length > 0 && (
+            <Reveal delay={STEP} amount={TALL}>
+              <Card className="overflow-hidden p-0">
+                <div className="flex flex-wrap items-start justify-between gap-3 px-6 pb-4 pt-6">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2.5">
+                      <CheckCircle2 size={19} className="shrink-0 text-text-secondary" aria-hidden />
+                      <h2 className="text-[17px] font-bold text-white">Storico check-in</h2>
+                    </div>
+                    <p className="mt-1 text-[13px] text-text-secondary">
+                      Settimane già chiuse: riaprile per rileggere foto, numeri e il feedback che hai dato.
+                    </p>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-raised px-3 py-1.5 text-[13px] font-bold tnum text-white">
+                    {archive.length} {archive.length === 1 ? 'settimana' : 'settimane'}
+                  </span>
+                </div>
+                <CheckinRows rows={archive} />
+              </Card>
+            </Reveal>
           )}
         </>
       )}

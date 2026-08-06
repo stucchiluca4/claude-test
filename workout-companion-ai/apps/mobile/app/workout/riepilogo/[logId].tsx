@@ -1,5 +1,13 @@
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +18,7 @@ import { colors, concentric, radius, shadow, spacing, sharedStyles, tabular, typ
 import { localDateString, showError } from '../../../lib/utils';
 import { getActiveCoachClient, getExerciseFeedbackForLog, getUserId } from '../../../lib/queries';
 import { ActivityRing } from '../../../components/ActivityRing';
+import { Appear, appearDelay } from '../../../components/Appear';
 import { Card } from '../../../components/Card';
 import { GlassSurface } from '../../../components/Glass';
 import { PrimaryButton } from '../../../components/PrimaryButton';
@@ -26,6 +35,12 @@ const RECORD_LABELS: Record<RecordType, string> = {
 
 /** Ore massime della previsione di recupero: riempiono l'anello ciano. */
 const RECOVERY_MAX_HOURS = 72;
+
+/** Corsa di scorrimento entro cui il vetro si accende del tutto (px). */
+const GLASS_RANGE = 120;
+
+/** Scatto minimo sotto il quale non vale la pena ridisegnare il vetro. */
+const GLASS_STEP = 0.05;
 
 interface SummaryData {
   log: WorkoutLog;
@@ -59,6 +74,25 @@ export default function WorkoutSummaryScreen() {
   const [aiFailed, setAiFailed] = useState(false);
   // Altezza della barra d'azione in vetro: il contenuto le scorre sotto senza finirci dietro.
   const [barH, setBarH] = useState(96);
+  // Quanto contenuto sta passando sotto il vetro (0 fermo, 1 dopo ~120px).
+  const [glassActivity, setGlassActivity] = useState(0);
+  const glassActivityRef = useRef(0);
+
+  /**
+   * Accende il vetro in base a quanto riepilogo gli è passato sotto: da 0 a 1
+   * nei primi 120px di scorrimento, con throttle a scatti di 0.05 così lo stato
+   * non si aggiorna a ogni frame.
+   */
+  const onContentScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const y = e.nativeEvent.contentOffset.y;
+    const next = Math.max(0, Math.min(1, y / GLASS_RANGE));
+    const current = glassActivityRef.current;
+    if (next === current) return;
+    const settled = next === 0 || next === 1;
+    if (!settled && Math.abs(next - current) < GLASS_STEP) return;
+    glassActivityRef.current = next;
+    setGlassActivity(next);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -253,40 +287,45 @@ export default function WorkoutSummaryScreen() {
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: barH + spacing.xxl }]}
         showsVerticalScrollIndicator={false}
+        onScroll={onContentScroll}
+        scrollEventThrottle={16}
       >
-        <View style={styles.hero}>
+        {/* Entrata a cascata: il riepilogo si compone dall'alto, 0/60/120/180 ms. */}
+        <Appear delay={appearDelay(0)} style={styles.hero}>
           <View style={styles.doneChip}>
             <Ionicons name="checkmark-circle" size={17} color={colors.mint} />
             <Text style={styles.doneChipText}>Allenamento completato</Text>
           </View>
           <Text style={[sharedStyles.screenTitle, styles.heroTitle]}>{data.workoutName}</Text>
-        </View>
+        </Appear>
 
         {/* IL FARO: il punteggio della seduta, letto in tre secondi dall'anello. */}
-        <Card title="Punteggio seduta" beacon={tone} style={shadow.beacon(tone)}>
-          <View style={styles.ringWrap}>
-            <ActivityRing progress={score / 100} color={tone} size={212} strokeWidth={16}>
-              <View style={styles.ringCore}>
-                <Text style={[type.metric, tabular, { color: tone }]}>{score}</Text>
-                <Text style={[type.label, styles.ringUnit]}>su 100</Text>
-              </View>
-            </ActivityRing>
-          </View>
-
-          {hasPr ? (
-            <View style={styles.recordChip}>
-              <Ionicons name="trophy" size={16} color={colors.rose} />
-              <Text style={styles.recordChipText}>
-                {data.prs.length === 1 ? '1 nuovo record personale' : `${data.prs.length} nuovi record personali`}
-              </Text>
+        <Appear delay={appearDelay(1)}>
+          <Card title="Punteggio seduta" beacon={tone} style={shadow.beacon(tone)}>
+            <View style={styles.ringWrap}>
+              <ActivityRing progress={score / 100} color={tone} size={212} strokeWidth={16}>
+                <View style={styles.ringCore}>
+                  <Text style={[type.metric, tabular, { color: tone }]}>{score}</Text>
+                  <Text style={[type.label, styles.ringUnit]}>su 100</Text>
+                </View>
+              </ActivityRing>
             </View>
-          ) : null}
 
-          <Text style={styles.heroCaption}>{scoreCaption}</Text>
-        </Card>
+            {hasPr ? (
+              <View style={styles.recordChip}>
+                <Ionicons name="trophy" size={16} color={colors.rose} />
+                <Text style={styles.recordChipText}>
+                  {data.prs.length === 1 ? '1 nuovo record personale' : `${data.prs.length} nuovi record personali`}
+                </Text>
+              </View>
+            ) : null}
+
+            <Text style={styles.heroCaption}>{scoreCaption}</Text>
+          </Card>
+        </Appear>
 
         {/* I numeri di supporto: piccoli, tabulari, mai in gara col punteggio. */}
-        <View style={styles.section}>
+        <Appear delay={appearDelay(2)} style={styles.section}>
           <Text style={type.label}>I numeri della seduta</Text>
           <View style={styles.pillRow}>
             <StatPill label="Durata" value={`${durationMin}′`} />
@@ -298,78 +337,84 @@ export default function WorkoutSummaryScreen() {
             <StatPill label="Kcal" value={String(kcal)} color={colors.amber} />
             <StatPill label="Esercizi" value={String(data.exercisesDone)} />
           </View>
-        </View>
+        </Appear>
 
-        <Card>
-          <SectionHead
-            icon="trophy"
-            tint={colors.rose}
-            title={hasPr ? `Nuovi record · ${data.prs.length}` : 'Record personali'}
-          />
-          {hasPr ? (
-            data.prs.map((pr) => (
-              <View key={pr.id} style={styles.prRow}>
-                <View style={styles.prIcon}>
-                  <Ionicons name="trophy" size={20} color={colors.rose} />
-                </View>
-                <View style={styles.prBody}>
-                  <Text style={styles.prExercise} numberOfLines={1}>
-                    {pr.exercise?.name ?? 'Esercizio'}
+        <Appear delay={appearDelay(3)}>
+          <Card>
+            <SectionHead
+              icon="trophy"
+              tint={colors.rose}
+              title={hasPr ? `Nuovi record · ${data.prs.length}` : 'Record personali'}
+            />
+            {hasPr ? (
+              data.prs.map((pr) => (
+                <View key={pr.id} style={styles.prRow}>
+                  <View style={styles.prIcon}>
+                    <Ionicons name="trophy" size={20} color={colors.rose} />
+                  </View>
+                  <View style={styles.prBody}>
+                    <Text style={styles.prExercise} numberOfLines={1}>
+                      {pr.exercise?.name ?? 'Esercizio'}
+                    </Text>
+                    <Text style={styles.prType} numberOfLines={1}>
+                      {RECORD_LABELS[pr.record_type]}
+                    </Text>
+                  </View>
+                  <Text style={[styles.prValue, tabular]}>
+                    {pr.record_type === 'max_reps' ? `${Math.round(pr.value)} reps` : `${pr.value} kg`}
                   </Text>
-                  <Text style={styles.prType} numberOfLines={1}>
-                    {RECORD_LABELS[pr.record_type]}
-                  </Text>
                 </View>
-                <Text style={[styles.prValue, tabular]}>
-                  {pr.record_type === 'max_reps' ? `${Math.round(pr.value)} reps` : `${pr.value} kg`}
-                </Text>
+              ))
+            ) : (
+              <Text style={styles.note}>Nessun nuovo record oggi: la costanza vale più di tutto. 💪</Text>
+            )}
+          </Card>
+        </Appear>
+
+        <Appear delay={appearDelay(4)}>
+          <Card>
+            <SectionHead icon="battery-charging" tint={colors.cyan} title="Recupero previsto" />
+            {/* Le ore di recupero sono un dato di supporto: scendono a metricSm, perché
+                il solo numero dominante della schermata è il punteggio dentro il faro. */}
+            <View style={styles.recoveryRow}>
+              <View style={styles.recoveryNumber}>
+                <Text style={[styles.recoveryValue, tabular]}>{recovery.hours}</Text>
+                <Text style={styles.recoveryUnit}>ore</Text>
               </View>
-            ))
-          ) : (
-            <Text style={styles.note}>Nessun nuovo record oggi: la costanza vale più di tutto. 💪</Text>
-          )}
-        </Card>
-
-        <Card>
-          <SectionHead icon="battery-charging" tint={colors.cyan} title="Recupero previsto" />
-          {/* Le ore di recupero sono un dato di supporto: scendono a metricSm, perché
-              il solo numero dominante della schermata è il punteggio dentro il faro. */}
-          <View style={styles.recoveryRow}>
-            <View style={styles.recoveryNumber}>
-              <Text style={[styles.recoveryValue, tabular]}>{recovery.hours}</Text>
-              <Text style={styles.recoveryUnit}>ore</Text>
+              <ActivityRing
+                progress={recovery.hours / RECOVERY_MAX_HOURS}
+                color={colors.cyan}
+                size={84}
+                strokeWidth={11}
+              >
+                <Ionicons name="moon" size={28} color={colors.cyan} />
+              </ActivityRing>
             </View>
-            <ActivityRing
-              progress={recovery.hours / RECOVERY_MAX_HOURS}
-              color={colors.cyan}
-              size={84}
-              strokeWidth={11}
-            >
-              <Ionicons name="moon" size={28} color={colors.cyan} />
-            </ActivityRing>
-          </View>
-          <Text style={styles.note}>{recovery.label}</Text>
-        </Card>
+            <Text style={styles.note}>{recovery.label}</Text>
+          </Card>
+        </Appear>
 
         {/* Viola: se è viola, l'ha scritto il motore. Ma il testo resta su ferro. */}
-        <Card>
-          <SectionHead icon="sparkles" tint={colors.violet} title="Il recap del coach AI" />
-          {aiLoading ? (
-            <View style={styles.aiRow}>
-              <ActivityIndicator color={colors.violet} />
-              <Text style={[styles.note, styles.aiFlex]}>Sto analizzando la tua seduta…</Text>
-            </View>
-          ) : aiText ? (
-            <Text style={styles.aiText}>{aiText}</Text>
-          ) : aiFailed ? (
-            <View style={styles.aiRow}>
-              <Ionicons name="cloud-offline-outline" size={20} color={colors.textTertiary} />
-              <Text style={[styles.note, styles.aiFlex]}>
-                Recap AI non disponibile al momento (la funzione AI non è ancora attiva).
-              </Text>
-            </View>
-          ) : null}
-        </Card>
+        <Appear delay={appearDelay(5)}>
+          <Card>
+            <SectionHead icon="sparkles" tint={colors.violet} title="Il recap del coach AI" />
+            {aiLoading ? (
+              <View style={styles.aiRow}>
+                <ActivityIndicator color={colors.violet} />
+                <Text style={[styles.note, styles.aiFlex]}>Sto analizzando la tua seduta…</Text>
+              </View>
+            ) : aiText ? (
+              <Text style={styles.aiText}>{aiText}</Text>
+            ) : aiFailed ? (
+              <View style={styles.aiRow}>
+                <Ionicons name="cloud-offline-outline" size={20} color={colors.textTertiary} />
+                <Text style={[styles.note, styles.aiFlex]}>
+                  Recap AI non disponibile al momento (la funzione AI non è ancora attiva).
+                </Text>
+              </View>
+            ) : null}
+          </Card>
+        </Appear>
       </ScrollView>
 
       {/* VETRO: l'unica barra d'azione, sempre sotto il pollice. */}
@@ -378,7 +423,8 @@ export default function WorkoutSummaryScreen() {
         pointerEvents="box-none"
         onLayout={(e) => setBarH(e.nativeEvent.layout.height)}
       >
-        <GlassSurface cornerRadius={radius.xl} padding={spacing.md}>
+        {/* Il vetro si accende solo quando il riepilogo gli scorre sotto. */}
+        <GlassSurface cornerRadius={radius.xl} padding={spacing.md} activity={glassActivity}>
           {/* Pura navigazione: blu azione. La menta resta riservata a "fatto". */}
           <PrimaryButton
             label="TORNA ALLA HOME"

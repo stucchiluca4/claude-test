@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { Card, Badge, KpiCard, buttonSecondary, buttonGhost } from '@/components/ui';
+import { Reveal } from '@/components/motion';
 import { cn, fullName, formatDate, formatKg } from '@/lib/utils';
 import { WeightChart } from '@/components/weight-chart';
 import { AiCoachWidget } from '@/components/ai-coach-widget';
@@ -42,12 +43,14 @@ const CHECK_META: Record<
   pending: { label: 'In attesa', color: 'default' },
 };
 
-const KPI_DELAY = [
-  '[&>div]:[animation-delay:0ms]',
-  '[&>div]:[animation-delay:50ms]',
-  '[&>div]:[animation-delay:100ms]',
-  '[&>div]:[animation-delay:150ms]',
-];
+/**
+ * KpiCard porta una `.rise` che parte al montaggio: dentro un Reveal il tempo
+ * lo detta lo scorrimento, quindi quella si spegne.
+ */
+const NO_RISE = '[&_.rise]:!animate-none';
+
+/** Passo della cascata: le card entrano una dopo l'altra, non tutte insieme. */
+const STEP = 70;
 
 type Field = { label: string; value: string };
 type LinkRow = { id: string; label: string; meta?: string; href: string };
@@ -303,66 +306,72 @@ function ClientDossier({
   return (
     <div className="space-y-6">
       {/* ---------- Ritorno al roster ---------- */}
-      <Link
-        href={demo ? '/clienti?demo=1' : '/clienti'}
-        className="press -ml-1 inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-1 text-[12px] font-bold uppercase tracking-[0.06em] text-text-secondary transition hover:text-white"
-      >
-        <ArrowLeft size={15} aria-hidden />
-        Tutti i clienti
-      </Link>
+      {/* Arriva da sinistra, come la direzione in cui riporta. */}
+      <Reveal variant="slide">
+        <Link
+          href={demo ? '/clienti?demo=1' : '/clienti'}
+          className="press -ml-1 inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-1 text-[12px] font-bold uppercase tracking-[0.06em] text-text-secondary transition hover:text-white"
+        >
+          <ArrowLeft size={15} aria-hidden />
+          Tutti i clienti
+        </Link>
+      </Reveal>
 
       {/* ---------- Identità e azioni rapide ---------- */}
-      <Card className="rise">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex min-w-0 items-center gap-4">
-            <span
-              className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-raised text-[22px] font-bold text-white"
-              aria-hidden
-            >
-              {initialsOf(name)}
-            </span>
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2.5">
-                <h1 className="truncate text-[34px] font-extrabold leading-[1.1] tracking-[-0.02em] text-white">
-                  {name}
-                </h1>
-                <Badge color={statusMeta.color}>
-                  <StatusIcon size={12} className="mr-1.5" aria-hidden />
-                  {statusMeta.label}
-                </Badge>
-                {demo && <Badge color="accent">Demo</Badge>}
+      <Reveal delay={STEP}>
+        <Card>
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex min-w-0 items-center gap-4">
+              <span
+                className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-raised text-[22px] font-bold text-white"
+                aria-hidden
+              >
+                {initialsOf(name)}
+              </span>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <h1 className="truncate text-[34px] font-extrabold leading-[1.1] tracking-[-0.02em] text-white">
+                    {name}
+                  </h1>
+                  <Badge color={statusMeta.color}>
+                    <StatusIcon size={12} className="mr-1.5" aria-hidden />
+                    {statusMeta.label}
+                  </Badge>
+                  {demo && <Badge color="accent">Demo</Badge>}
+                </div>
+                <p className="mt-1.5 text-[15px] text-text-secondary">
+                  {[goal, startedLabel].filter(Boolean).join(' · ')}
+                </p>
               </div>
-              <p className="mt-1.5 text-[15px] text-text-secondary">
-                {[goal, startedLabel].filter(Boolean).join(' · ')}
-              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-2 xl:justify-end">
+              <Link href={actions.program} className={cn(buttonSecondary, 'min-h-[44px]')}>
+                <Dumbbell size={17} aria-hidden />
+                Programma
+              </Link>
+              <Link href={actions.nutrition} className={cn(buttonSecondary, 'min-h-[44px]')}>
+                <Utensils size={17} aria-hidden />
+                Piano alimentare
+              </Link>
+              <Link href={actions.assessment} className={cn(buttonSecondary, 'min-h-[44px]')}>
+                <Ruler size={17} aria-hidden />
+                Valutazione
+              </Link>
+              <Link href={actions.biofeedback} className={cn(buttonSecondary, 'min-h-[44px]')}>
+                <Activity size={17} aria-hidden />
+                Biofeedback
+              </Link>
             </div>
           </div>
-
-          <div className="flex flex-wrap gap-2 xl:justify-end">
-            <Link href={actions.program} className={cn(buttonSecondary, 'min-h-[44px]')}>
-              <Dumbbell size={17} aria-hidden />
-              Programma
-            </Link>
-            <Link href={actions.nutrition} className={cn(buttonSecondary, 'min-h-[44px]')}>
-              <Utensils size={17} aria-hidden />
-              Piano alimentare
-            </Link>
-            <Link href={actions.assessment} className={cn(buttonSecondary, 'min-h-[44px]')}>
-              <Ruler size={17} aria-hidden />
-              Valutazione
-            </Link>
-            <Link href={actions.biofeedback} className={cn(buttonSecondary, 'min-h-[44px]')}>
-              <Activity size={17} aria-hidden />
-              Biofeedback
-            </Link>
-          </div>
-        </div>
-      </Card>
+        </Card>
+      </Reveal>
 
       {/* ---------- I numeri del cliente ---------- */}
+      {/* Le card entrano a cascata: il ritardo dà l'ordine di lettura, da sinistra. */}
       <section aria-label="Indicatori del cliente" className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {kpis.map((kpi, i) => (
-          <div key={kpi.label} className={KPI_DELAY[i]}>
+          <Reveal key={kpi.label} delay={i * STEP} className={NO_RISE}>
             <KpiCard
               label={kpi.label}
               value={kpi.value}
@@ -370,13 +379,14 @@ function ClientDossier({
               deltaGood={kpi.deltaGood}
               tone={kpi.tone}
             />
-          </div>
+          </Reveal>
         ))}
       </section>
 
-      <div className="grid gap-4 xl:grid-cols-[1.55fr_1fr]">
+      {/* La fascia entra intera: il faro e la sua scheda d'identità sono una cosa sola. */}
+      <Reveal delay={STEP * 2} className="grid gap-4 xl:grid-cols-[1.55fr_1fr]">
         {/* ---------- IL FARO: come si sta muovendo il corpo ---------- */}
-        <Card beacon={hasChart} className="rise rise-2">
+        <Card beacon={hasChart}>
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <h2 className="text-[17px] font-bold text-white">Andamento del peso corporeo</h2>
@@ -408,7 +418,7 @@ function ClientDossier({
         </Card>
 
         {/* ---------- Chi è: anagrafica e anamnesi ---------- */}
-        <Card className="rise rise-3">
+        <Card>
           <h2 className="text-[17px] font-bold text-white">Anagrafica</h2>
           <FieldList fields={anagrafica} />
 
@@ -421,106 +431,115 @@ function ClientDossier({
             </p>
           )}
         </Card>
-      </div>
+      </Reveal>
 
       {/* ---------- Il coach AI legge i dati di questo cliente ---------- */}
       {aiCoachClientId && (
-        <div className="rise rise-3">
+        <Reveal>
           <AiCoachWidget coachClientId={aiCoachClientId} />
-        </div>
+        </Reveal>
       )}
 
       {/* ---------- Le sezioni del percorso ---------- */}
+      {/* Il wrapper è `flex` così la card resta alta quanto la riga della griglia. */}
       <div className="grid gap-4 md:grid-cols-2">
-        <SectionCard
-          icon={Dumbbell}
-          title="Programmi di allenamento"
-          description="Schede assegnate a questo atleta."
-          count={programs.length}
-          actionLabel="Assegna un programma"
-          actionHref={actions.program}
-          className="rise rise-4"
-        >
-          {programs.length === 0 ? (
-            <EmptyLine text="Nessun programma assegnato: parti da qui per dargli una direzione." />
-          ) : (
-            <ul>
-              {programs.map((p) => (
-                <NavRow key={p.id} href={p.href} title={p.label} meta={p.meta} />
-              ))}
-            </ul>
-          )}
-        </SectionCard>
+        <Reveal className="flex">
+          <SectionCard
+            icon={Dumbbell}
+            title="Programmi di allenamento"
+            description="Schede assegnate a questo atleta."
+            count={programs.length}
+            actionLabel="Assegna un programma"
+            actionHref={actions.program}
+            className="w-full"
+          >
+            {programs.length === 0 ? (
+              <EmptyLine text="Nessun programma assegnato: parti da qui per dargli una direzione." />
+            ) : (
+              <ul>
+                {programs.map((p) => (
+                  <NavRow key={p.id} href={p.href} title={p.label} meta={p.meta} />
+                ))}
+              </ul>
+            )}
+          </SectionCard>
+        </Reveal>
 
-        <SectionCard
-          icon={Utensils}
-          title="Piani alimentari"
-          description="Macro e progressioni collegate al percorso."
-          count={plans.length}
-          actionLabel="Crea un piano"
-          actionHref={actions.nutrition}
-          className="rise rise-4"
-        >
-          {plans.length === 0 ? (
-            <EmptyLine text="Nessun piano assegnato: senza nutrizione il programma lavora a metà." />
-          ) : (
-            <ul>
-              {plans.map((p) => (
-                <NavRow key={p.id} href={p.href} title={p.label} meta={p.meta} />
-              ))}
-            </ul>
-          )}
-        </SectionCard>
+        <Reveal delay={STEP} className="flex">
+          <SectionCard
+            icon={Utensils}
+            title="Piani alimentari"
+            description="Macro e progressioni collegate al percorso."
+            count={plans.length}
+            actionLabel="Crea un piano"
+            actionHref={actions.nutrition}
+            className="w-full"
+          >
+            {plans.length === 0 ? (
+              <EmptyLine text="Nessun piano assegnato: senza nutrizione il programma lavora a metà." />
+            ) : (
+              <ul>
+                {plans.map((p) => (
+                  <NavRow key={p.id} href={p.href} title={p.label} meta={p.meta} />
+                ))}
+              </ul>
+            )}
+          </SectionCard>
+        </Reveal>
 
-        <SectionCard
-          icon={ClipboardCheck}
-          title="Check-in"
-          description={totalCheckins > 5 ? 'Gli ultimi cinque ricevuti.' : 'Tutti i check-in ricevuti.'}
-          count={totalCheckins}
-          actionLabel="Vai a tutti i check-in"
-          actionHref={demo ? '/checkin?demo=1' : '/checkin'}
-          className="rise rise-5"
-        >
-          {checkins.length === 0 ? (
-            <EmptyLine text="Nessun check-in ricevuto. Ricorda all'atleta di inviarlo a fine settimana." />
-          ) : (
-            <ul>
-              {checkins.map((ci) => {
-                const meta = CHECK_META[ci.status] ?? CHECK_META.pending;
-                return (
-                  <NavRow
-                    key={ci.id}
-                    href={ci.href}
-                    title={ci.label}
-                    meta={ci.meta}
-                    trailing={<Badge color={meta.color}>{meta.label}</Badge>}
-                  />
-                );
-              })}
-            </ul>
-          )}
-        </SectionCard>
+        <Reveal delay={STEP * 2} className="flex">
+          <SectionCard
+            icon={ClipboardCheck}
+            title="Check-in"
+            description={totalCheckins > 5 ? 'Gli ultimi cinque ricevuti.' : 'Tutti i check-in ricevuti.'}
+            count={totalCheckins}
+            actionLabel="Vai a tutti i check-in"
+            actionHref={demo ? '/checkin?demo=1' : '/checkin'}
+            className="w-full"
+          >
+            {checkins.length === 0 ? (
+              <EmptyLine text="Nessun check-in ricevuto. Ricorda all'atleta di inviarlo a fine settimana." />
+            ) : (
+              <ul>
+                {checkins.map((ci) => {
+                  const meta = CHECK_META[ci.status] ?? CHECK_META.pending;
+                  return (
+                    <NavRow
+                      key={ci.id}
+                      href={ci.href}
+                      title={ci.label}
+                      meta={ci.meta}
+                      trailing={<Badge color={meta.color}>{meta.label}</Badge>}
+                    />
+                  );
+                })}
+              </ul>
+            )}
+          </SectionCard>
+        </Reveal>
 
-        <SectionCard
-          icon={Activity}
-          title="Corpo e biofeedback"
-          description="Misure, composizione e segnali di recupero."
-          tone="cyan"
-          className="rise rise-5"
-        >
-          <ul>
-            <NavRow
-              href={actions.assessment}
-              title="Valutazione corporea"
-              meta="Circonferenze, plicometria e storico delle misure"
-            />
-            <NavRow
-              href={actions.biofeedback}
-              title="Biofeedback"
-              meta="Sonno, energia, stress e fame giorno per giorno"
-            />
-          </ul>
-        </SectionCard>
+        <Reveal delay={STEP * 3} className="flex">
+          <SectionCard
+            icon={Activity}
+            title="Corpo e biofeedback"
+            description="Misure, composizione e segnali di recupero."
+            tone="cyan"
+            className="w-full"
+          >
+            <ul>
+              <NavRow
+                href={actions.assessment}
+                title="Valutazione corporea"
+                meta="Circonferenze, plicometria e storico delle misure"
+              />
+              <NavRow
+                href={actions.biofeedback}
+                title="Biofeedback"
+                meta="Sonno, energia, stress e fame giorno per giorno"
+              />
+            </ul>
+          </SectionCard>
+        </Reveal>
       </div>
     </div>
   );

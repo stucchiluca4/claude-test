@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Card, buttonPrimary, buttonSecondary } from '@/components/ui';
+import { Reveal } from '@/components/motion';
 import { cn } from '@/lib/utils';
 import { AlertTriangle, Check, Lock } from 'lucide-react';
 
@@ -30,8 +31,14 @@ const PLANS = [
   },
 ];
 
-/** Ritardi scalati: i piani entrano da sinistra a destra. */
-const RISE_DELAY = ['rise-1', 'rise-2', 'rise-3'];
+/**
+ * Ritardi scalati: la scaletta della pagina prosegue dalla fascia del piano
+ * attuale (0 ms) all'intestazione (70 ms) e poi ai tre piani, che entrano da
+ * sinistra a destra invece che tutti insieme.
+ */
+const HEADING_DELAY = 70;
+const CARD_DELAY = 140;
+const CARD_STEP = 70;
 
 export function PlanButtons({ hasSubscription }: { hasSubscription: boolean }) {
   const [loading, setLoading] = useState<string | null>(null);
@@ -62,57 +69,63 @@ export function PlanButtons({ hasSubscription }: { hasSubscription: boolean }) {
 
   return (
     <section aria-label="Piani disponibili">
-      <h2 className="mb-3 text-[12px] font-bold uppercase tracking-[0.06em] text-text-secondary">
-        Piani disponibili
-      </h2>
+      <Reveal className="mb-3 block" delay={HEADING_DELAY}>
+        <h2 className="text-[12px] font-bold uppercase tracking-[0.06em] text-text-secondary">
+          Piani disponibili
+        </h2>
+      </Reveal>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {PLANS.map((p, i) => (
-          <Card
+          /* Entrata in scala, a cascata: il faro resta uno solo, sul piano consigliato. */
+          <Reveal
             key={p.key}
-            beacon={p.highlight}
-            className={cn('relative flex flex-col rise', RISE_DELAY[i])}
+            variant="pop"
+            delay={CARD_DELAY + i * CARD_STEP}
+            className="h-full"
           >
-            {p.highlight && (
-              <span className="absolute -top-3 left-6 inline-flex items-center rounded-full bg-accent px-3 py-1 text-[11px] font-bold uppercase tracking-[0.06em] text-white">
-                Più scelto
-              </span>
-            )}
+            <Card beacon={p.highlight} className="relative flex h-full flex-col">
+              {p.highlight && (
+                <span className="absolute -top-3 left-6 inline-flex items-center rounded-full bg-accent px-3 py-1 text-[11px] font-bold uppercase tracking-[0.06em] text-white">
+                  Più scelto
+                </span>
+              )}
 
-            <h3 className="text-[22px] font-bold leading-tight tracking-[-0.01em] text-white">
-              {p.name}
-            </h3>
+              <h3 className="text-[22px] font-bold leading-tight tracking-[-0.01em] text-white">
+                {p.name}
+              </h3>
 
-            <div className="mt-3 flex items-baseline gap-1.5">
-              <span className="font-metric tnum text-[44px] font-extrabold leading-none text-white">
-                {p.price}
-              </span>
-              <span className="text-[15px] font-semibold text-text-secondary">/mese</span>
-            </div>
+              <div className="mt-3 flex items-baseline gap-1.5">
+                <span className="font-metric tnum text-[44px] font-extrabold leading-none text-white">
+                  {p.price}
+                </span>
+                <span className="text-[15px] font-semibold text-text-secondary">/mese</span>
+              </div>
 
-            <ul className="mt-6 space-y-3">
-              {p.features.map((f) => (
-                <li key={f} className="flex items-start gap-2.5 text-[15px] text-text-secondary">
-                  <Check size={17} className="mt-0.5 shrink-0 text-mint" aria-hidden />
-                  <span>{f}</span>
-                </li>
-              ))}
-            </ul>
+              <ul className="mt-6 space-y-3">
+                {p.features.map((f) => (
+                  <li key={f} className="flex items-start gap-2.5 text-[15px] text-text-secondary">
+                    <Check size={17} className="mt-0.5 shrink-0 text-mint" aria-hidden />
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
 
-            <div className="mt-auto pt-6">
-              <button
-                onClick={() => goToCheckout(p.key, p.priceEnv)}
-                disabled={loading !== null}
-                className={cn(p.highlight ? buttonPrimary : buttonSecondary, 'w-full')}
-              >
-                {loading === p.key
-                  ? 'Apertura…'
-                  : hasSubscription
-                    ? 'Gestisci abbonamento'
-                    : 'Prova gratis 14 giorni'}
-              </button>
-            </div>
-          </Card>
+              <div className="mt-auto pt-6">
+                <button
+                  onClick={() => goToCheckout(p.key, p.priceEnv)}
+                  disabled={loading !== null}
+                  className={cn(p.highlight ? buttonPrimary : buttonSecondary, 'w-full')}
+                >
+                  {loading === p.key
+                    ? 'Apertura…'
+                    : hasSubscription
+                      ? 'Gestisci abbonamento'
+                      : 'Prova gratis 14 giorni'}
+                </button>
+              </div>
+            </Card>
+          </Reveal>
         ))}
       </div>
 

@@ -6,6 +6,10 @@
    Sistema "Glass Over Iron" (DESIGN.md)
    FERRO: superfici opache, portano il contenuto.
    VETRO: livello dei controlli, l'unico che si sfoca.
+
+   Perché il vetro si veda serve qualcosa di VIVO sotto: il campo
+   luminoso `.aurora` deriva lentamente dietro tutto, e il vetro lo
+   rifrange. Senza, una superficie traslucida legge come grigio piatto.
    ============================================================ */
 
 :root {
@@ -14,28 +18,87 @@
   --iron-surface: #151a24;
   --iron-raised: #1e2531;
   --iron-line: #2a3241;
-  --glass-tint: rgba(22, 28, 38, 0.62);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-edge: rgba(255, 255, 255, 0.3);
+  --glass-tint: rgba(20, 26, 36, 0.44);
+  --glass-border: rgba(255, 255, 255, 0.14);
+  --glass-edge: rgba(255, 255, 255, 0.55);
   --signal-blue: #0a84ff;
+  --ease-out-glass: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 body {
   @apply bg-background text-text-primary antialiased;
-  font-feature-settings: 'tnum' 0;
-  /* Luce ambientale appena percepibile: il fondo resta ferro, non spettacolo */
-  background-image:
-    radial-gradient(1100px 600px at 78% -12%, rgba(10, 132, 255, 0.07), transparent 62%),
-    radial-gradient(800px 500px at -8% 8%, rgba(100, 210, 255, 0.04), transparent 58%);
-  background-attachment: fixed;
+  position: relative;
 }
 
-/* Ogni numero che cambia nel tempo usa cifre tabulari (La Regola delle Cifre Ferme) */
+/* ------------------------------------------------------------
+   IL CAMPO LUMINOSO — vive dietro ogni cosa e non si tocca mai.
+   ------------------------------------------------------------ */
+.aurora {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--iron-ground);
+}
+.aurora-blob {
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.5;
+  will-change: transform;
+}
+.aurora-a {
+  width: 58vw;
+  height: 58vw;
+  top: -18vw;
+  right: -10vw;
+  background: radial-gradient(circle, rgba(10, 132, 255, 0.5), transparent 68%);
+  animation: drift-a 26s var(--ease-out-glass) infinite alternate;
+}
+.aurora-b {
+  width: 46vw;
+  height: 46vw;
+  bottom: -14vw;
+  left: -8vw;
+  background: radial-gradient(circle, rgba(100, 210, 255, 0.34), transparent 68%);
+  animation: drift-b 32s var(--ease-out-glass) infinite alternate;
+}
+.aurora-c {
+  width: 40vw;
+  height: 40vw;
+  top: 34%;
+  left: 42%;
+  background: radial-gradient(circle, rgba(191, 90, 242, 0.24), transparent 68%);
+  animation: drift-c 38s var(--ease-out-glass) infinite alternate;
+}
+/* Grana finissima: toglie la plastica dai gradienti */
+.aurora-grain {
+  position: absolute;
+  inset: -50%;
+  opacity: 0.035;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.9) 0.5px, transparent 0.5px);
+  background-size: 3px 3px;
+}
+@keyframes drift-a {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(-9vw, 7vh, 0) scale(1.16); }
+}
+@keyframes drift-b {
+  from { transform: translate3d(0, 0, 0) scale(1.08); }
+  to { transform: translate3d(8vw, -8vh, 0) scale(1); }
+}
+@keyframes drift-c {
+  from { transform: translate3d(0, 0, 0) scale(0.94); }
+  to { transform: translate3d(-7vw, -6vh, 0) scale(1.2); }
+}
+
+/* Cifre tabulari (La Regola delle Cifre Ferme) */
 .tnum {
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum' 1;
 }
-
 .font-metric {
   font-family: 'SF Pro Rounded', ui-rounded, -apple-system, system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
@@ -43,93 +106,150 @@ body {
 }
 
 /* ------------------------------------------------------------
-   VETRO — solo per il livello dei controlli: rail, testate,
-   barre d'azione, fogli. Mai sotto testo di lettura o grafici.
+   VETRO — solo per il livello dei controlli. Ora è materiale vero:
+   rifrange il colore che gli passa sotto, prende luce sui bordi e
+   ha un riflesso speculare che scorre.
    ------------------------------------------------------------ */
 .glass-chrome {
   position: relative;
+  isolation: isolate;
   background: var(--glass-tint);
-  backdrop-filter: blur(28px) saturate(180%);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  backdrop-filter: blur(40px) saturate(200%) brightness(1.08);
+  -webkit-backdrop-filter: blur(40px) saturate(200%) brightness(1.08);
   border: 1px solid var(--glass-border);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  box-shadow:
+    0 24px 70px -28px rgba(0, 0, 0, 0.85),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06);
+  overflow: hidden;
 }
-/* La luce speculare sul bordo alto: è ciò che rende il vetro "liquido" */
+/* Luce speculare in alto a sinistra: il punto in cui la luce colpisce */
 .glass-chrome::before {
   content: '';
   position: absolute;
-  inset: 0 0 auto 0;
-  height: 1px;
-  background: linear-gradient(90deg, var(--glass-edge), rgba(255, 255, 255, 0.04) 55%, transparent);
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(120% 80% at 8% -12%, rgba(255, 255, 255, 0.22), transparent 58%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 42%);
   pointer-events: none;
+  z-index: -1;
 }
+/* Riflesso che scorre lentamente: è ciò che rende il vetro "liquido" */
 .glass-chrome::after {
   content: '';
   position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 55%);
+  top: 0;
+  bottom: 0;
+  width: 45%;
+  left: -60%;
+  background: linear-gradient(
+    100deg,
+    transparent,
+    rgba(255, 255, 255, 0.10) 45%,
+    rgba(255, 255, 255, 0.16) 50%,
+    transparent
+  );
+  transform: skewX(-14deg);
+  animation: glass-sweep 9s ease-in-out infinite;
   pointer-events: none;
-  border-radius: inherit;
+  z-index: -1;
+}
+@keyframes glass-sweep {
+  0%, 62% { left: -60%; }
+  100% { left: 130%; }
 }
 
+/* Variante ferma, per superfici in vetro molto grandi */
+.glass-still::after { animation: none; }
+
 /* ------------------------------------------------------------
-   FERRO — la superficie del contenuto. Opaca, senza ombra:
-   si stacca per tono e per una luce capello sul bordo alto.
-   `.glass` resta come alias storico e ora rende FERRO, così ogni
-   pagina non ancora rifatta smette da sola di sfocare i dati.
+   FERRO — la superficie del contenuto. Opaca, sempre leggibile.
+   `.glass` resta come alias storico e rende FERRO.
    ------------------------------------------------------------ */
 .iron,
 .glass {
   position: relative;
-  background: var(--iron-surface);
+  background: color-mix(in srgb, var(--iron-surface) 92%, transparent);
   border: none;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 12px 40px -24px rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
-/* Il FARO: l'unico elemento a fuoco della schermata (uno solo). */
+/* Il FARO: l'unico elemento a fuoco della schermata. */
 .beacon {
   box-shadow:
-    0 0 0 1px rgba(10, 132, 255, 0.35),
-    0 12px 36px -12px rgba(10, 132, 255, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    0 0 0 1px rgba(10, 132, 255, 0.4),
+    0 20px 60px -24px rgba(10, 132, 255, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
-/* Alias storico: non moltiplica più i bagliori, resta una superficie ferro. */
 .glow {
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
-/* Riempimento dell'azione primaria (alias storico del vecchio gradiente). */
 .grad-primary {
   background-color: var(--signal-blue);
-  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0));
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0));
 }
 
-/* Ingressi a molla con ritardo scalato */
-.rise {
-  animation: rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+/* ------------------------------------------------------------
+   MOVIMENTO — entrate guidate dallo scorrimento e cambi di sezione.
+   ------------------------------------------------------------ */
+.reveal {
+  opacity: 0;
+  transition:
+    opacity 0.7s var(--ease-out-glass),
+    transform 0.7s var(--ease-out-glass),
+    filter 0.7s var(--ease-out-glass);
+  will-change: opacity, transform;
 }
-.rise-1 { animation-delay: 0.04s; }
-.rise-2 { animation-delay: 0.08s; }
-.rise-3 { animation-delay: 0.12s; }
-.rise-4 { animation-delay: 0.16s; }
-.rise-5 { animation-delay: 0.2s; }
-@keyframes rise {
-  from { opacity: 0; transform: translateY(12px) scale(0.99); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+.reveal-rise { transform: translate3d(0, 28px, 0); }
+.reveal-pop { transform: scale(0.94) translate3d(0, 14px, 0); filter: blur(6px); }
+.reveal-slide { transform: translate3d(-26px, 0, 0); }
+.reveal[data-shown='true'] {
+  opacity: 1;
+  transform: none;
+  filter: none;
 }
 
-/* La pressione cede: risposta fisica anche sul web */
+/* Cambio di menu: la sezione entra salendo e mettendosi a fuoco */
+.section-enter {
+  animation: section-pop 0.62s var(--ease-out-glass) both;
+}
+@keyframes section-pop {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 22px, 0) scale(0.985);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+/* Ingressi a cascata (alias storici, ora a molla) */
+.rise { animation: section-pop 0.62s var(--ease-out-glass) both; }
+.rise-1 { animation-delay: 0.06s; }
+.rise-2 { animation-delay: 0.12s; }
+.rise-3 { animation-delay: 0.18s; }
+.rise-4 { animation-delay: 0.24s; }
+.rise-5 { animation-delay: 0.3s; }
+
+/* La pressione cede */
 .press {
-  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), filter 0.18s ease;
+  transition: transform 0.2s var(--ease-out-glass), filter 0.2s ease, background-color 0.2s ease;
 }
-.press:active {
-  transform: scale(0.97);
-}
+.press:active { transform: scale(0.96); }
 
 @media (prefers-reduced-motion: reduce) {
-  .rise, .rise-1, .rise-2, .rise-3, .rise-4, .rise-5 {
-    animation: none;
-  }
+  .reveal { opacity: 1 !important; transform: none !important; filter: none !important; }
+  .aurora-blob, .glass-chrome::after { animation: none !important; }
+  .rise, .rise-1, .rise-2, .rise-3, .rise-4, .rise-5, .section-enter { animation: none !important; }
   * {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
@@ -150,14 +270,13 @@ input[type='number']::-webkit-outer-spin-button {
 ::-webkit-scrollbar-thumb {
   background: var(--iron-raised);
   border-radius: 999px;
-  border: 3px solid var(--iron-ground);
+  border: 3px solid transparent;
+  background-clip: padding-box;
 }
-::-webkit-scrollbar-track {
-  background: transparent;
-}
+::-webkit-scrollbar-track { background: transparent; }
 
 *:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--iron-ground), 0 0 0 4px rgba(10, 132, 255, 0.55);
+  box-shadow: 0 0 0 2px var(--iron-ground), 0 0 0 4px rgba(10, 132, 255, 0.6);
   border-radius: 10px;
 }
