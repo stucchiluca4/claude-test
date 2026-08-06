@@ -4,14 +4,25 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, glass, radius } from '../../lib/theme';
+import { colors, glass, radius, wash } from '../../lib/theme';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
-/** Icona di scheda: contorno a riposo, piena quando attiva (convenzione iOS). */
+/** Altezza utile della barra, safe-area esclusa. */
+const BAR_HEIGHT = 62;
+
+/**
+ * Icona di scheda: contorno a riposo, piena quando attiva (convenzione iOS).
+ * La scheda attiva riceve la PASTIGLIA di sfondo prevista dal sistema
+ * (DESIGN.md § Navigation), che è anche il bersaglio visivo del dito.
+ */
 function TabIcon({ name, color, focused }: { name: string; color: ColorValue; focused: boolean }) {
   const icon = (focused ? name : `${name}-outline`) as IconName;
-  return <Ionicons name={icon} size={25} color={color as string} />;
+  return (
+    <View style={[styles.slot, focused && styles.slotActive]}>
+      <Ionicons name={icon} size={21} color={color as string} />
+    </View>
+  );
 }
 
 /** Il fondo in VETRO della barra: sfocatura, tinta, luce speculare, bordo capello. */
@@ -21,7 +32,7 @@ function GlassTabBar() {
       <BlurView intensity={glass.intensity} tint="dark" style={StyleSheet.absoluteFill} />
       <View style={[StyleSheet.absoluteFill, { backgroundColor: glass.tint }]} />
       <LinearGradient
-        colors={['rgba(255,255,255,0.10)', 'rgba(255,255,255,0)']}
+        colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0)']}
         style={styles.sheen}
         pointerEvents="none"
       />
@@ -32,12 +43,20 @@ function GlassTabBar() {
         style={styles.specular}
         pointerEvents="none"
       />
+      {/* Rifrazione sul bordo basso: il vetro raccoglie luce anche da sotto */}
+      <LinearGradient
+        colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.10)']}
+        style={styles.refraction}
+        pointerEvents="none"
+      />
     </View>
   );
 }
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
+  // La barra galleggia sopra la safe area, senza mai toccarne il bordo.
+  const lift = Math.max(insets.bottom, 10);
 
   return (
     <Tabs
@@ -48,12 +67,15 @@ export default function TabsLayout() {
         tabBarBackground: GlassTabBar,
         tabBarStyle: {
           position: 'absolute',
-          left: 12,
-          right: 12,
-          bottom: Math.max(insets.bottom, 12),
-          height: 66,
-          paddingTop: 8,
-          paddingBottom: 8,
+          left: 10,
+          right: 10,
+          bottom: lift,
+          height: BAR_HEIGHT,
+          // Il contenuto interno si posiziona da solo: niente padding che
+          // schiacci l'etichetta contro il bordo inferiore.
+          paddingTop: 6,
+          paddingBottom: 6,
+          paddingHorizontal: 2,
           borderTopWidth: 0,
           backgroundColor: 'transparent',
           elevation: 0,
@@ -61,11 +83,16 @@ export default function TabsLayout() {
         tabBarLabelStyle: {
           fontSize: 10,
           fontWeight: '700',
-          letterSpacing: 0.2,
-          marginTop: 1,
+          // Tracking a zero: con sei voci ogni punto di larghezza conta.
+          letterSpacing: 0,
+          marginTop: 3,
+        },
+        tabBarIconStyle: {
+          height: 30,
         },
         tabBarItemStyle: {
-          borderRadius: radius.md,
+          paddingHorizontal: 0,
+          paddingVertical: 0,
         },
       }}
     >
@@ -140,5 +167,23 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 1.5,
+  },
+  refraction: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 8,
+  },
+  /** Alloggiamento dell'icona: a riposo è invisibile, da attivo diventa pastiglia. */
+  slot: {
+    minWidth: 46,
+    height: 28,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  slotActive: {
+    backgroundColor: wash(colors.accent, 0.18),
   },
 });
