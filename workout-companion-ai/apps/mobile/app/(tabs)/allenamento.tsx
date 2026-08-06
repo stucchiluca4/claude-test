@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { DAYS_OF_WEEK } from '@wc/shared';
@@ -85,9 +85,13 @@ export default function AllenamentoScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  // A ogni ritorno sulla scheda, non solo al primo montaggio: chiudendo un
+  // allenamento le spunte e il conteggio devono essere già aggiornati.
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load]),
+  );
 
   async function onRefresh() {
     setRefreshing(true);
@@ -202,6 +206,8 @@ export default function AllenamentoScreen() {
                       workout={w}
                       done={done}
                       isToday={isToday}
+                      // Giorno già passato e seduta non chiusa: è stata saltata.
+                      missed={day < today && !done}
                       // Un solo faro per schermata: la prima seduta di oggi.
                       beacon={todayWorkout?.id === w.id ? todayTone : null}
                       onPress={() => router.push(`/workout/${w.id}`)}
@@ -222,38 +228,50 @@ function WorkoutRow({
   workout,
   done,
   isToday,
+  missed,
   beacon,
   onPress,
 }: {
   workout: ProgramWorkout;
   done: boolean;
   isToday: boolean;
+  /** Giorno passato senza seduta chiusa. */
+  missed: boolean;
   /** Colore del faro: valorizzato solo per la riga di oggi. */
   beacon: string | null;
   onPress: () => void;
 }) {
-  const tone = done ? colors.mint : isToday ? colors.accent : colors.textSecondary;
+  const tone = done
+    ? colors.mint
+    : isToday
+      ? colors.accent
+      : missed
+        ? colors.amber
+        : colors.textSecondary;
   const meta =
     [workout.goal, workout.estimated_duration_min ? `~${workout.estimated_duration_min} min` : null]
       .filter(Boolean)
       .join(' · ') || 'Tocca per i dettagli';
+  const state = done ? ', completato' : missed ? ', saltato' : '';
 
   return (
     <Press
       onPress={onPress}
       style={[styles.row, beacon ? [{ borderColor: beacon }, shadow.beacon(beacon)] : null]}
-      accessibilityLabel={`${DAYS_OF_WEEK[workout.day_of_week - 1]}: ${workout.name}${done ? ', completato' : ''}`}
+      accessibilityLabel={`${DAYS_OF_WEEK[workout.day_of_week - 1]}: ${workout.name}${state}`}
     >
       <View style={styles.badge}>
         <Text style={[styles.badgeText, { color: tone }]}>{dayAbbr(workout.day_of_week)}</Text>
       </View>
 
       <View style={styles.info}>
-        <Text style={styles.name} numberOfLines={1}>
+        <Text style={[styles.name, missed && styles.nameMissed]} numberOfLines={1}>
           {workout.name}
         </Text>
         <View style={styles.metaRow}>
           {isToday ? <Text style={[styles.tag, { color: tone }]}>Oggi</Text> : null}
+          {/* Il colore non viaggia mai da solo: allo stato si aggiunge la parola. */}
+          {missed ? <Text style={[styles.tag, { color: colors.amber }]}>Saltato</Text> : null}
           <Text style={[styles.meta, tabular]} numberOfLines={1}>
             {meta}
           </Text>
@@ -262,6 +280,8 @@ function WorkoutRow({
 
       {done ? (
         <Ionicons name="checkmark-circle" size={26} color={colors.mint} />
+      ) : missed ? (
+        <Ionicons name="reload-circle-outline" size={26} color={colors.amber} />
       ) : (
         <Ionicons name="chevron-forward" size={22} color={colors.textTertiary} />
       )}
@@ -312,7 +332,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.lg,
-    backgroundColor: colors.card,
+    // Ferro al 92%, come le Card: il campo luminoso tinge appena la superficie
+    // invece di lasciarla morta. Le righe e le card devono essere lo stesso
+    // materiale, non due.
+    backgroundColor: 'rgba(21,26,36,0.92)',
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: 'transparent',
@@ -345,6 +368,10 @@ const styles = StyleSheet.create({
   name: {
     ...type.body,
     fontWeight: '700',
+  },
+  // Saltato: il nome si spegne, ma resta pienamente leggibile.
+  nameMissed: {
+    color: colors.textSecondary,
   },
   restName: {
     ...type.body,
