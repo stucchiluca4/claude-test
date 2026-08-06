@@ -2,7 +2,16 @@
  * MODALITÀ DEMO: permette di esplorare l'app atleta senza login né database,
  * con dati di esempio in memoria. Serve solo per provare le funzionalità.
  */
-import type { Exercise, Food, NutritionDay, PersonalRecord, ProgramWorkout, SetLog, WorkoutExercise } from '@wc/shared';
+import type {
+  Exercise,
+  Food,
+  NutritionDay,
+  PersonalRecord,
+  Profile,
+  ProgramWorkout,
+  SetLog,
+  WorkoutExercise,
+} from '@wc/shared';
 
 let demo = false;
 export const DEMO_UID = 'demo-athlete';
@@ -34,6 +43,26 @@ const EXERCISES: DemoExercise[] = [
   { id: 'we-2', exerciseId: 'ex-panca', name: 'Panca piana', muscle: 'petto', sets: 3, repsMin: 6, repsMax: 10, rpe: 8, rest: 120, lastLoad: 60, lastReps: 6, lastRpe: 9 },
   { id: 'we-3', exerciseId: 'ex-rematore', name: 'Rematore manubrio', muscle: 'dorso', sets: 3, repsMin: 8, repsMax: 12, rpe: 8, rest: 90, lastLoad: 24, lastReps: 12, lastRpe: 7 },
 ];
+
+/**
+ * Profilo dell'atleta demo. Sorgente unica: la scheda Profilo e la schermata di
+ * modifica leggono da qui, altrimenti in vetrina mostrerebbero dati diversi.
+ */
+export function demoProfile(): Profile {
+  return {
+    id: DEMO_UID,
+    role: 'athlete',
+    first_name: 'Atleta',
+    last_name: 'Demo',
+    avatar_url: null,
+    date_of_birth: '1994-03-12',
+    sex: 'male',
+    height_cm: 178,
+    locale: 'it',
+    unit_system: 'metric',
+    onboarding_completed: true,
+  };
+}
 
 /** Allenamento demo con esercizi e serie prescritte. */
 export function demoWorkout(): ProgramWorkout {
