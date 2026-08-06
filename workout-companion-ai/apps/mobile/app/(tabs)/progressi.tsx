@@ -25,9 +25,11 @@ import { ActivityRing } from '../../components/ActivityRing';
 import { Appear, appearDelay } from '../../components/Appear';
 import { Card } from '../../components/Card';
 import { MetricBlock } from '../../components/MetricBlock';
+import { PrimaryButton } from '../../components/PrimaryButton';
+import { Skeleton } from '../../components/Skeleton';
 import { StatPill } from '../../components/StatPill';
 import { BarChart, type BarDatum } from '../../components/BarChart';
-import { EmptyState, LoadingState } from '../../components/States';
+import { EmptyState } from '../../components/States';
 import { demoBiofeedback, demoPRs, demoStrengthPoints, demoWorkoutLogs, isDemo } from '../../lib/demo';
 
 const RECORD_LABELS: Record<RecordType, string> = {
@@ -63,8 +65,39 @@ interface Analytics {
   buckets: WeekBucket[];
   trendPct: number | null;
   prs: PersonalRecord[];
+  /** Record totali dell'atleta: la lista ne mostra solo i più recenti. */
+  prTotal: number;
   strength: StrengthSeries | null;
+  strengthDeltaPct: number | null;
   insights: Insight[];
+}
+
+/**
+ * Quante settimane guarda la schermata. Vale sia per i grafici sia per i
+ * confronti: tenerlo in un posto solo evita che testata e calcoli divergano.
+ */
+const WEEKS_BACK = 8;
+
+/** Record personali scaricati per la lista: il conteggio vero arriva a parte. */
+const PR_PAGE = 12;
+
+/**
+ * Cima minima della scala del grafico attività. Senza, una settimana da un solo
+ * allenamento disegnerebbe una barra piena quanto una da sei.
+ */
+const FREQ_SCALE_MIN = 3;
+
+/** Numero all'italiana: virgola decimale, al massimo un decimale. */
+function itNum(n: number): string {
+  return n.toLocaleString('it-IT', { maximumFractionDigits: 1 });
+}
+
+/** Variazione percentuale fra il primo e l'ultimo punto di una serie. */
+function seriesDeltaPct(points: BarDatum[]): number | null {
+  const first = points[0]?.value;
+  const last = points[points.length - 1]?.value;
+  if (!first || first <= 0 || last == null) return null;
+  return Math.round(((last - first) / first) * 100);
 }
 
 function throwIf(error: { message: string } | null): void {
@@ -79,13 +112,20 @@ function formatDay(iso: string): string {
 
 export default function ProgressiScreen() {
   const [data, setData] = useState<Analytics | null>(null);
+  const [failed, setFailed] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     try {
+      setFailed(false);
       if (isDemo()) {
         const logs = demoWorkoutLogs(new Date());
-        const buckets = weeklyActivity(logs, 8, new Date());
+        const buckets = weeklyActivity(logs, WEEKS_BACK, new Date());
+        const points = demoStrengthPoints();
+        // Un solo calcolo del delta: prima la card e il motore ne mostravano due
+        // diversi sulla stessa serie (la card +9%, l'insight un 8 scritto a mano).
+        const demoDelta = seriesDeltaPct(points);
+        const demoPrs = demoPRs();
         setData({
           totalWorkouts: logs.length,
           totalVolumeKg: logs.reduce((a, l) => a + l.total_volume_kg, 0),
@@ -94,8 +134,10 @@ export default function ProgressiScreen() {
           avgWeight: 74.5,
           buckets,
           trendPct: volumeTrendPct(buckets),
-          prs: demoPRs(),
-          strength: { exerciseName: 'Squat con bilanciere', points: demoStrengthPoints() },
+          prs: demoPrs,
+          prTotal: demoPrs.length,
+          strength: { exerciseName: 'Squat con bilanciere', points },
+          strengthDeltaPct: demoDelta,
           insights: generateInsights({
             totalWorkouts: logs.length,
             trendPct: volumeTrendPct(buckets),
@@ -103,7 +145,7 @@ export default function ProgressiScreen() {
             countLateHalfAvg: 3,
             streak: currentStreak(buckets),
             recovery: [demoBiofeedback()],
-            strengthDeltaPct: 8,
+            strengthDeltaPct: demoDelta,
             strengthExerciseName: 'Squat con bilanciere',
             muscleVolume: [
               { group: 'quadricipiti', volumeKg: 12000 },
@@ -129,17 +171,19 @@ export default function ProgressiScreen() {
       const logs = (logsData ?? []) as { id: string; started_at: string; total_volume_kg: number | null }[];
 
       const totalVolumeKg = logs.reduce((acc, l) => acc + Number(l.total_volume_kg ?? 0), 0);
-      const buckets = weeklyActivity(logs, 8, new Date());
+      const buckets = weeklyActivity(logs, WEEKS_BACK, new Date());
 
-      // Record personali recenti.
-      const { data: prData, error: prError } = await supabase
+      // Record personali recenti. Il conteggio esatto arriva dal server: la lista
+      // ne mostra solo gli ultimi, e prima il KPI si fermava per sempre a 12.
+      const { data: prData, error: prError, count: prCount } = await supabase
         .from('personal_records')
-        .select('*, exercise:exercises(name)')
+        .select('*, exercise:exercises(name)', { count: 'exact' })
         .eq('client_id', uid)
         .order('achieved_at', { ascending: false })
-        .limit(12);
+        .limit(PR_PAGE);
       throwIf(prError);
       const prs = (prData ?? []) as PersonalRecord[];
+      const prTotal = prCount ?? prs.length;
 
       // Peso medio recente (biofeedback se collegato a un coach, altrimenti check-in).
       const cc = await getActiveCoachClient(uid);
@@ -219,32 +263,57 @@ export default function ProgressiScreen() {
             });
           strength = { exerciseName: top.name, points };
           strengthExerciseName = top.name;
-          const first = points[0]?.value;
-          const last = points[points.length - 1]?.value;
-          if (first && first > 0 && last != null) strengthDeltaPct = Math.round(((last - first) / first) * 100);
+          strengthDeltaPct = seriesDeltaPct(points);
         }
       }
 
-      // Giorno della settimana col volume medio più alto.
+      // Giorno della settimana in cui l'atleta RENDE di più: volume MEDIO per
+      // seduta, non somma. Con la somma vinceva sempre il giorno più frequentato,
+      // e il consiglio usciva rovesciato. Le sedute senza ferro (cardio, corpo
+      // libero) restano fuori: non dicono nulla sul rendimento.
       const dayVolume = new Array(7).fill(0) as number[];
+      const dayCount = new Array(7).fill(0) as number[];
       for (const l of logs) {
-        const idx = (new Date(l.started_at).getDay() + 6) % 7; // 0 = lunedì
-        dayVolume[idx] += Number(l.total_volume_kg ?? 0);
+        const vol = Number(l.total_volume_kg ?? 0);
+        if (!(vol > 0)) continue;
+        const t = new Date(l.started_at).getTime();
+        if (!Number.isFinite(t)) continue;
+        const idx = (new Date(t).getDay() + 6) % 7; // 0 = lunedì
+        dayVolume[idx] += vol;
+        dayCount[idx] += 1;
       }
-      const bestIdx = dayVolume.indexOf(Math.max(...dayVolume));
-      const bestDay = dayVolume[bestIdx] > 0 ? DAYS_OF_WEEK[bestIdx] : null;
+      let bestIdx = -1;
+      let bestAvg = 0;
+      for (let i = 0; i < 7; i++) {
+        if (dayCount[i] < 2) continue; // un colpo fortunato non è una tendenza
+        const a = dayVolume[i] / dayCount[i];
+        if (a > bestAvg) {
+          bestAvg = a;
+          bestIdx = i;
+        }
+      }
+      const bestDay = bestIdx >= 0 ? DAYS_OF_WEEK[bestIdx] : null;
 
-      // Media allenamenti/settimana prima e seconda metà del periodo.
+      // Confronto di costanza solo sulle settimane davvero osservate: fuori le
+      // settimane precedenti alla prima attività (l'atleta non era iscritto, e
+      // quello zero produceva un «Costanza in aumento» inventato) e fuori la
+      // settimana in corso, che è parziale e falserebbe la seconda metà.
       const halfAvg = (arr: WeekBucket[]) =>
         arr.length ? Math.round((arr.reduce((a, b) => a + b.count, 0) / arr.length) * 10) / 10 : 0;
+      const closed = buckets.slice(0, -1);
+      const firstActive = closed.findIndex((b) => b.count > 0);
+      const observedWeeks = firstActive === -1 ? [] : closed.slice(firstActive);
+      const comparable = observedWeeks.length >= 4;
+      const mid = Math.floor(observedWeeks.length / 2);
+
       const trendPct = volumeTrendPct(buckets);
       const streak = currentStreak(buckets);
 
       const insights = generateInsights({
         totalWorkouts: logs.length,
         trendPct,
-        countFirstHalfAvg: halfAvg(buckets.slice(0, 4)),
-        countLateHalfAvg: halfAvg(buckets.slice(4)),
+        countFirstHalfAvg: comparable ? halfAvg(observedWeeks.slice(0, mid)) : 0,
+        countLateHalfAvg: comparable ? halfAvg(observedWeeks.slice(mid)) : 0,
         streak,
         recovery,
         strengthDeltaPct,
@@ -262,10 +331,15 @@ export default function ProgressiScreen() {
         buckets,
         trendPct,
         prs,
+        prTotal,
         strength,
+        strengthDeltaPct,
         insights,
       });
     } catch (e) {
+      // Se il wifi della palestra cade, la schermata deve dirlo e offrire un
+      // modo di riprovare: prima restava sullo scheletro per sempre.
+      setFailed(true);
       showError(e, 'Errore di caricamento');
     }
   }, []);
@@ -282,7 +356,40 @@ export default function ProgressiScreen() {
     setRefreshing(false);
   }
 
-  if (!data) return <LoadingState message="Calcolo i tuoi progressi…" />;
+  // Il caricamento fallito ha la sua schermata, con la via d'uscita dentro.
+  // La guardia è `!data && failed`: se a cadere è un aggiornamento quando i
+  // numeri sono già a schermo, l'atleta continua a vederli.
+  if (!data && failed) {
+    return (
+      <SafeAreaView style={sharedStyles.screen} edges={['top']}>
+        <ScrollView
+          contentContainerStyle={sharedStyles.content}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
+        >
+          <Appear delay={appearDelay(0)} replayOnFocus>
+            <Text style={sharedStyles.screenTitle}>Progressi</Text>
+          </Appear>
+          <Appear delay={appearDelay(1)} replayOnFocus>
+            <EmptyState
+              emoji="📡"
+              title="Dati non disponibili"
+              message="Non riesco a caricare i progressi. Controlla la connessione e riprova."
+              action={
+                <PrimaryButton
+                  label="Riprova"
+                  onPress={() => {
+                    void load();
+                  }}
+                />
+              }
+            />
+          </Appear>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  if (!data) return <ProgressiSkeleton />;
 
   if (data.totalWorkouts === 0) {
     return (
@@ -312,12 +419,41 @@ export default function ProgressiScreen() {
   const streakProgress = Math.min(1, data.streak / Math.max(1, data.buckets.length));
   const trendTone = data.trendPct == null ? colors.textSecondary : data.trendPct >= 0 ? colors.mint : colors.amber;
 
+  // Un'unità sola per tutta la serie, scelta sul picco: prima due barre vicine
+  // potevano dire «900» e «1.2t», col numero più piccolo sopra la barra più alta.
+  // E il separatore decimale segue l'italiano, come il faro qui sopra.
+  const maxBucketKg = Math.max(0, ...data.buckets.map((b) => b.volumeKg));
+  const volumeInTons = maxBucketKg >= 1000;
+  const volumeUnit = volumeInTons ? 't' : 'kg';
   const volumeBars: BarDatum[] = data.buckets.map((b) => ({
     label: b.label,
     value: Math.round(b.volumeKg),
-    display: b.volumeKg >= 1000 ? `${Math.round(b.volumeKg / 100) / 10}t` : `${Math.round(b.volumeKg)}`,
+    display: volumeInTons
+      ? // Un decimale sempre, anche quando è zero: in colonna le cifre devono
+        // stare ferme. Il minimo a 0,1 evita che una settimana leggera stampi
+        // «0» sopra una barra visibile — ma solo se la settimana esiste: una
+        // settimana vuota resta zero, o la lettura vocale annuncerebbe 0,1 t.
+        (b.volumeKg > 0 ? Math.max(0.1, b.volumeKg / 1000) : 0).toLocaleString('it-IT', {
+          minimumFractionDigits: 1,
+          maximumFractionDigits: 1,
+        })
+      : Math.round(b.volumeKg).toLocaleString('it-IT'),
   }));
+
   const freqBars: BarDatum[] = data.buckets.map((b) => ({ label: b.label, value: b.count }));
+  const freqMax = Math.max(FREQ_SCALE_MIN, ...freqBars.map((b) => b.value));
+
+  // L'asse della forza parte poco sotto il minimo: su variazioni del 2-5% le
+  // barre da zero sono un muro piatto. Il taglio lo dichiara il grafico stesso.
+  const strengthPoints = data.strength?.points ?? [];
+  const strengthBaseline =
+    strengthPoints.length > 0 ? Math.floor(Math.min(...strengthPoints.map((p) => p.value)) * 0.97) : undefined;
+  const strengthTone =
+    data.strengthDeltaPct == null
+      ? colors.textSecondary
+      : data.strengthDeltaPct >= 0
+        ? colors.mint
+        : colors.amber;
 
   return (
     <SafeAreaView style={sharedStyles.screen} edges={['top']}>
@@ -326,9 +462,10 @@ export default function ProgressiScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
       >
         {/* La testata apre la cascata: tornando sulla scheda rientra per prima. */}
+        {/* La finestra delle 8 settimane vive sulle card dei grafici, non qui:
+            volume totale e record sono di sempre, e la testata li scavalcava. */}
         <Appear delay={appearDelay(0)} replayOnFocus style={styles.header}>
           <Text style={sharedStyles.screenTitle}>Progressi</Text>
-          <Text style={[type.label, tabular]}>Ultime {data.buckets.length} settimane</Text>
         </Appear>
 
         {/* IL BLOCCO DOMINANTE: tutto il ferro spostato, con l'anello dello streak accanto.
@@ -345,7 +482,13 @@ export default function ProgressiScreen() {
               color={colors.amber}
               trailing={
                 <View style={styles.streak}>
-                  <ActivityRing progress={streakProgress} color={colors.mint} size={96} strokeWidth={12}>
+                  <ActivityRing
+                    progress={streakProgress}
+                    color={colors.mint}
+                    size={96}
+                    strokeWidth={12}
+                    a11yLabel={`Settimane di fila con almeno un allenamento: ${data.streak}`}
+                  >
                     <Text style={styles.streakValue}>{data.streak}</Text>
                   </ActivityRing>
                   <Text style={styles.streakLabel} numberOfLines={2}>
@@ -362,15 +505,15 @@ export default function ProgressiScreen() {
             prima dei grafici. */}
         <Appear delay={appearDelay(2)} replayOnFocus style={styles.pillRow}>
           <StatPill label="Allenamenti" value={String(data.totalWorkouts)} color={colors.mint} />
-          <StatPill label="Freq./sett." value={String(data.frequency)} />
+          <StatPill label="Freq./sett." value={itNum(data.frequency)} />
         </Appear>
         <Appear delay={appearDelay(2)} replayOnFocus style={styles.pillRow}>
           <StatPill
             label="Peso medio"
-            value={data.avgWeight != null ? `${data.avgWeight} kg` : '—'}
+            value={data.avgWeight != null ? `${itNum(data.avgWeight)} kg` : '—'}
             color={colors.cyan}
           />
-          <StatPill label="Record" value={String(data.prs.length)} color={colors.rose} />
+          <StatPill label="Record" value={String(data.prTotal)} color={colors.rose} />
         </Appear>
 
         {data.insights.length > 0 ? (
@@ -401,7 +544,18 @@ export default function ProgressiScreen() {
         {/* I grafici chiudono la cascata: entrano dopo i KPI, alla coda dei 180 ms. */}
         <Appear delay={appearDelay(4)} replayOnFocus>
           <Card title="Volume settimanale">
-            <BarChart data={volumeBars} color={colors.amber} height={152} />
+            <Text style={styles.cardSub}>
+              {volumeInTons
+                ? `Tonnellate spostate nelle ultime ${WEEKS_BACK} settimane.`
+                : `Chili spostati nelle ultime ${WEEKS_BACK} settimane.`}
+            </Text>
+            <BarChart
+              data={volumeBars}
+              color={colors.amber}
+              height={152}
+              unit={volumeUnit}
+              a11yLabel="Volume spostato per settimana"
+            />
             {data.trendPct != null ? (
               <View style={styles.delta}>
                 <Ionicons
@@ -423,8 +577,16 @@ export default function ProgressiScreen() {
 
         <Appear delay={appearDelay(5)} replayOnFocus>
           <Card title="Attività settimanale">
-            <Text style={styles.cardSub}>Allenamenti completati, settimana per settimana.</Text>
-            <BarChart data={freqBars} color={colors.mint} height={112} />
+            <Text style={styles.cardSub}>Allenamenti completati nelle ultime {WEEKS_BACK} settimane.</Text>
+            <BarChart
+              data={freqBars}
+              color={colors.mint}
+              height={112}
+              maxValue={freqMax}
+              // Nessuna unità: il sostantivo sta già nell'etichetta, e appenderlo
+              // a ogni valore farebbe dire «1 allenamenti».
+              a11yLabel="Allenamenti completati per settimana"
+            />
           </Card>
         </Appear>
 
@@ -436,8 +598,33 @@ export default function ProgressiScreen() {
               </Text>
               <Text style={styles.cardSub}>1RM stimato per seduta (kg).</Text>
               {/* Serie temporale di carico: è sforzo, non un record — quindi ambra.
-                  Il rosa resta riservato ai record personali e alle azioni distruttive. */}
-              <BarChart data={data.strength.points} color={colors.amber} />
+                  Il rosa resta riservato ai record personali. */}
+              <BarChart
+                data={data.strength.points}
+                color={colors.amber}
+                height={152}
+                baseline={strengthBaseline}
+                unit="kg"
+                a11yLabel={`1RM stimato su ${data.strength.exerciseName}, seduta per seduta`}
+              />
+              {/* La risposta a «sto diventando più forte?» in cifre, non solo in
+                  forma: la stessa riga del trend usata dalla card del volume. */}
+              {data.strengthDeltaPct != null ? (
+                <View style={styles.delta}>
+                  <Ionicons
+                    name={data.strengthDeltaPct >= 0 ? 'trending-up' : 'trending-down'}
+                    size={20}
+                    color={strengthTone}
+                  />
+                  <Text style={styles.deltaText}>
+                    <Text style={[styles.deltaValue, tabular, { color: strengthTone }]}>
+                      {data.strengthDeltaPct >= 0 ? '+' : ''}
+                      {data.strengthDeltaPct}%
+                    </Text>
+                    {' dalla prima seduta del periodo'}
+                  </Text>
+                </View>
+              ) : null}
             </Card>
           </Appear>
         ) : null}
@@ -461,7 +648,7 @@ export default function ProgressiScreen() {
                       </Text>
                     </View>
                     <Text style={styles.prValue}>
-                      {pr.record_type === 'max_reps' ? `${Math.round(pr.value)}` : `${pr.value} kg`}
+                      {pr.record_type === 'max_reps' ? `${Math.round(pr.value)}` : `${itNum(pr.value)} kg`}
                     </Text>
                   </View>
                 ))}
@@ -471,6 +658,12 @@ export default function ProgressiScreen() {
                 Nessun record ancora: continua così e cominceranno ad arrivare. 💪
               </Text>
             )}
+            {/* La lista è troncata: dirlo, invece di lasciar credere che manchino. */}
+            {data.prTotal > data.prs.length ? (
+              <Text style={[styles.prNote, tabular]}>
+                I {data.prs.length} più recenti, su {data.prTotal} record totali.
+              </Text>
+            ) : null}
           </Card>
         </Appear>
       </ScrollView>
@@ -478,8 +671,55 @@ export default function ProgressiScreen() {
   );
 }
 
-/** Raggio interno delle superfici dentro una card (regola concentrica). */
-const innerRadius = concentric(radius.lg, spacing.lg);
+/**
+ * Scheletro di caricamento che ricalca il layout reale, come nelle sorelle:
+ * uno spinner centrato non dice quanto manca né cosa sta arrivando, e questa
+ * è la schermata più lenta dell'app (sette interrogazioni al server).
+ */
+function ProgressiSkeleton() {
+  return (
+    <SafeAreaView style={sharedStyles.screen} edges={['top']}>
+      <View style={sharedStyles.content}>
+        <Skeleton width={168} height={34} />
+        <Card>
+          <Skeleton width={112} height={12} />
+          <View style={styles.skeletonMetric}>
+            <View style={styles.skeletonMetricMain}>
+              <Skeleton width={150} height={58} />
+              <Skeleton width={190} height={14} />
+            </View>
+            <Skeleton width={96} height={96} round={48} />
+          </View>
+        </Card>
+        {[0, 1].map((row) => (
+          <View key={row} style={styles.pillRow}>
+            <View style={styles.skeletonPill}>
+              <Skeleton width={72} height={12} />
+              <Skeleton width={90} height={24} />
+            </View>
+            <View style={styles.skeletonPill}>
+              <Skeleton width={72} height={12} />
+              <Skeleton width={90} height={24} />
+            </View>
+          </View>
+        ))}
+        {[152, 112].map((h, i) => (
+          <Card key={i}>
+            <Skeleton width={148} height={12} />
+            <Skeleton width="76%" height={14} />
+            <Skeleton height={h} round={radius.sm} />
+          </Card>
+        ))}
+      </View>
+    </SafeAreaView>
+  );
+}
+
+/**
+ * Raggio interno delle superfici dentro una card (regola concentrica).
+ * La Card ha padding `spacing.xl`: è quello il valore da sottrarre, non `lg`.
+ */
+const innerRadius = concentric(radius.lg, spacing.xl);
 
 const styles = StyleSheet.create({
   header: {
@@ -604,8 +844,27 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
     color: colors.rose,
   },
+  prNote: {
+    ...sharedStyles.muted,
+  },
   emptyText: {
     ...type.body,
     color: colors.textSecondary,
+  },
+  skeletonMetric: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.lg,
+  },
+  skeletonMetricMain: {
+    flex: 1,
+    gap: spacing.sm,
+  },
+  skeletonPill: {
+    flex: 1,
+    gap: spacing.sm,
+    backgroundColor: 'rgba(21,26,36,0.92)',
+    borderRadius: radius.md,
+    padding: spacing.lg,
   },
 });
