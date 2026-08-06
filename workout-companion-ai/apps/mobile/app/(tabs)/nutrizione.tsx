@@ -1,19 +1,26 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { macrosToKcal } from '@wc/shared';
 import type { Food, NutritionDay } from '@wc/shared';
 import { supabase } from '../../lib/supabase';
 import { colors, concentric, radius, spacing, sharedStyles, tabular, type } from '../../lib/theme';
-import { showError } from '../../lib/utils';
-import { getActiveCoachClient, getTodayNutritionDay, getUserId } from '../../lib/queries';
+import { localDateString, showError } from '../../lib/utils';
+import {
+  getActiveCoachClient,
+  getBiofeedbackByDate,
+  getTodayNutritionDay,
+  getUserId,
+} from '../../lib/queries';
 import { demoNutrition, isDemo } from '../../lib/demo';
 import { ActivityRing } from '../../components/ActivityRing';
 import { Appear, appearDelay } from '../../components/Appear';
 import { Card } from '../../components/Card';
 import { MacroBar } from '../../components/MacroBar';
 import { MetricBlock } from '../../components/MetricBlock';
+import { Press } from '../../components/Press';
 import { Skeleton } from '../../components/Skeleton';
 import { EmptyState } from '../../components/States';
 
@@ -36,6 +43,8 @@ interface NutritionData {
   hasCoach: boolean;
   day: NutritionDay | null;
   meals: MealRow[];
+  /** Quanto l'atleta ha davvero mangiato oggi (dal check giornaliero). */
+  eatenKcal: number | null;
 }
 
 /** Kcal di un alimento per la quantità indicata (regola per-100g). */
@@ -49,6 +58,7 @@ function mealKcal(meal: MealRow): number {
 }
 
 export default function NutrizioneScreen() {
+  const router = useRouter();
   const [data, setData] = useState<NutritionData | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -56,7 +66,7 @@ export default function NutrizioneScreen() {
     try {
       if (isDemo()) {
         const { day, meals } = demoNutrition();
-        setData({ hasCoach: true, day, meals });
+        setData({ hasCoach: true, day, meals, eatenKcal: 1850 });
         return;
       }
 
@@ -65,11 +75,14 @@ export default function NutrizioneScreen() {
 
       const cc = await getActiveCoachClient(uid);
       if (!cc) {
-        setData({ hasCoach: false, day: null, meals: [] });
+        setData({ hasCoach: false, day: null, meals: [], eatenKcal: null });
         return;
       }
 
-      const day = await getTodayNutritionDay(cc.id);
+      const [day, bio] = await Promise.all([
+        getTodayNutritionDay(cc.id),
+        getBiofeedbackByDate(cc.id, localDateString(new Date())),
+      ]);
       let meals: MealRow[] = [];
       if (day) {
         const { data: rows, error } = await supabase
@@ -84,15 +97,19 @@ export default function NutrizioneScreen() {
         }));
       }
 
-      setData({ hasCoach: true, day, meals });
+      setData({ hasCoach: true, day, meals, eatenKcal: bio?.kcal_consumed ?? null });
     } catch (e) {
       showError(e, 'Errore di caricamento');
     }
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  // Il piano del coach e le calorie registrate cambiano mentre l'app è aperta:
+  // si ricarica a ogni ritorno sulla scheda, non solo al primo montaggio.
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load]),
+  );
 
   async function onRefresh() {
     setRefreshing(true);
@@ -109,10 +126,19 @@ export default function NutrizioneScreen() {
     ? macrosToKcal({ proteinG: day.protein_g, carbsG: day.carbs_g, fatG: day.fat_g })
     : 0;
   const plannedKcal = data.meals.reduce((acc, m) => acc + mealKcal(m), 0);
-  const coverage = day && day.kcal > 0 ? Math.min(plannedKcal / day.kcal, 1) : 0;
   const hasMeals = data.meals.length > 0;
-  // Menta quando i pasti coprono l'obiettivo, ambra quando manca qualcosa.
-  const coverageTone = coverage >= 0.95 ? colors.mint : colors.amber;
+
+  // La domanda dell'atleta è «quanto posso ancora mangiare», non «il coach ha
+  // compilato bene il piano». Se le calorie di oggi sono state registrate, il
+  // numero dominante risponde a quella; altrimenti resta l'obiettivo.
+  const eaten = data.eatenKcal;
+  const tracked = eaten !== null && !!day && day.kcal > 0;
+  const ratio = tracked ? eaten! / day!.kcal : 0;
+  const left = tracked ? day!.kcal - eaten! : 0;
+  const over = left < 0;
+  // Menta quando sei nel bersaglio, ambra quando ne sei fuori: due soli stati.
+  const tone = tracked && ratio >= 0.9 && ratio <= 1.05 ? colors.mint : colors.amber;
+  const fmt = (n: number) => Math.round(n).toLocaleString('it-IT');
 
   const isTraining = day?.day_type === 'training';
   const dayTone = isTraining ? colors.amber : colors.cyan;
@@ -154,30 +180,49 @@ export default function NutrizioneScreen() {
           </Appear>
         ) : (
           <>
-            {/* IL BLOCCO DOMINANTE: le calorie del giorno, leggibili in tre secondi. */}
+            {/* IL BLOCCO DOMINANTE: quanto resta da mangiare oggi, leggibile in
+                tre secondi. Senza calorie registrate mostra l'obiettivo. */}
             <Appear delay={appearDelay(1)} replayOnFocus>
-              <Card title="Obiettivo di oggi">
+              <Card title={tracked ? (over ? 'Oltre l’obiettivo' : 'Ti restano oggi') : 'Obiettivo di oggi'}>
                 <MetricBlock
-                  value={day.kcal.toLocaleString('it-IT')}
+                  value={tracked ? fmt(Math.abs(left)) : fmt(day.kcal)}
                   unit="kcal"
+                  color={tracked ? tone : colors.textPrimary}
                   caption={
-                    hasMeals
-                      ? `Nei pasti: ${Math.round(plannedKcal).toLocaleString('it-IT')} kcal`
-                      : 'Obiettivo calorico del giorno'
+                    tracked
+                      ? `Mangiate ${fmt(eaten!)} di ${fmt(day.kcal)} kcal`
+                      : hasMeals
+                        ? `Obiettivo del giorno · nei pasti pianificati ${fmt(plannedKcal)} kcal`
+                        : 'Obiettivo calorico del giorno'
                   }
                   trailing={
-                    hasMeals ? (
-                      <ActivityRing progress={coverage} color={coverageTone} size={88} strokeWidth={12}>
-                        <Text style={[styles.ringValue, tabular, { color: coverageTone }]}>
-                          {Math.round(coverage * 100)}%
+                    tracked ? (
+                      <ActivityRing progress={Math.min(ratio, 1)} color={tone} size={88} strokeWidth={12}>
+                        <Text style={[styles.ringValue, tabular, { color: tone }]}>
+                          {Math.round(ratio * 100)}%
                         </Text>
                       </ActivityRing>
                     ) : undefined
                   }
                 />
-                {hasMeals ? (
-                  <Text style={styles.coverageNote}>Copertura dell'obiettivo con i pasti pianificati</Text>
-                ) : null}
+
+                {/* Una sola azione, sempre nello stesso posto: da qui si registra
+                    o si corregge quanto hai mangiato. */}
+                <Press
+                  onPress={() => router.push('/biofeedback/oggi')}
+                  style={styles.action}
+                  accessibilityLabel={tracked ? 'Aggiorna le calorie di oggi' : 'Registra cosa hai mangiato'}
+                >
+                  <Ionicons
+                    name={tracked ? 'create-outline' : 'add-circle-outline'}
+                    size={19}
+                    color={colors.accent}
+                  />
+                  <Text style={styles.actionText}>
+                    {tracked ? 'Aggiorna le calorie di oggi' : 'Registra cosa hai mangiato'}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={17} color={colors.textTertiary} />
+                </Press>
               </Card>
             </Appear>
 
@@ -314,8 +359,11 @@ function NutritionSkeleton() {
   );
 }
 
-/** Raggio interno delle superfici dentro una card (regola concentrica). */
-const innerRadius = concentric(radius.lg, spacing.lg);
+/**
+ * Raggio interno delle superfici dentro una card (regola concentrica).
+ * La Card ha padding `spacing.xl`: è quello il valore da sottrarre, non `lg`.
+ */
+const innerRadius = concentric(radius.lg, spacing.xl);
 
 const styles = StyleSheet.create({
   header: {
@@ -339,9 +387,20 @@ const styles = StyleSheet.create({
     ...type.body,
     fontWeight: '800',
   },
-  coverageNote: {
-    ...type.callout,
-    color: colors.textSecondary,
+  action: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    minHeight: 48,
+    paddingHorizontal: spacing.lg,
+    borderRadius: innerRadius,
+    backgroundColor: colors.raised,
+  },
+  actionText: {
+    ...type.body,
+    flex: 1,
+    fontWeight: '600',
+    color: colors.accent,
   },
   section: {
     gap: spacing.md,
