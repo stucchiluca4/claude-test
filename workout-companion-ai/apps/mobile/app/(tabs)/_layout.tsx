@@ -5,6 +5,7 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, glass, radius, wash } from '../../lib/theme';
+import { FloatingChatBubble } from '../../components/FloatingChatBubble';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -59,6 +60,9 @@ export default function TabsLayout() {
   const lift = Math.max(insets.bottom, 10);
 
   return (
+    // La chat vive come bolla flottante sopra ogni scheda, non come voce di
+    // menu: cinque voci respirano, e la chat resta a un tocco di distanza.
+    <FloatingChatBubble bottomOffset={BAR_HEIGHT}>
     <Tabs
       screenOptions={{
         headerShown: false,
@@ -124,13 +128,9 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, focused }) => <TabIcon name="stats-chart" color={color} focused={focused} />,
         }}
       />
-      <Tabs.Screen
-        name="chat"
-        options={{
-          title: 'Chat',
-          tabBarIcon: ({ color, focused }) => <TabIcon name="chatbubble" color={color} focused={focused} />,
-        }}
-      />
+      {/* La chat resta una rotta a tutti gli effetti, ma fuori dalla barra:
+          ci si arriva dalla bolla flottante. */}
+      <Tabs.Screen name="chat" options={{ href: null }} />
       <Tabs.Screen
         name="profilo"
         options={{
@@ -139,6 +139,7 @@ export default function TabsLayout() {
         }}
       />
     </Tabs>
+    </FloatingChatBubble>
   );
 }
 
