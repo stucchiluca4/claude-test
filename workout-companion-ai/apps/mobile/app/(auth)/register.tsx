@@ -1,8 +1,9 @@
 import { useRef, useState } from 'react';
 import {
-  Alert,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,13 +12,14 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
-import { colors, radius, spacing, sharedStyles, type } from '../../lib/theme';
+import { colors, concentric, radius, spacing, sharedStyles, type, wash } from '../../lib/theme';
+import { Appear, appearDelay } from '../../components/Appear';
+import { GlassSurface } from '../../components/Glass';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { Press } from '../../components/Press';
-import { tapError } from '../../lib/haptics';
+import { tapError, tapSuccess } from '../../lib/haptics';
 
 interface RoleOption {
   value: 'athlete' | 'coach';
@@ -33,7 +35,17 @@ const ROLES: RoleOption[] = [
   { value: 'coach', label: 'Coach / PT', caption: 'Alleno altri', icon: 'clipboard-outline', iconOn: 'clipboard' },
 ];
 
-/** Stessa lingua della schermata d'accesso: marchio, ferro, una sola azione blu. */
+/** I passi della conferma via email, come sul portale web: stessa promessa. */
+const CONFIRM_STEPS = [
+  'Apri la tua casella di posta (guarda anche nello spam).',
+  'Tocca il pulsante di conferma nel messaggio.',
+  'Torna qui e accedi con le tue credenziali.',
+];
+
+/**
+ * Stessa lingua della schermata d'accesso: il modulo vive sul livello VETRO e
+ * galleggia sul campo luminoso, i campi dentro restano FERRO opaco.
+ */
 export default function RegisterScreen() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -41,6 +53,9 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'athlete' | 'coach'>('athlete');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  /** Account creato ma in attesa della conferma via email. */
+  const [emailSent, setEmailSent] = useState(false);
   // Solo presentazione: bordo blu sul campo attivo e password in chiaro.
   const [focused, setFocused] = useState<'firstName' | 'lastName' | 'email' | 'password' | null>(null);
   const [reveal, setReveal] = useState(false);
@@ -49,20 +64,29 @@ export default function RegisterScreen() {
   const passwordRef = useRef<TextInput>(null);
   const router = useRouter();
 
+  /** Cancella l'errore appena l'utente mette mano al modulo. */
+  function edit(setter: (v: string) => void) {
+    return (v: string) => {
+      setter(v);
+      if (error) setError(null);
+    };
+  }
+
   async function handleRegister() {
     if (!firstName.trim() || !email.trim() || !password) {
       tapError();
-      Alert.alert('Campi mancanti', 'Nome, email e password sono obbligatori.');
+      setError('Nome, email e password sono obbligatori.');
       return;
     }
     if (password.length < 8) {
       tapError();
-      Alert.alert('Password troppo corta', 'Usa almeno 8 caratteri.');
+      setError('La password deve avere almeno 8 caratteri.');
       return;
     }
     setLoading(true);
+    setError(null);
     // first_name/last_name/role finiscono nei metadata: il trigger DB crea il profilo.
-    const { data, error } = await supabase.auth.signUp({
+    const { data, error: signUpError } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),
       password,
       options: {
@@ -74,179 +98,244 @@ export default function RegisterScreen() {
       },
     });
     setLoading(false);
-    if (error) {
+    if (signUpError) {
       tapError();
-      Alert.alert('Registrazione non riuscita', error.message);
+      setError(
+        signUpError.message === 'User already registered'
+          ? 'Esiste già un account con questa email. Prova ad accedere.'
+          : signUpError.message,
+      );
       return;
     }
     if (!data.session) {
-      Alert.alert(
-        'Quasi fatto!',
-        'Ti abbiamo inviato una email di conferma. Aprila e poi accedi con le tue credenziali.',
-        [{ text: 'OK', onPress: () => router.replace('/(auth)/login') }]
-      );
+      // Conferma via email attiva: lo diciamo con una schermata, non con un
+      // avviso di sistema — è il momento in cui l'account è appena nato.
+      tapSuccess();
+      setEmailSent(true);
     }
+    // Con la sessione già attiva ci pensa il listener del layout radice.
   }
 
-  return (
-    <View style={sharedStyles.screen}>
-      {/* La stessa luce ambientale dell'accesso: blu al 6%, nient'altro. */}
-      <LinearGradient
-        colors={['rgba(10,132,255,0.06)', 'rgba(10,132,255,0.02)', 'rgba(10,132,255,0)']}
-        locations={[0, 0.55, 1]}
-        style={styles.ambient}
-        pointerEvents="none"
-      />
+  // ---------- Conferma via email ----------
+  if (emailSent) {
+    return (
+      <View style={sharedStyles.screen}>
+        <SafeAreaView style={styles.flex}>
+          <ScrollView contentContainerStyle={styles.container}>
+            <Appear delay={appearDelay(0)}>
+              <GlassSurface cornerRadius={radius.lg} padding={spacing.xl}>
+                <View style={styles.sent}>
+                  <View style={styles.sentMark}>
+                    <Ionicons name="mail-unread" size={28} color={colors.mint} />
+                  </View>
+                  <Text style={type.display}>Controlla la tua email</Text>
+                  <Text style={sharedStyles.muted}>
+                    Abbiamo inviato il link di conferma a{' '}
+                    <Text style={styles.sentEmail}>{email.trim().toLowerCase()}</Text>.
+                  </Text>
 
+                  <View style={styles.steps}>
+                    {CONFIRM_STEPS.map((step, i) => (
+                      <View key={step} style={styles.step}>
+                        <View style={styles.stepIndex}>
+                          <Text style={styles.stepIndexText}>{i + 1}</Text>
+                        </View>
+                        <Text style={styles.stepText}>{step}</Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  <PrimaryButton
+                    label="Vai all'accesso"
+                    onPress={() => router.replace('/(auth)/login')}
+                    style={styles.cta}
+                  />
+                </View>
+              </GlassSurface>
+            </Appear>
+          </ScrollView>
+        </SafeAreaView>
+      </View>
+    );
+  }
+
+  // ---------- Modulo ----------
+  return (
+    // Toccando fuori dai campi la tastiera si chiude: sul telefono è il gesto atteso.
+    <Pressable style={sharedStyles.screen} onPress={Keyboard.dismiss} accessible={false}>
       <SafeAreaView style={styles.flex}>
         <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-            <View style={styles.brand}>
+            <Appear delay={appearDelay(0)} style={styles.brand}>
               <View style={styles.mark}>
                 <Ionicons name="barbell" size={24} color={colors.accent} />
               </View>
               <Text style={styles.wordmark}>Workout Companion AI</Text>
-            </View>
+            </Appear>
 
-            <View style={styles.heading}>
+            <Appear delay={appearDelay(1)} style={styles.heading}>
               <Text style={type.display}>Crea il tuo account</Text>
               <Text style={sharedStyles.muted}>Inizia il tuo percorso con Workout Companion AI.</Text>
-            </View>
+            </Appear>
 
-            <View style={styles.form}>
-              {/* Prima scelta: chi sei. Due bersagli grandi, stato attivo blu. */}
-              <View style={styles.fieldGroup}>
-                <Text style={type.label}>Chi sei?</Text>
-                <View style={styles.roleRow}>
-                  {ROLES.map((option) => {
-                    const on = role === option.value;
-                    return (
-                      <View key={option.value} style={styles.roleSlot}>
-                        <Press
-                          onPress={() => setRole(option.value)}
-                          style={[styles.role, on && styles.roleOn]}
-                          accessibilityLabel={on ? `${option.label}, selezionato` : option.label}
-                        >
-                          <Ionicons
-                            name={on ? option.iconOn : option.icon}
-                            size={26}
-                            color={on ? colors.accent : colors.textSecondary}
-                          />
-                          <Text style={[styles.roleLabel, on && styles.roleLabelOn]}>{option.label}</Text>
-                          <Text style={styles.roleCaption}>{option.caption}</Text>
-                          {on ? (
-                            <View style={styles.roleCheck}>
-                              <Ionicons name="checkmark" size={13} color={colors.textPrimary} />
-                            </View>
-                          ) : null}
-                        </Press>
+            {/* VETRO: il pannello dei controlli galleggia sul campo luminoso. */}
+            <Appear delay={appearDelay(2)}>
+              <GlassSurface cornerRadius={radius.lg} padding={spacing.xl}>
+                <View style={styles.form}>
+                  {/* Prima scelta: chi sei. Due bersagli grandi, stato attivo blu. */}
+                  <View style={styles.fieldGroup}>
+                    <Text style={type.label}>Chi sei?</Text>
+                    <View style={styles.roleRow}>
+                      {ROLES.map((option) => {
+                        const on = role === option.value;
+                        return (
+                          <View key={option.value} style={styles.roleSlot}>
+                            <Press
+                              onPress={() => setRole(option.value)}
+                              style={[styles.role, on && styles.roleOn]}
+                              accessibilityLabel={on ? `${option.label}, selezionato` : option.label}
+                            >
+                              <Ionicons
+                                name={on ? option.iconOn : option.icon}
+                                size={26}
+                                color={on ? colors.accent : colors.textSecondary}
+                              />
+                              <Text style={[styles.roleLabel, on && styles.roleLabelOn]}>
+                                {option.label}
+                              </Text>
+                              <Text style={styles.roleCaption}>{option.caption}</Text>
+                              {on ? (
+                                <View style={styles.roleCheck}>
+                                  <Ionicons name="checkmark" size={13} color={colors.void} />
+                                </View>
+                              ) : null}
+                            </Press>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </View>
+
+                  <View style={styles.row}>
+                    <View style={[styles.fieldGroup, styles.rowItem]}>
+                      <Text style={type.label}>Nome</Text>
+                      <View style={[styles.field, focused === 'firstName' && styles.fieldFocus]}>
+                        <TextInput
+                          style={styles.input}
+                          value={firstName}
+                          onChangeText={edit(setFirstName)}
+                          placeholder="Marco"
+                          placeholderTextColor={colors.textTertiary}
+                          autoComplete="given-name"
+                          returnKeyType="next"
+                          submitBehavior="submit"
+                          onSubmitEditing={() => lastNameRef.current?.focus()}
+                          onFocus={() => setFocused('firstName')}
+                          onBlur={() => setFocused(null)}
+                        />
                       </View>
-                    );
-                  })}
-                </View>
-              </View>
+                    </View>
 
-              <View style={styles.row}>
-                <View style={[styles.fieldGroup, styles.rowItem]}>
-                  <Text style={type.label}>Nome</Text>
-                  <View style={[styles.field, focused === 'firstName' && styles.fieldFocus]}>
-                    <TextInput
-                      style={styles.input}
-                      value={firstName}
-                      onChangeText={setFirstName}
-                      placeholder="Marco"
-                      placeholderTextColor={colors.textTertiary}
-                      autoComplete="given-name"
-                      returnKeyType="next"
-                      submitBehavior="submit"
-                      onSubmitEditing={() => lastNameRef.current?.focus()}
-                      onFocus={() => setFocused('firstName')}
-                      onBlur={() => setFocused(null)}
-                    />
+                    <View style={[styles.fieldGroup, styles.rowItem]}>
+                      <Text style={type.label}>Cognome</Text>
+                      <View style={[styles.field, focused === 'lastName' && styles.fieldFocus]}>
+                        <TextInput
+                          ref={lastNameRef}
+                          style={styles.input}
+                          value={lastName}
+                          onChangeText={edit(setLastName)}
+                          placeholder="Rossi"
+                          placeholderTextColor={colors.textTertiary}
+                          autoComplete="family-name"
+                          returnKeyType="next"
+                          submitBehavior="submit"
+                          onSubmitEditing={() => emailRef.current?.focus()}
+                          onFocus={() => setFocused('lastName')}
+                          onBlur={() => setFocused(null)}
+                        />
+                      </View>
+                    </View>
                   </View>
-                </View>
 
-                <View style={[styles.fieldGroup, styles.rowItem]}>
-                  <Text style={type.label}>Cognome</Text>
-                  <View style={[styles.field, focused === 'lastName' && styles.fieldFocus]}>
-                    <TextInput
-                      ref={lastNameRef}
-                      style={styles.input}
-                      value={lastName}
-                      onChangeText={setLastName}
-                      placeholder="Rossi"
-                      placeholderTextColor={colors.textTertiary}
-                      autoComplete="family-name"
-                      returnKeyType="next"
-                      submitBehavior="submit"
-                      onSubmitEditing={() => emailRef.current?.focus()}
-                      onFocus={() => setFocused('lastName')}
-                      onBlur={() => setFocused(null)}
-                    />
+                  <View style={styles.fieldGroup}>
+                    <Text style={type.label}>Email</Text>
+                    <View style={[styles.field, focused === 'email' && styles.fieldFocus]}>
+                      <TextInput
+                        ref={emailRef}
+                        style={styles.input}
+                        value={email}
+                        onChangeText={edit(setEmail)}
+                        placeholder="nome@email.it"
+                        placeholderTextColor={colors.textTertiary}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        autoComplete="email"
+                        returnKeyType="next"
+                        submitBehavior="submit"
+                        onSubmitEditing={() => passwordRef.current?.focus()}
+                        onFocus={() => setFocused('email')}
+                        onBlur={() => setFocused(null)}
+                      />
+                    </View>
                   </View>
-                </View>
-              </View>
 
-              <View style={styles.fieldGroup}>
-                <Text style={type.label}>Email</Text>
-                <View style={[styles.field, focused === 'email' && styles.fieldFocus]}>
-                  <TextInput
-                    ref={emailRef}
-                    style={styles.input}
-                    value={email}
-                    onChangeText={setEmail}
-                    placeholder="nome@email.it"
-                    placeholderTextColor={colors.textTertiary}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    autoComplete="email"
-                    returnKeyType="next"
-                    submitBehavior="submit"
-                    onSubmitEditing={() => passwordRef.current?.focus()}
-                    onFocus={() => setFocused('email')}
-                    onBlur={() => setFocused(null)}
+                  <View style={styles.fieldGroup}>
+                    <Text style={type.label}>Password</Text>
+                    <View style={[styles.field, focused === 'password' && styles.fieldFocus]}>
+                      <TextInput
+                        ref={passwordRef}
+                        style={styles.input}
+                        value={password}
+                        onChangeText={edit(setPassword)}
+                        placeholder="Almeno 8 caratteri"
+                        placeholderTextColor={colors.textTertiary}
+                        secureTextEntry={!reveal}
+                        autoCapitalize="none"
+                        autoComplete="new-password"
+                        returnKeyType="go"
+                        onSubmitEditing={handleRegister}
+                        onFocus={() => setFocused('password')}
+                        onBlur={() => setFocused(null)}
+                      />
+                      <Press
+                        onPress={() => setReveal((v) => !v)}
+                        style={styles.reveal}
+                        hitSlop={8}
+                        accessibilityLabel={reveal ? 'Nascondi password' : 'Mostra password'}
+                      >
+                        <Ionicons
+                          name={reveal ? 'eye-off-outline' : 'eye-outline'}
+                          size={20}
+                          color={focused === 'password' ? colors.accent : colors.textSecondary}
+                        />
+                      </Press>
+                    </View>
+                    {/* Il requisito si vede mentre scrivi, non dopo aver sbagliato. */}
+                    {password.length > 0 && password.length < 8 ? (
+                      <Text style={styles.hint}>Ancora {8 - password.length} caratteri.</Text>
+                    ) : null}
+                  </View>
+
+                  {/* L'errore vive nel modulo, accanto ai campi. */}
+                  {error ? (
+                    <View style={styles.error} accessibilityRole="alert">
+                      <Ionicons name="alert-circle" size={18} color={colors.rose} />
+                      <Text style={styles.errorText}>{error}</Text>
+                    </View>
+                  ) : null}
+
+                  <PrimaryButton
+                    label="Crea account"
+                    onPress={handleRegister}
+                    loading={loading}
+                    style={styles.cta}
                   />
                 </View>
-              </View>
+              </GlassSurface>
+            </Appear>
 
-              <View style={styles.fieldGroup}>
-                <Text style={type.label}>Password</Text>
-                <View style={[styles.field, focused === 'password' && styles.fieldFocus]}>
-                  <TextInput
-                    ref={passwordRef}
-                    style={styles.input}
-                    value={password}
-                    onChangeText={setPassword}
-                    placeholder="Almeno 8 caratteri"
-                    placeholderTextColor={colors.textTertiary}
-                    secureTextEntry={!reveal}
-                    autoCapitalize="none"
-                    autoComplete="new-password"
-                    returnKeyType="go"
-                    onSubmitEditing={handleRegister}
-                    onFocus={() => setFocused('password')}
-                    onBlur={() => setFocused(null)}
-                  />
-                  <Press
-                    onPress={() => setReveal((v) => !v)}
-                    style={styles.reveal}
-                    hitSlop={8}
-                    accessibilityLabel={reveal ? 'Nascondi password' : 'Mostra password'}
-                  >
-                    <Ionicons
-                      name={reveal ? 'eye-off-outline' : 'eye-outline'}
-                      size={20}
-                      color={focused === 'password' ? colors.accent : colors.textSecondary}
-                    />
-                  </Press>
-                </View>
-              </View>
-
-              <PrimaryButton label="Crea account" onPress={handleRegister} loading={loading} style={styles.cta} />
-            </View>
-
-            <View style={styles.footer}>
+            <Appear delay={appearDelay(3)} style={styles.footer}>
               <Text style={sharedStyles.muted}>Hai già un account?</Text>
               <Press
                 onPress={() => router.push('/(auth)/login')}
@@ -256,11 +345,11 @@ export default function RegisterScreen() {
               >
                 <Text style={styles.link}>Accedi</Text>
               </Press>
-            </View>
+            </Appear>
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
-    </View>
+    </Pressable>
   );
 }
 
@@ -268,19 +357,12 @@ const styles = StyleSheet.create({
   flex: {
     flex: 1,
   },
-  ambient: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: '62%',
-  },
   container: {
     flexGrow: 1,
     justifyContent: 'center',
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.xxxl,
-    gap: spacing.xxl,
+    gap: spacing.xl,
   },
   brand: {
     flexDirection: 'row',
@@ -291,7 +373,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: radius.sm,
-    backgroundColor: 'rgba(10,132,255,0.14)',
+    backgroundColor: wash(colors.accent, 0.14),
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -330,14 +412,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.xs,
     backgroundColor: colors.raised,
-    borderRadius: radius.md,
+    borderRadius: concentric(radius.lg, spacing.xl),
     borderWidth: 1,
     borderColor: 'transparent',
     padding: spacing.lg,
   },
   roleOn: {
     borderColor: colors.accent,
-    backgroundColor: 'rgba(10,132,255,0.12)',
+    backgroundColor: wash(colors.accent, 0.14),
   },
   roleLabel: {
     fontSize: 17,
@@ -369,8 +451,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     minHeight: 52,
+    // FERRO dentro il vetro: il campo dove si scrive resta opaco e leggibile.
     backgroundColor: colors.raised,
-    borderRadius: radius.sm,
+    borderRadius: concentric(radius.lg, spacing.xl),
     borderWidth: 1,
     borderColor: 'transparent',
     paddingHorizontal: spacing.lg,
@@ -397,8 +480,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: -spacing.sm,
   },
+  hint: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  error: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: -spacing.xs,
+  },
+  errorText: {
+    flex: 1,
+    color: colors.rose,
+    fontSize: 15,
+    fontWeight: '600',
+    lineHeight: 20,
+  },
   cta: {
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
   },
   footer: {
     flexDirection: 'row',
@@ -414,5 +515,57 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: colors.accent,
+  },
+  // ---------- Conferma via email ----------
+  sent: {
+    gap: spacing.md,
+  },
+  sentMark: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.sm,
+    backgroundColor: wash(colors.mint, 0.16),
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xs,
+  },
+  sentEmail: {
+    color: colors.textPrimary,
+    fontWeight: '700',
+  },
+  steps: {
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  step: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.raised,
+    borderRadius: concentric(radius.lg, spacing.xl),
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    minHeight: 56,
+  },
+  stepIndex: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepIndexText: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '800',
+    fontVariant: ['tabular-nums'],
+  },
+  stepText: {
+    flex: 1,
+    color: colors.textSecondary,
+    fontSize: 15,
+    fontWeight: '500',
+    lineHeight: 21,
   },
 });
